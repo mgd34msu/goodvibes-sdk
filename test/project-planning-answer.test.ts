@@ -53,7 +53,7 @@ async function seedWithOpenQuestion(service: ProjectPlanningService): Promise<vo
 }
 
 describe('ProjectPlanningService.answerQuestion', () => {
-  test('answers by questionId — moves open → answered and records the text', async () => {
+  test('answers by questionId: moves open → answered and records the text', async () => {
     const service = createService();
     await seedWithOpenQuestion(service);
 
@@ -93,7 +93,7 @@ describe('ProjectPlanningService.answerQuestion', () => {
     expect(result.openQuestions.map((q) => q.id)).toEqual(['q-scope']);
   });
 
-  test('recorded answer is consumed — its open-question gap clears', async () => {
+  test('recorded answer is consumed: its open-question gap clears', async () => {
     const service = createService();
     await seedWithOpenQuestion(service);
 

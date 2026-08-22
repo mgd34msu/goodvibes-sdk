@@ -32,7 +32,7 @@ const flags = (enabledIds: readonly string[]) => ({
   },
 });
 
-describe('exec guard — permission settings are the authority for command classes', () => {
+describe('exec guard: permission settings are the authority for command classes', () => {
   test('kill is allowed when the caller (permission layer) permits all classes', async () => {
     const result = await guardExecCommand('kill -TERM 12345', ALL_COMMAND_CLASSES);
     expect(result.allowed).toBe(true);
@@ -63,7 +63,7 @@ describe('exec guard — permission settings are the authority for command class
   });
 });
 
-describe('exec guard — the frozen catastrophic list is unconditional', () => {
+describe('exec guard: the frozen catastrophic list is unconditional', () => {
   test('rm -rf / is denied even with every class permitted', async () => {
     const result = await guardExecCommand('rm -rf /', ALL_COMMAND_CLASSES);
     expect(result.allowed).toBe(false);
@@ -88,7 +88,7 @@ describe('exec guard — the frozen catastrophic list is unconditional', () => {
   });
 });
 
-describe('exec guard — AST mode keeps the same authority split', () => {
+describe('exec guard: AST mode keeps the same authority split', () => {
   test('kill is allowed in AST mode with all classes permitted', async () => {
     const result = await guardExecCommand(
       'kill -TERM 12345',
@@ -111,7 +111,7 @@ describe('exec guard — AST mode keeps the same authority split', () => {
   });
 });
 
-describe('exec guard — shell-ast-normalization is on by default', () => {
+describe('exec guard: shell-ast-normalization is on by default', () => {
   test('a fresh feature-flag manager reports the flag enabled', () => {
     const mgr = createFeatureFlagManager();
     expect(mgr.isEnabled('shell-ast-normalization')).toBe(true);
@@ -140,7 +140,7 @@ describe('exec guard — shell-ast-normalization is on by default', () => {
   });
 });
 
-describe('exec guard — degenerate input stays safe under the default AST path', () => {
+describe('exec guard: degenerate input stays safe under the default AST path', () => {
   // The parser is total: it never throws and always returns a tree, so the
   // parseError→baseline fallback and the try/catch fallback in guardExecCommand
   // are defense-in-depth for a parser regression, not reachable by a crafted

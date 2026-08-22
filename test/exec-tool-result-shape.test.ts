@@ -24,7 +24,7 @@ function makeTool(root: string) {
   return createExecTool(new ProcessManager(), { overflowHandler: new OverflowHandler({ baseDir: root }) });
 }
 
-describe('exec tool — failure result shape', () => {
+describe('exec tool: failure result shape', () => {
   test('a single failing command returns success:false, full diagnostics in output, and a populated error summary', async () => {
     const root = tempRoot('gv-exec-fail-single-');
     const tool = makeTool(root);

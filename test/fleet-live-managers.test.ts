@@ -58,7 +58,7 @@ function makeAgentManager(bus: RuntimeEventBus): AgentManager {
   return manager;
 }
 
-describe('fleet registry — live managers integration', () => {
+describe('fleet registry: live managers integration', () => {
   test('real AgentManager + ProcessManager + workflow services flow through query/kill', async () => {
     const bus = new RuntimeEventBus();
     const agentManager = makeAgentManager(bus);

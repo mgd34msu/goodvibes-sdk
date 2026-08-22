@@ -53,7 +53,7 @@ function healthyPerfReport(t0: number, heapMiB: number): EvalRawResult['perfRepo
 const gateScenarios: EvalScenario[] = [
   {
     id: 'gate:clean-turn-holds-all-floors',
-    name: 'Clean Turn — Holds Every Floor',
+    name: 'Clean Turn, Holds Every Floor',
     suite: 'standing-gate',
     description:
       'A clean, completed run with a healthy PerfMonitor report and no safety violations must clear every absolute per-dimension floor.',
@@ -70,7 +70,7 @@ const gateScenarios: EvalScenario[] = [
   },
   {
     id: 'gate:recovery-success-holds-floor',
-    name: 'Recovery Succeeded — Holds Recovery Floor',
+    name: 'Recovery Succeeded, Holds Recovery Floor',
     suite: 'standing-gate',
     description:
       'A run whose recovery path was exercised and succeeded scores full recovery and clears every floor.',
@@ -88,7 +88,7 @@ const gateScenarios: EvalScenario[] = [
   },
   {
     id: 'gate:cost-within-budget-holds-floor',
-    name: 'Cost Within Budget — Holds Cost Floor',
+    name: 'Cost Within Budget, Holds Cost Floor',
     suite: 'standing-gate',
     description:
       'A run with token usage whose estimated cost sits under the per-scenario target clears the cost floor (and every other floor).',

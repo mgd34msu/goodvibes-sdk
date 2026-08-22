@@ -61,7 +61,7 @@ describe('isWebuiHttpMethod', () => {
     for (const verb of WEBUI_HTTP_METHODS) expect(isWebuiHttpMethod(verb)).toBe(true);
   });
 
-  test('rejects a verb it does not — the predicate can answer NO', () => {
+  test('rejects a verb it does not: the predicate can answer NO', () => {
     expect(isWebuiHttpMethod('PUT')).toBe(false);
     expect(isWebuiHttpMethod('get')).toBe(false); // case matters; the union is upper-case
     expect(isWebuiHttpMethod('')).toBe(false);

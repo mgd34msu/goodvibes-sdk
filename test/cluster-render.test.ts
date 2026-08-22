@@ -49,7 +49,7 @@ describe('clipboardEscapeSequence', () => {
     expect(clipboardEscapeSequence('hello')).toBe(`${ESC}]52;c;aGVsbG8=${BEL}`);
   });
 
-  test('exactly one ESC and one BEL — no stray or doubled control bytes', () => {
+  test('exactly one ESC and one BEL: no stray or doubled control bytes', () => {
     const sequence = clipboardEscapeSequence('gvj1-THEKEY');
     expect([...sequence].filter((ch) => ch.charCodeAt(0) === 0x1b)).toHaveLength(1);
     expect([...sequence].filter((ch) => ch.charCodeAt(0) === 0x07)).toHaveLength(1);

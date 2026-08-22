@@ -21,7 +21,7 @@ afterEach(() => {
   for (const root of tmpRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-describe('migrateLegacyFeatureToggles — pure mapping', () => {
+describe('migrateLegacyFeatureToggles: pure mapping', () => {
   test('a config with no legacy keys comes back unchanged, same reference', () => {
     const parsed = { behavior: { hitlMode: 'quiet' } };
     const result = migrateLegacyFeatureToggles(parsed);
@@ -132,7 +132,7 @@ describe('migrateLegacyFeatureToggles — pure mapping', () => {
   });
 });
 
-describe('ConfigManager.load() — invisible migration on first start', () => {
+describe('ConfigManager.load(): invisible migration on first start', () => {
   function writeConfig(dir: string, value: unknown): string {
     mkdirSync(dir, { recursive: true });
     const path = join(dir, 'settings.json');
@@ -180,7 +180,7 @@ describe('ConfigManager.load() — invisible migration on first start', () => {
     expect(migrateLegacyFeatureToggles(onDisk).migrated).toBe(false);
   });
 
-  test('the migration receipt reaches the surface-delivery queue exactly once — not only the activity log', () => {
+  test('the migration receipt reaches the surface-delivery queue exactly once: not only the activity log', () => {
     const root = mkdtempSync(join(tmpdir(), 'gv-legacy-migration-receipt-'));
     tmpRoots.push(root);
     const configDir = join(root, 'config');

@@ -67,7 +67,7 @@ async function makeRegistries() {
   return { principals, channelProfiles, averyId: avery.id };
 }
 
-describe('inbound-intake enrichment — pure metadata mapping', () => {
+describe('inbound-intake enrichment: pure metadata mapping', () => {
   test('a mapped identity produces principal attribution + the applied channel profile', async () => {
     const { principals, channelProfiles, averyId } = await makeRegistries();
     const metadata = await enrichInboundSubmitMetadata(
@@ -105,7 +105,7 @@ describe('inbound-intake enrichment — pure metadata mapping', () => {
   });
 });
 
-describe('inbound-intake enrichment — wired at the broker submitMessage seam', () => {
+describe('inbound-intake enrichment: wired at the broker submitMessage seam', () => {
   test('installInboundIntakeEnrichment attributes an originated session and applies the profile', async () => {
     const { principals, channelProfiles, averyId } = await makeRegistries();
     const broker = makeBroker();

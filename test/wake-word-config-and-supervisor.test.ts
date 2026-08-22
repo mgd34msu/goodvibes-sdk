@@ -319,7 +319,7 @@ function wakeReader(overrides: Readonly<Record<string, unknown>> = {}): (key: st
   };
 }
 
-describe('every row reaches the runtime — no row configures nothing', () => {
+describe('every row reaches the runtime: no row configures nothing', () => {
   test('the resolver reads exactly the schema rows, in both directions', () => {
     // This is the check that would have caught the shipped state this change
     // fixed: 25 rows in the schema and nothing reading any of them. A row added
@@ -425,7 +425,7 @@ describe('every row reaches the runtime — no row configures nothing', () => {
   });
 });
 
-describe('a row that cannot take effect says so — blocker or limitation, never silence', () => {
+describe('a row that cannot take effect says so: blocker or limitation, never silence', () => {
   test('vadThreshold above 0 BLOCKS on a surface that has not loaded the speech gate', () => {
     const resolved = resolveWakeRuntimeSettings(
       wakeReader({ 'voice.wake.enabled': true, 'voice.wake.vadThreshold': 0.4 }), 'tui',

@@ -258,7 +258,7 @@ describe('confirmation gate', () => {
     }
   });
 
-  test('a "once" answer never writes a grant — the next request asks again', async () => {
+  test('a "once" answer never writes a grant: the next request asks again', async () => {
     const h = harness();
     await h.service.request({ nodeId: 'node-a', capabilityId: 'device.location.coarse', reason: 'first' });
     await h.service.request({ nodeId: 'node-a', capabilityId: 'device.location.coarse', reason: 'second' });
@@ -745,7 +745,7 @@ describe('device posture runtime', () => {
     expect(h.asks[0]?.timeoutMs).toBe(5_000);
   });
 
-  test('a posture change governs the NEXT request — no restart, no rebuild', async () => {
+  test('a posture change governs the NEXT request: no restart, no rebuild', async () => {
     const configManager = freshConfig();
     const h = runtimeHarness(configManager, join(root, 'live-mode'));
     expect((await h.run('device.camera.rear.capture')).ok).toBe(true);

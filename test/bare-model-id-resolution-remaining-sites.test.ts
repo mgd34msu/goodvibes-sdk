@@ -34,7 +34,7 @@ function makeModel(provider: string, id: string, overrides: Partial<ModelDefinit
   };
 }
 
-describe('media/builtin-image-understanding.ts — bare model id resolution', () => {
+describe('media/builtin-image-understanding.ts: bare model id resolution', () => {
   test('a unique bare model id resolves and reaches the real provider', async () => {
     const model = makeModel('gemini', 'vision-model');
     const provider: LLMProvider = {
@@ -84,7 +84,7 @@ describe('media/builtin-image-understanding.ts — bare model id resolution', ()
   });
 });
 
-describe('providers/provider-api.ts — bare model id resolution', () => {
+describe('providers/provider-api.ts: bare model id resolution', () => {
   function makeDeps(models: ModelDefinition[]): ProviderApiDependencies {
     const pinned: Array<{ registryKey: string; pinnedAt: string }> = [];
     return {
@@ -152,7 +152,7 @@ describe('providers/provider-api.ts — bare model id resolution', () => {
   });
 });
 
-describe('automation/manager-runtime-helpers.ts — bare model id resolution (registry threaded)', () => {
+describe('automation/manager-runtime-helpers.ts: bare model id resolution (registry threaded)', () => {
   const configManager = { get: () => undefined } as unknown as Parameters<typeof buildDefaultExecution>[1];
 
   test('a unique bare model id auto-qualifies when the registry is threaded through', () => {
@@ -186,7 +186,7 @@ describe('automation/manager-runtime-helpers.ts — bare model id resolution (re
   });
 });
 
-describe('control-plane/session-intents.ts — bare model id resolution (registry threaded)', () => {
+describe('control-plane/session-intents.ts: bare model id resolution (registry threaded)', () => {
   test('a unique bare model id auto-qualifies when modelCandidates is supplied', () => {
     const models = [{ id: 'claude-fable-5', provider: 'anthropic', registryKey: 'anthropic:claude-fable-5' }];
     const result = buildSharedSessionAgentSpawnRoutingInput(
@@ -208,7 +208,7 @@ describe('control-plane/session-intents.ts — bare model id resolution (registr
   });
 });
 
-describe('tools/agent/manager.ts AgentManager.spawn() — bare model id resolution (registry threaded)', () => {
+describe('tools/agent/manager.ts AgentManager.spawn(): bare model id resolution (registry threaded)', () => {
   test('a unique bare model id auto-qualifies when providerRegistry is configured', () => {
     const models = [makeModel('anthropic', 'claude-fable-5')];
     const manager = new AgentManager({

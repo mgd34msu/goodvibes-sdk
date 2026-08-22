@@ -27,7 +27,7 @@ const BUILT_PACKAGE_ENTRIES = [
  * test green while dist was actually stale.
  */
 describe('compiled dist fixtures (recursive freshness check)', () => {
-  test('check-dist-freshness script exits 0 — all dist/ outputs are up-to-date', () => {
+  test('check-dist-freshness script exits 0: all dist/ outputs are up-to-date', () => {
     const script = join(ROOT, 'scripts', 'check-dist-freshness.ts');
     expect(existsSync(script)).toBe(true);
 

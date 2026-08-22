@@ -41,7 +41,7 @@ function commitCount(cwd: string): number {
 // dirty-guard.ts, pure partition logic
 // ---------------------------------------------------------------------------
 
-describe('dirty-guard — snapshotDirtyTree', () => {
+describe('dirty-guard: snapshotDirtyTree', () => {
   test('captures dirty tracked + untracked paths with content hashes, excluding .goodvibes', async () => {
     const root = mkdtempSync(join(tmpdir(), 'dirty-guard-snapshot-'));
     runGit(root, ['init']);
@@ -114,7 +114,7 @@ describe('dirty-guard — snapshotDirtyTree', () => {
   });
 });
 
-describe('dirty-guard — excludeUntouchedLaunchResidue', () => {
+describe('dirty-guard: excludeUntouchedLaunchResidue', () => {
   test('a path dirty at launch and never modified afterward is excluded; a genuinely new path is included', async () => {
     const root = mkdtempSync(join(tmpdir(), 'dirty-guard-exclude-'));
     runGit(root, ['init']);
@@ -197,7 +197,7 @@ function makeItem(touchedPaths: string[]): WorkItem {
   };
 }
 
-describe('phase-runner — dirty-residue guard wiring', () => {
+describe('phase-runner: dirty-residue guard wiring', () => {
   test('excludes untouched launch-dirty residue from a scoped commit; commits only the genuinely new path', async () => {
     const root = mkdtempSync(join(tmpdir(), 'phase-runner-dirty-exclude-'));
     runGit(root, ['init']);

@@ -20,7 +20,7 @@ import { FOUNDATION_IO_COVERAGE_BASELINE } from '../scripts/foundation-io-covera
 
 const ROOT = resolve(import.meta.dir, '..');
 
-describe('foundation-io coverage ratchet — pure rule', () => {
+describe('foundation-io coverage ratchet: pure rule', () => {
   const idsFixture = [
     'export const OPERATOR_METHOD_IDS = [',
     '  "a.create",',
@@ -76,7 +76,7 @@ describe('foundation-io coverage ratchet — pure rule', () => {
   });
 });
 
-describe('foundation-io coverage ratchet — live source', () => {
+describe('foundation-io coverage ratchet: live source', () => {
   test('the checked-in baseline equals the real untyped count', () => {
     const idsText = readFileSync(resolve(ROOT, 'packages/contracts/src/generated/operator-method-ids.ts'), 'utf8');
     const typesText = readFileSync(resolve(ROOT, 'packages/contracts/src/generated/foundation-client-types.ts'), 'utf8');

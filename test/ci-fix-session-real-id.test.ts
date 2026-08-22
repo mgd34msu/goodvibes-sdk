@@ -94,7 +94,7 @@ describe('ci fix-session starter returns a REAL session id', () => {
     expect(run.agentId).toBe(spawned[0]!);
   }));
 
-  test('each fix starts in a FRESH pinned session — never an existing preferred session', async () => withTempDir(async (dir) => {
+  test('each fix starts in a FRESH pinned session: never an existing preferred session', async () => withTempDir(async (dir) => {
     const { automation } = harness(dir, true);
     const first = await startCiFixSession(automation, brief);
     const second = await startCiFixSession(automation, brief);

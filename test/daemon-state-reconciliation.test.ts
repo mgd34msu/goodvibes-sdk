@@ -40,7 +40,7 @@ function makeStore(): RuntimeStore {
 // AgentTaskAdapter, task registry sync on agent terminal events
 // ---------------------------------------------------------------------------
 
-describe('AgentTaskAdapter.attachRuntimeBus — task registry sync', () => {
+describe('AgentTaskAdapter.attachRuntimeBus: task registry sync', () => {
   let bus: RuntimeEventBus;
   let store: ReturnType<typeof makeStore>;
   let adapter: AgentTaskAdapter;
@@ -110,7 +110,7 @@ describe('AgentTaskAdapter.attachRuntimeBus — task registry sync', () => {
     expect(known?.status).toBe('running'); // unchanged
   });
 
-  test('unsubscribe tears down listeners — subsequent events do not affect tasks', () => {
+  test('unsubscribe tears down listeners: subsequent events do not affect tasks', () => {
     const unsub = adapter.attachRuntimeBus(bus); // second subscription
     const taskId = adapter.wrapAgent('ag-unsub', 'Test', { sessionId: 'sess-x' });
     adapter.handleAgentStateChange('ag-unsub', 'running');
@@ -181,7 +181,7 @@ function emitAgentOnBus(
   }));
 }
 
-describe('SharedSessionBroker.attachRuntimeBus — input record reconciliation', () => {
+describe('SharedSessionBroker.attachRuntimeBus: input record reconciliation', () => {
   test('submit input transitions queued -> spawned -> completed on AGENT_COMPLETED', async () => {
     const bus = new RuntimeEventBus();
     const broker = makeBroker();
@@ -324,7 +324,7 @@ describe('AgentTaskAdapter wrapAgent + bus event -> task completed', () => {
     expect(completed?.endedAt).toBeGreaterThanOrEqual(completed?.startedAt ?? 0);
   });
 
-  test('wrapAgent is idempotent — second call returns same taskId', () => {
+  test('wrapAgent is idempotent: second call returns same taskId', () => {
     const store = makeStore();
     const adapter = new AgentTaskAdapter(store);
     const id1 = adapter.wrapAgent('ag-idem', 'Task', { sessionId: 'sess-1' });

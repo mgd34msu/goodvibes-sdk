@@ -124,7 +124,7 @@ async function startVerdaccio(): Promise<VerdaccioHandle> {
     `    access: $all`,
     `    publish: $all`,
     `    unpublish: $all`,
-    `    # No proxy — these must be published locally first`,
+    `    # No proxy. These must be published locally first`,
     `  '**':`,
     `    access: $all`,
     `    publish: $all`,

@@ -70,7 +70,7 @@ function makeRecord(overrides: Partial<TurnInjectionRecord> & { turn: number }):
   };
 }
 
-describe('Orchestrator.getTurnInjections() — main-session accessor', () => {
+describe('Orchestrator.getTurnInjections(): main-session accessor', () => {
   test('starts empty', () => {
     const orch = makeBareOrchestrator();
     expect(orch.getTurnInjections()).toEqual([]);

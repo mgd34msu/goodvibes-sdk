@@ -22,7 +22,7 @@ function reasonOf(availability: CredentialAvailability): string {
   return availability.reason;
 }
 
-describe('deriveCredentialAvailability — honest degrade', () => {
+describe('deriveCredentialAvailability: honest degrade', () => {
   test('503 CREDENTIAL_STORE_UNAVAILABLE (by machine code) -> unavailable with reason', () => {
     const out = deriveCredentialAvailability({
       ok: false,
@@ -90,7 +90,7 @@ describe('deriveCredentialAvailability — honest degrade', () => {
   });
 });
 
-describe('credentialReadModeFromHostMode — only external is a client read', () => {
+describe('credentialReadModeFromHostMode: only external is a client read', () => {
   test("'external' -> client", () => {
     expect(credentialReadModeFromHostMode('external')).toBe('client');
   });
@@ -103,7 +103,7 @@ describe('credentialReadModeFromHostMode — only external is a client read', ()
   );
 });
 
-describe('readClientCredentialStatus — wraps a live credentials.get invoke', () => {
+describe('readClientCredentialStatus: wraps a live credentials.get invoke', () => {
   test('resolves to available on a well-formed snapshot', async () => {
     const out = await readClientCredentialStatus(async () => ({
       available: true,

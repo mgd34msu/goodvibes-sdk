@@ -115,7 +115,7 @@ function makeSystemContext(daemonHome: string, workingDir: string, swapManager: 
 // B3 tests
 // ---------------------------------------------------------------------------
 
-describe('POST /config runtime.workingDir — HTTP integration', () => {
+describe('POST /config runtime.workingDir: HTTP integration', () => {
   let daemonHome: string;
   let workingDir: string;
 

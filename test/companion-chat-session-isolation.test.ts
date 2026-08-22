@@ -57,7 +57,7 @@ function eventsNotForClient(events: PublishedEvent[], clientId: string): Publish
 }
 
 // ---------------------------------------------------------------------------
-// I1: Events for session A don’t bleed into session B
+// I1: Events for session A don't bleed into session B
 // ---------------------------------------------------------------------------
 
 describe('I1: session-scoped event isolation', () => {
@@ -97,7 +97,7 @@ describe('I1: session-scoped event isolation', () => {
       'companion-chat.turn.completed',
     ]);
 
-    // None of session A’s events should carry session B’s clientId
+    // None of session A's events should carry session B's clientId
     const wrongClientEvents = publisher.events.filter(
       (e) => e.filter?.clientId === clientIdB,
     );
@@ -115,7 +115,7 @@ describe('I1: session-scoped event isolation', () => {
     await manager.postMessage(sessionA.id, 'Only A talks');
     await settleEvents();
 
-    // No events should be scoped to session B’s ID
+    // No events should be scoped to session B's ID
     const bId = sessionB.id;
     const sessionBPayloads = publisher.events.filter((e) => {
       const p = e.payload as { sessionId?: string };
@@ -158,7 +158,7 @@ describe('I1: session-scoped event isolation', () => {
 });
 
 // ---------------------------------------------------------------------------
-// I2: Chat events don’t leak into the global/TUI control-plane feed
+// I2: Chat events don't leak into the global/TUI control-plane feed
 // ---------------------------------------------------------------------------
 
 describe('I2: no leak into global control-plane feed', () => {

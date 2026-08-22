@@ -11,7 +11,7 @@ import { describe, expect, test } from 'bun:test';
 import { ProcessManager } from '../packages/sdk/src/platform/tools/shared/process-manager.js';
 import { waitFor } from './_helpers/test-timeout.js';
 
-describe('ProcessManager.spawn — kill_on_timeout', () => {
+describe('ProcessManager.spawn: kill_on_timeout', () => {
   test('a killable process is terminated when its timeout expires', async () => {
     const pm = new ProcessManager();
     const result = await pm.spawn('sleep 10', '/tmp', undefined, {

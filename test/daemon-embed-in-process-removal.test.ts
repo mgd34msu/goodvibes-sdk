@@ -65,7 +65,7 @@ describe('migrateDaemonEmbedInProcessRemoval (pure function)', () => {
     expect(result.config['daemon']).toEqual({ enabled: true, timezone: 'UTC' });
   });
 
-  test('a stored false is swept too — an explicit default is still a stored key', () => {
+  test('a stored false is swept too: an explicit default is still a stored key', () => {
     const result = migrateDaemonEmbedInProcessRemoval({ daemon: { enabled: true, embedInProcess: false } });
     expect(result.migrated).toBe(true);
     expect(result.removedValue).toBe(false);
@@ -84,7 +84,7 @@ describe('migrateDaemonEmbedInProcessRemoval (pure function)', () => {
     expect(result.config).toHaveProperty('display');
   });
 
-  test('is idempotent — a file with no legacy key is returned untouched', () => {
+  test('is idempotent: a file with no legacy key is returned untouched', () => {
     const input = { daemon: { enabled: false } };
     const result = migrateDaemonEmbedInProcessRemoval(input);
     expect(result.migrated).toBe(false);
@@ -179,13 +179,13 @@ describe('the embed capability is gone from composition too', () => {
     identity: null,
   };
 
-  test('the port-free ruling is a detached spawn — the only way a host starts a daemon', () => {
+  test('the port-free ruling is a detached spawn: the only way a host starts a daemon', () => {
     const decision = decideDaemonAdoption({ ...base, adoptOnly: false });
     expect(decision.action).toBe('spawn');
     expect(decision.reason).toContain('detached');
   });
 
-  test('a product surface — adopt-only — runs without one instead', () => {
+  test('a product surface, adopt-only, runs without one instead', () => {
     const decision = decideDaemonAdoption({ ...base, adoptOnly: true });
     expect(decision.action).toBe('adopt-only-idle');
   });

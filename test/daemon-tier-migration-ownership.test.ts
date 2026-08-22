@@ -68,7 +68,7 @@ describe('a client reads the daemon tier without rewriting it', () => {
     expect(client.get('payments.budget.dailyItem')).toBe(25);
   });
 
-  test('the file bytes are UNCHANGED — byte for byte, not merely equivalent', () => {
+  test('the file bytes are UNCHANGED: byte for byte, not merely equivalent', () => {
     const { home, configDir, daemonTierPath } = makeHomeWithOldKeysFile('gv-own-client-bytes', 'tui');
     const before = readFileSync(daemonTierPath, 'utf-8');
 
@@ -81,7 +81,7 @@ describe('a client reads the daemon tier without rewriting it', () => {
     expect(after).not.toContain('"perPurchaseCeiling"');
   });
 
-  test('no receipt is filed — a receipt without the rename on disk would lie', () => {
+  test('no receipt is filed: a receipt without the rename on disk would lie', () => {
     const { home, configDir, daemonTierPath } = makeHomeWithOldKeysFile('gv-own-client-receipt', 'tui');
 
     const client = new ConfigManager({ configDir, homeDir: home, surfaceRoot: 'tui', daemonTierPath });
@@ -159,7 +159,7 @@ describe('the migrated file says which reader can understand it', () => {
     expect(floor!.at).not.toBe('');
   });
 
-  test('the rename and the floor land in ONE write — no file state has one without the other', () => {
+  test('the rename and the floor land in ONE write: no file state has one without the other', () => {
     const { home, configDir, daemonTierPath } = makeHomeWithOldKeysFile('gv-floor-atomic', 'goodvibes');
 
     new ConfigManager({
@@ -172,7 +172,7 @@ describe('the migrated file says which reader can understand it', () => {
     expect(text).toContain('$goodvibes');
   });
 
-  test('the client raises NOTHING — it wrote nothing to record a floor about', () => {
+  test('the client raises NOTHING: it wrote nothing to record a floor about', () => {
     const { home, configDir, daemonTierPath } = makeHomeWithOldKeysFile('gv-floor-client', 'tui');
 
     new ConfigManager({ configDir, homeDir: home, surfaceRoot: 'tui', daemonTierPath });

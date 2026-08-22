@@ -643,7 +643,7 @@ describe('a credential an older build stranded is lifted, on a real disk', () =>
     expect(readStore(surfacePath)[STRANDED_KEY]).toBeUndefined();
   });
 
-  test('revoke still sweeps every tier — the narrow verb did not weaken it', async () => {
+  test('revoke still sweeps every tier: the narrow verb did not weaken it', async () => {
     const home = throwawayHome();
     const store = managers(home, 'daemon').secretsManager;
     await store.set(STRANDED_KEY, STRANDED_VALUE);

@@ -106,7 +106,7 @@ async function assertClosed409(res: Response): Promise<void> {
   expect(payload.error).toBe('Session is closed');
 }
 
-describe('POST /api/sessions/:id/follow-up — closed-session guard', () => {
+describe('POST /api/sessions/:id/follow-up: closed-session guard', () => {
   test('returns 409 { code: SESSION_CLOSED } when the broker rejects a closed session', async () => {
     const ctx = makeContext({ followUpMessage: async () => closedError() });
     const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
@@ -131,7 +131,7 @@ describe('POST /api/sessions/:id/follow-up — closed-session guard', () => {
   });
 });
 
-describe("POST /api/sessions/:id/messages kind='followup' — closed-session guard", () => {
+describe("POST /api/sessions/:id/messages kind='followup': closed-session guard", () => {
   test('returns 409 { code: SESSION_CLOSED } when followUpMessage() rejects a closed session', async () => {
     const ctx = makeContext({ followUpMessage: async () => closedError() });
     const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
@@ -148,7 +148,7 @@ describe("POST /api/sessions/:id/messages kind='followup' — closed-session gua
   });
 });
 
-describe("POST /api/sessions/:id/messages kind='task' (submit) — closed-session guard", () => {
+describe("POST /api/sessions/:id/messages kind='task' (submit): closed-session guard", () => {
   test('returns 409 { code: SESSION_CLOSED } when submitMessage() rejects a closed session', async () => {
     const ctx = makeContext({ submitMessage: async () => closedError() });
     const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
@@ -165,7 +165,7 @@ describe("POST /api/sessions/:id/messages kind='task' (submit) — closed-sessio
   });
 });
 
-describe('POST /task (submit) — closed-session guard', () => {
+describe('POST /task (submit): closed-session guard', () => {
   test('returns 409 { code: SESSION_CLOSED } when submitMessage() rejects a closed session', async () => {
     const ctx = makeContext({ submitMessage: async () => closedError() });
     const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);

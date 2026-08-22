@@ -167,7 +167,7 @@ describe('the marker is written atomically', () => {
     expect(temps).toEqual([]);
   });
 
-  test('a refresh replaces the marker whole — the zero-byte file a crash used to leave cannot be produced', () => {
+  test('a refresh replaces the marker whole: the zero-byte file a crash used to leave cannot be produced', () => {
     writeLivenessMarker(surface, 'refresh-session', 1);
     const path = livenessMarkerPathFor(surface, 'refresh-session');
     const first = readFileSync(path, 'utf-8');

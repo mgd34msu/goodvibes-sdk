@@ -168,7 +168,7 @@ describe('device.nodes.maxPaired bounds pairing', () => {
     }
   });
 
-  test('a migration off the legacy shared token is exempt — it is not a new device', () => {
+  test('a migration off the legacy shared token is exempt: it is not a new device', () => {
     const f = makeFixture(1);
     try {
       f.manager.mint({ name: 'Pixel' });
@@ -205,7 +205,7 @@ describe('device.nodes.maxPaired bounds pairing', () => {
     }
   });
 
-  test('the cap survives a reload — the count comes from the persisted store', () => {
+  test('the cap survives a reload: the count comes from the persisted store', () => {
     const filePath = tempFile();
     const cap = { value: 2 };
     try {

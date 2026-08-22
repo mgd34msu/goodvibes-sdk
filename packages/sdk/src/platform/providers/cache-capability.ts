@@ -105,7 +105,7 @@ const PROVIDER_CACHE_CAPABILITIES = {
     type: 'implicit',
   },
   sglang: {
-    type: 'implicit', // RadixAttention — best automatic local caching
+    type: 'implicit', // RadixAttention, best automatic local caching
   },
   // No caching
   mistral: {

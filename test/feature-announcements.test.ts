@@ -81,7 +81,7 @@ describe('FeatureAnnouncementStore', () => {
     expect(new FeatureAnnouncementStore(path).record('with-text', 'again')).toBe(false);
   });
 
-  test('a legacy plain-map file reads as announced with nothing pending — old installs never re-announce', () => {
+  test('a legacy plain-map file reads as announced with nothing pending: old installs never re-announce', () => {
     const path = storePath();
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, JSON.stringify({ 'old-feature': 1700000000000 }, null, 2));

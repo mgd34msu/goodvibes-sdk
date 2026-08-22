@@ -228,7 +228,7 @@ describe('the frozen catastrophic block stays unconditional (sandbox never buys 
     expect(result.allowed).toBe(false);
   });
 
-  test('the sandbox policy does not reach into the catastrophic block — it only relaxes ask→allow', () => {
+  test('the sandbox policy does not reach into the catastrophic block: it only relaxes ask→allow', () => {
     // decideSandboxedExec classifies rm -rf / as boundary-safe destructive and
     // would allow it, but that allow is harmless precisely because the exec-time
     // catastrophic block (asserted above) is independent and unconditional. The

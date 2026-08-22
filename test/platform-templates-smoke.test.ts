@@ -7,7 +7,7 @@
 import { describe, expect, test } from 'bun:test';
 import { TemplateManager, parseTemplateArgs } from '../packages/sdk/src/platform/templates/manager.js';
 
-describe('platform/templates — template management behavior', () => {
+describe('platform/templates: template management behavior', () => {
   test('parseTemplateArgs parses named args', () => {
     const result = parseTemplateArgs(['name=foo', 'value=bar']);
     expect(result).toEqual({ name: 'foo', value: 'bar' });

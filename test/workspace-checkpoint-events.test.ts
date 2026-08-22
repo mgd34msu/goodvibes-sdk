@@ -115,7 +115,7 @@ describe('WorkspaceCheckpointManager automatic snapshots', () => {
     expect(await manager.list()).toHaveLength(0);
   });
 
-  test('dispose() unsubscribes from the bus — events after dispose create no further checkpoints', async () => {
+  test('dispose() unsubscribes from the bus: events after dispose create no further checkpoints', async () => {
     const root = tempWorkspace('wcp-events-dispose-');
     const bus = new RuntimeEventBus();
     const manager = new WorkspaceCheckpointManager({ workspaceRoot: root, runtimeBus: bus });

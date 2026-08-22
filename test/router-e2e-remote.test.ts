@@ -28,7 +28,7 @@ import { makeRequest } from './_helpers/router-requests.js';
 // describe: remote routes, happy paths
 // ---------------------------------------------------------------------------
 
-describe('router-e2e remote — GET /api/remote (happy path)', () => {
+describe('router-e2e remote: GET /api/remote (happy path)', () => {
   test('returns 200 with peers list', async () => {
     const handlers = makeDefaultDaemonHandlerStub({
       getRemote: () => Response.json({ peers: [{ id: 'peer-1', status: 'connected' }] }),
@@ -144,7 +144,7 @@ describe('router-e2e remote — GET /api/remote (happy path)', () => {
 // describe: remote routes, failure paths
 // ---------------------------------------------------------------------------
 
-describe('router-e2e remote — failure paths', () => {
+describe('router-e2e remote: failure paths', () => {
   test('returns null for unmatched route', async () => {
     const handlers = makeDefaultDaemonHandlerStub();
     const req = makeRequest('GET', 'http://localhost/api/no-such-remote-route');
@@ -152,7 +152,7 @@ describe('router-e2e remote — failure paths', () => {
     expect(res).toBeNull();
   });
 
-  test('returns null for GET /api/remote/peers/:id/token/rotate (wrong method — GET not POST)', async () => {
+  test('returns null for GET /api/remote/peers/:id/token/rotate (wrong method: GET not POST)', async () => {
     const handlers = makeDefaultDaemonHandlerStub();
     const req = makeRequest('GET', 'http://localhost/api/remote/peers/peer-1/token/rotate');
     const res = await dispatchRemoteRoutes(req, handlers);

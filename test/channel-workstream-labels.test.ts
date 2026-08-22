@@ -132,7 +132,7 @@ describe('the id never reaches a rendered line', () => {
   });
 });
 
-describe('the lines still arrive — this is not a suppression fix', () => {
+describe('the lines still arrive: this is not a suppression fix', () => {
   test('every stage of the workstream still produces a line', () => {
     const lines = renderLifecycle(CHAIN_ID, TASK);
     const body = lines.join('\n');
@@ -186,7 +186,7 @@ describe('two workstreams at once are told apart, in words', () => {
     expect(openingLine(OTHER_CHAIN_ID)).toBe(`Started work on: ${TASK} (the second one)`);
   });
 
-  test('a lone workstream is not qualified — there is nothing to distinguish it from', () => {
+  test('a lone workstream is not qualified: there is nothing to distinguish it from', () => {
     rememberWorkstreamLabel(CHAIN_ID, TASK);
     const label = workstreamLabel(CHAIN_ID);
     expect(label.startsWith('"')).toBe(true);
@@ -286,7 +286,7 @@ describe('what the label module promises', () => {
     }
   });
 
-  test('the two WrfcState declarations are the same union — a rename in one is a build error here', () => {
+  test('the two WrfcState declarations are the same union: a rename in one is a build error here', () => {
     // The SDK declares this union twice (events/workflows.ts and
     // platform/agents/wrfc-types.ts). Mutual assignability is the assertion:
     // add a state to one and this stops compiling.

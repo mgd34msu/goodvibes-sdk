@@ -274,7 +274,7 @@ describe('the stall ceiling ends a run that has stopped starting tests', () => {
 });
 
 describe('the suite dies with the process that started it', () => {
-  test('a SIGKILLed runner — which can relay nothing — still takes the suite with it', async () => {
+  test('a SIGKILLed runner, which can relay nothing, still takes the suite with it', async () => {
     const dir = mkTemp();
     const pidPath = join(dir, 'child.pid');
     const wedged = writePidRecordingWedgedFile(dir, pidPath);

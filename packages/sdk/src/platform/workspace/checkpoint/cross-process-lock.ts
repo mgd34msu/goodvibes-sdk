@@ -266,14 +266,14 @@ function reclaimAbandonedStagingFiles(lockPath: string, staleMs: number): void {
   try {
     names = readdirSync(dir);
   } catch {
-    return; // directory gone or unreadable — nothing to sweep
+    return; // directory gone or unreadable, nothing to sweep
   }
   let reclaimed = 0;
   for (const name of names) {
     if (!name.startsWith(prefix)) continue;
     const path = join(dir, name);
     try {
-      if (now - statSync(path).mtimeMs <= staleMs) continue; // possibly in flight — leave it
+      if (now - statSync(path).mtimeMs <= staleMs) continue; // possibly in flight, leave it
     } catch {
       continue; // vanished between listing and stat
     }
@@ -411,7 +411,7 @@ function createLockAtomically(lockPath: string, token: string): number | null {
   try {
     fd = openSync(stagingPath, 'wx');
   } catch {
-    return null; // staging name collided (astronomically unlikely) — just retry
+    return null; // staging name collided (astronomically unlikely), just retry
   }
   try {
     writeLockPayload(fd, token);
@@ -440,7 +440,7 @@ function createLockAtomically(lockPath: string, token: string): number | null {
   }
   try {
     unlinkSync(stagingPath);
-  } catch { /* best effort — the lock path is the authoritative name */ }
+  } catch { /* best effort, the lock path is the authoritative name */ }
   return fd;
 }
 
@@ -602,7 +602,7 @@ async function acquireFileLock(
       }
 
       const verdict = inspectLock(lockPath, staleMs);
-      if (!verdict) continue; // vanished — retry the create immediately
+      if (!verdict) continue; // vanished, retry the create immediately
       if (verdict.stale) fd = tryTakeOverStaleLock(lockPath, staleMs, token);
       if (fd === null) {
         await sleep(backoffMs);

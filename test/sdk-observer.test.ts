@@ -58,7 +58,7 @@ function makeOperator() {
   } as unknown as OperatorSdk;
 }
 
-describe('SDKObserver — auth wire-up', () => {
+describe('SDKObserver: auth wire-up', () => {
   test('onAuthTransition is called with login transition on successful login', async () => {
     const observed: AuthTransitionInfo[] = [];
     const observer: SDKObserver = {
@@ -131,7 +131,7 @@ describe('SDKObserver — auth wire-up', () => {
   });
 });
 
-describe('SDKObserver — TransportObserver callbacks', () => {
+describe('SDKObserver: TransportObserver callbacks', () => {
   test('invokeObserver fires onTransportActivity send+recv', () => {
     const activities: TransportActivityInfo[] = [];
     const observer: SDKObserver = {
@@ -214,7 +214,7 @@ describe('SDKObserver — TransportObserver callbacks', () => {
   });
 });
 
-describe('SDKObserver — built-in adapters', () => {
+describe('SDKObserver: built-in adapters', () => {
   test('createConsoleObserver constructs without error', () => {
     expect(() => createConsoleObserver()).not.toThrow();
     expect(() => createConsoleObserver({ level: 'debug' })).not.toThrow();

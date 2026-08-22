@@ -78,7 +78,7 @@ function distFiles(): string[] {
     try {
       entries = readdirSync(dir, { withFileTypes: true });
     } catch {
-      return; // no dist yet — a first build
+      return; // no dist yet, a first build
     }
     for (const entry of entries) {
       const full = resolve(dir, entry.name);

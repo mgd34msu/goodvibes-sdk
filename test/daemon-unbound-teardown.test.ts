@@ -149,7 +149,7 @@ afterAll(() => {
   rmSync(work, { recursive: true, force: true });
 });
 
-test('construction alone really does arm timers — the measurement is not vacuous', () => {
+test('construction alone really does arm timers: the measurement is not vacuous', () => {
   const armed = liveBeforeStop.filter((e) => CONSTRUCTOR_OWNED.some((o) => e.includes(o)));
   expect(createdDuringRun).toBeGreaterThan(0);
   expect(armed).not.toEqual([]);

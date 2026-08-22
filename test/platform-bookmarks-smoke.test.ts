@@ -20,7 +20,7 @@ function makeTmpDir(): string {
   return dir;
 }
 
-describe('platform/bookmarks — smoke', () => {
+describe('platform/bookmarks: smoke', () => {
   test('BookmarkManager can be constructed with a minimal config store', async () => {
     const { BookmarkManager } = await import('../packages/sdk/src/platform/bookmarks/index.js');
     const mgr = new BookmarkManager(makeTmpDir());

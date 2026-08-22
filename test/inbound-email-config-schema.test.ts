@@ -110,7 +110,7 @@ describe('every key from the §8 table is in CONFIG_SCHEMA with the exact defaul
     expect(row!.default).toBe(expected);
   });
 
-  test('there are exactly seventeen inbound keys — not more, not fewer', () => {
+  test('there are exactly seventeen inbound keys: not more, not fewer', () => {
     const inboundKeys = CONFIG_SCHEMA
       .map((s) => s.key)
       .filter((key) => key.startsWith('surfaces.email.inbound.'));
@@ -860,7 +860,7 @@ describe('the expectation book is instantiated in production (gate #25)', () => 
     expect(rig.deps.expectations.list()).toHaveLength(0);
   });
 
-  test('the composed capability probe is the supervisor’s live verdict, so open() refuses on it', async () => {
+  test('the composed capability probe is the supervisor\'s live verdict, so open() refuses on it', async () => {
     const rig = compose()!;
     // Nothing has probed yet, the honest answer is "unknown", and an unknown
     // mailbox does not block a signup.

@@ -327,7 +327,7 @@ describe('recovery sweep: reap, disclose, and stay idempotent', () => {
     expect(swept.report.orphanedProcesses).toEqual(['p1']);
   });
 
-  test('sweeping twice produces the same result — it is idempotent', () => {
+  test('sweeping twice produces the same result: it is idempotent', () => {
     const input = [record({ definition: { id: 'a', ownerSessionId: 'gone' } as never }), record({ definition: { id: 'b' } as never })];
     const first = sweepTriggers({ triggers: input, eventLog: [], policy: retention, now: 0, reason: 'startup', sessionIsLive: () => false });
     const second = sweepTriggers({ triggers: first.triggers, eventLog: first.eventLog, policy: retention, now: 0, reason: 'sweep', sessionIsLive: () => false });
@@ -352,7 +352,7 @@ describe('recovery sweep: reap, disclose, and stay idempotent', () => {
     expect(history[0]?.reapedIds).toEqual(['dead']);
   });
 
-  test('a sweep that removed nothing writes no report — no noise', () => {
+  test('a sweep that removed nothing writes no report: no noise', () => {
     const path = tempStore();
     const swept = sweepTriggers({ triggers: [record()], eventLog: [], policy: retention, now: 0, reason: 'sweep' });
     writeReapReport(path, swept.report);
@@ -396,7 +396,7 @@ describe('trigger-family records surface in the fleet without colliding with wor
     }
   });
 
-  test('a parked trigger is resumable — resuming it IS the explicit breaker reset', () => {
+  test('a parked trigger is resumable: resuming it IS the explicit breaker reset', () => {
     const parked = adaptWatcherTrigger(record({ state: 'circuit-open', strikes: 5, lastError: 'ECONNREFUSED' }), 5_000);
     expect(parked.capabilities.resumable).toBe(true);
     expect(parked.capabilities.killable).toBe(true);

@@ -61,7 +61,7 @@ async function waitUntilNotBuilding(store: { isBuilding(): boolean }, timeoutMs 
   }
 }
 
-describe('createCodeIndexServices — real CodeIndexStore wiring', () => {
+describe('createCodeIndexServices: real CodeIndexStore wiring', () => {
   test('constructs a store rooted under the surface-scoped code-index.sqlite, schema-initialized but with no build run', () => {
     const workingDirectory = makeScratchWorkingDirectory();
     const configManager = makeConfigManager(workingDirectory);
@@ -81,7 +81,7 @@ describe('createCodeIndexServices — real CodeIndexStore wiring', () => {
     codeIndexStore.close();
   });
 
-  test('auto-start is OFF by default — construction never schedules a build', async () => {
+  test('auto-start is OFF by default: construction never schedules a build', async () => {
     const workingDirectory = makeScratchWorkingDirectory();
     const configManager = makeConfigManager(workingDirectory);
     const memoryEmbeddingRegistry = new MemoryEmbeddingProviderRegistry({ configManager });

@@ -36,7 +36,7 @@ const ALL_KNOWN_PLAYBOOKS = new Map([
 // 1. All cascade rule IDs are mapped
 // ---------------------------------------------------------------------------
 
-describe('CASCADE_PLAYBOOK_MAP — completeness', () => {
+describe('CASCADE_PLAYBOOK_MAP: completeness', () => {
   test('every cascade rule has at least one playbook mapping', () => {
     for (const rule of CASCADE_RULES) {
       const playbooks = CASCADE_PLAYBOOK_MAP.get(rule.id);
@@ -75,7 +75,7 @@ describe('CASCADE_PLAYBOOK_MAP — completeness', () => {
 // 2. All referenced playbook IDs resolve to real playbooks
 // ---------------------------------------------------------------------------
 
-describe('CASCADE_PLAYBOOK_MAP — playbook ID validity', () => {
+describe('CASCADE_PLAYBOOK_MAP: playbook ID validity', () => {
   test('every playbook ID in the map exists as a real playbook', () => {
     for (const [ruleId, playbookIds] of CASCADE_PLAYBOOK_MAP) {
       for (const playbookId of playbookIds) {
@@ -101,7 +101,7 @@ describe('CASCADE_PLAYBOOK_MAP — playbook ID validity', () => {
 // 3. ALL_CASCADE_RULE_IDS synchronisation
 // ---------------------------------------------------------------------------
 
-describe('ALL_CASCADE_RULE_IDS — sync with CASCADE_RULES', () => {
+describe('ALL_CASCADE_RULE_IDS: sync with CASCADE_RULES', () => {
   test('ALL_CASCADE_RULE_IDS contains every rule ID from CASCADE_RULES', () => {
     const ruleIdSet = new Set(ALL_CASCADE_RULE_IDS);
     for (const rule of CASCADE_RULES) {
@@ -131,7 +131,7 @@ describe('ALL_CASCADE_RULE_IDS — sync with CASCADE_RULES', () => {
 // 4. Specific per-rule playbook assertions
 // ---------------------------------------------------------------------------
 
-describe('CASCADE_PLAYBOOK_MAP — per-rule assertions', () => {
+describe('CASCADE_PLAYBOOK_MAP: per-rule assertions', () => {
   test('turn-failed-cancels-tools → stuck-turn', () => {
     expect(CASCADE_PLAYBOOK_MAP.get('turn-failed-cancels-tools')).toContain('stuck-turn');
   });
@@ -169,7 +169,7 @@ describe('CASCADE_PLAYBOOK_MAP — per-rule assertions', () => {
 // 5. New playbooks are valid
 // ---------------------------------------------------------------------------
 
-describe('new playbooks — structural validity', () => {
+describe('new playbooks: structural validity', () => {
   test('sessionUnrecoverablePlaybook has required fields', () => {
     expect(sessionUnrecoverablePlaybook.id).toBe('session-unrecoverable');
     expect(sessionUnrecoverablePlaybook.name.length).toBeGreaterThan(0);

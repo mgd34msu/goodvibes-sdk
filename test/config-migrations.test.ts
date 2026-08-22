@@ -43,7 +43,7 @@ describe('migrateDangerDaemonAlias (pure function)', () => {
     expect(result.config['danger']).toEqual({});
   });
 
-  test('unset (no danger.daemon key) is a no-op — config returned unchanged', () => {
+  test('unset (no danger.daemon key) is a no-op: config returned unchanged', () => {
     const input = { danger: { httpListener: true } };
     const result = migrateDangerDaemonAlias(input);
     expect(result.migrated).toBe(false);

@@ -149,7 +149,7 @@ describe('creating and joining a group', () => {
 });
 
 describe('two groups on one network', () => {
-  test('are mutually invisible — neither accepts the other traffic', async () => {
+  test('are mutually invisible: neither accepts the other traffic', async () => {
     const created = createGroupWorld();
     world = created;
     const alpha = await addGroupNode(created, 'alpha-1');

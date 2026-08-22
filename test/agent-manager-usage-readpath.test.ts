@@ -23,7 +23,7 @@ import { describe, expect, test } from 'bun:test';
 import { AgentManager } from '../packages/sdk/src/platform/tools/agent/manager.js';
 import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
-describe('AgentManager — usage read path after direct-executed completion', () => {
+describe('AgentManager: usage read path after direct-executed completion', () => {
   test('getStatus() and list() return real usage/toolCallCount after a direct agent completes', async () => {
     const configManager: Pick<ConfigManager, 'get'> = { get: (() => null) as unknown as ConfigManager['get'] };
     const manager = new AgentManager({

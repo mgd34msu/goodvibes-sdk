@@ -186,7 +186,7 @@ export function defaultProcessTableReader(): ProcessTableReader {
         try {
           stat = readFileSync(`/proc/${entry}/stat`, 'utf-8');
         } catch {
-          continue; // process exited between readdir and read — skip quietly.
+          continue; // process exited between readdir and read, skip quietly.
         }
         // comm can contain spaces/parens; it is the substring between the first
         // '(' and the last ')'. Every numeric field follows the last ')'.
@@ -208,7 +208,7 @@ export function defaultProcessTableReader(): ProcessTableReader {
         } catch {
           continue;
         }
-        if (!args) continue; // kernel threads have an empty cmdline — never agents.
+        if (!args) continue; // kernel threads have an empty cmdline, never agents.
         let cwd: string | undefined;
         try {
           cwd = readlinkSync(`/proc/${entry}/cwd`);

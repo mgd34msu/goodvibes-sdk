@@ -142,7 +142,7 @@ async function fetchOneEnvelope(
 // ---------------------------------------------------------------------------
 
 for (const shape of FETCH_WIRE_SHAPES) {
-describe(`ImapClient delivery-recipient evidence — ${shape.name}`, () => {
+describe(`ImapClient delivery-recipient evidence: ${shape.name}`, () => {
   let cleanup: (() => void) | null = null;
 
   beforeEach(() => { activeShape = shape; });

@@ -79,7 +79,7 @@ const noopScheduler = {
 
 const silent = { debug: () => {} };
 
-describe('SessionUnionCache — honest cross-surface read facade', () => {
+describe('SessionUnionCache: honest cross-surface read facade', () => {
   test('local/dormant mode: pure passthrough, no cross-surface claim', () => {
     const cache = new SessionUnionCache({ local: localReader([record('local-1')]), scheduler: noopScheduler, log: silent });
     expect(cache.getMode()).toBe('local');

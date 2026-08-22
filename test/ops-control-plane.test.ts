@@ -76,7 +76,7 @@ function opsEventsOf(events: OpsEventCapture[], type: string): OpsEventCapture[]
   return events.filter((e) => e.type === type);
 }
 
-describe('OpsControlPlane — task cancel legality', () => {
+describe('OpsControlPlane: task cancel legality', () => {
   test('a running cancellable task cancels, with a success audit trail', async () => {
     const { ops, tasks, events, flush } = makeHarness();
     const task = tasks.createTask({ kind: 'exec', title: 'build', owner: 'test' });
@@ -138,7 +138,7 @@ describe('OpsControlPlane — task cancel legality', () => {
   });
 });
 
-describe('OpsControlPlane — pause/resume legality', () => {
+describe('OpsControlPlane: pause/resume legality', () => {
   test('pause is legal only from running; resume only from a resumable state', async () => {
     const { ops, tasks, events, flush } = makeHarness();
     const task = tasks.createTask({ kind: 'agent', title: 'work', owner: 'test' });
@@ -176,7 +176,7 @@ describe('OpsControlPlane — pause/resume legality', () => {
   });
 });
 
-describe('OpsControlPlane — retry legality', () => {
+describe('OpsControlPlane: retry legality', () => {
   test('a failed task retries back to queued with a success audit', async () => {
     const { ops, tasks, events, flush } = makeHarness();
     const task = tasks.createTask({ kind: 'exec', title: 'flaky', owner: 'test' });
@@ -211,7 +211,7 @@ describe('OpsControlPlane — retry legality', () => {
   });
 });
 
-describe('OpsControlPlane — cancelAgent state gating', () => {
+describe('OpsControlPlane: cancelAgent state gating', () => {
   const cancellable: AgentLifecycleState[] = ['spawning', 'running', 'awaiting_message', 'awaiting_tool', 'finalizing'];
   const terminal: AgentLifecycleState[] = ['completed', 'failed', 'cancelled'];
 
@@ -258,7 +258,7 @@ describe('OpsControlPlane — cancelAgent state gating', () => {
   });
 });
 
-describe('OpsControlPlane — can* query helpers mirror the legality checks', () => {
+describe('OpsControlPlane: can* query helpers mirror the legality checks', () => {
   test('per-state truth table for a task', () => {
     const { ops, tasks } = makeHarness();
     const task = tasks.createTask({ kind: 'exec', title: 'q', owner: 'test' });

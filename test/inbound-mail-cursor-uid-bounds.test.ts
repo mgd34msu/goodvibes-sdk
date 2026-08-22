@@ -79,7 +79,7 @@ describe('the range itself', () => {
     expect(MAX_IMAP_UID).toBe(4_294_967_295);
   });
 
-  test('a UID may be 0 — the honest first-run value for an empty mailbox — but never above the ceiling', () => {
+  test('a UID may be 0, the honest first-run value for an empty mailbox, but never above the ceiling', () => {
     expect(isImapUid(0)).toBe(true);
     expect(isImapUid(MAX_IMAP_UID)).toBe(true);
     expect(isImapUid(MAX_IMAP_UID + 1)).toBe(false);
@@ -97,7 +97,7 @@ describe('the range itself', () => {
   });
 });
 
-describe('door 1 — a stored record outside the range is discarded on load', () => {
+describe('door 1: a stored record outside the range is discarded on load', () => {
   test('an out-of-range lastSeenUid fails validation', () => {
     expect(validateMailboxCursor(storedCursor({ lastSeenUid: ABSURD_UID }))).toBeNull();
     expect(validateMailboxCursor(storedCursor({ lastSeenUid: MAX_IMAP_UID + 1 }))).toBeNull();
@@ -141,7 +141,7 @@ describe('door 1 — a stored record outside the range is discarded on load', ()
     expect(report.removed.map((entry) => entry.reason)).toContain('malformed');
   });
 
-  test('the file is recoverable without being deleted by hand — the property the old behaviour lacked', async () => {
+  test('the file is recoverable without being deleted by hand: the property the old behaviour lacked', async () => {
     seed([storedCursor({ lastSeenUid: ABSURD_UID })]);
     const store = new MailboxCursorStore(storePath);
     await store.resolve({
@@ -158,7 +158,7 @@ describe('door 1 — a stored record outside the range is discarded on load', ()
   });
 });
 
-describe('door 2 — an out-of-range position is refused on the way in, not persisted', () => {
+describe('door 2: an out-of-range position is refused on the way in, not persisted', () => {
   test('advance() refuses rather than storing a value the next load would drop', async () => {
     const store = new MailboxCursorStore(storePath);
     await store.resolve({
@@ -197,7 +197,7 @@ describe('door 2 — an out-of-range position is refused on the way in, not pers
   });
 });
 
-describe('door 3 — the wire cannot hand one up in the first place', () => {
+describe('door 3: the wire cannot hand one up in the first place', () => {
   test('parseSearchNumbers drops a token above the 32-bit space instead of parseInt-ing it to 1e20', () => {
     expect(parseSearchNumbers(['* SEARCH 99999999999999999999'])).toEqual([]);
     expect(parseSearchNumbers([`* SEARCH ${String(MAX_IMAP_UID + 1)}`])).toEqual([]);
@@ -228,7 +228,7 @@ describe('the silent-stall consequence is loud if it is ever reached at all', ()
     })).rejects.toThrow(/Refusing to search above UID/);
   });
 
-  test('a real cursor still searches normally — the guard costs the healthy path nothing', async () => {
+  test('a real cursor still searches normally: the guard costs the healthy path nothing', async () => {
     expect(await searchAboveCursor(wire, 39, {
       timeoutMs: 1000,
       signal: new AbortController().signal,

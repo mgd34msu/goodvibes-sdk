@@ -24,7 +24,7 @@ import {
 // 1. Required-field coverage: every FIXTURE_EVENTS entry satisfies its schema
 // ---------------------------------------------------------------------------
 
-describe('FIXTURE_EVENTS — required-field drift guard', () => {
+describe('FIXTURE_EVENTS: required-field drift guard', () => {
   test('every fixture event contains all REQUIRED_FIELDS_BY_TYPE for its type', () => {
     const violations: string[] = [];
 
@@ -34,7 +34,7 @@ describe('FIXTURE_EVENTS — required-field drift guard', () => {
       // is not a real union member yields undefined and is skipped below, which
       // the 'every fixture type is a known event type' case elsewhere covers.
       const required = REQUIRED_FIELDS_BY_TYPE[event.type as keyof typeof REQUIRED_FIELDS_BY_TYPE];
-      if (!required) continue; // no required-field spec — skip
+      if (!required) continue; // no required-field spec, skip
 
       for (const field of required) {
         if (!(field in event)) {
@@ -57,7 +57,7 @@ describe('FIXTURE_EVENTS — required-field drift guard', () => {
 // 2. Coverage: every KNOWN_EVENT_TYPES entry appears in FIXTURE_EVENTS
 // ---------------------------------------------------------------------------
 
-describe('FIXTURE_EVENTS — known-type coverage drift guard', () => {
+describe('FIXTURE_EVENTS: known-type coverage drift guard', () => {
   test('every KNOWN_EVENT_TYPES entry has at least one entry in FIXTURE_EVENTS', () => {
     const coveredTypes = new Set(FIXTURE_EVENTS.map((e) => e.type));
     const missing: string[] = [];
@@ -82,7 +82,7 @@ describe('FIXTURE_EVENTS — known-type coverage drift guard', () => {
 // 3. jsonValueArb, basic soundness
 // ---------------------------------------------------------------------------
 
-describe('jsonValueArb — basic soundness', () => {
+describe('jsonValueArb: basic soundness', () => {
   test('generated values are JSON-representable (no undefined, no functions)', () => {
     fc.assert(
       fc.property(jsonValueArb, (value) => {

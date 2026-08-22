@@ -720,7 +720,7 @@ export class McpClient {
     logger.info('McpClient: scheduling restart', { server: this.config.name, attempt: this.restartCount, delayMs: delay });
 
     const timer = setTimeout(async () => {
-      if (this.intentionalClose) return; // Deliberately disconnected — do not restart
+      if (this.intentionalClose) return; // Deliberately disconnected, do not restart
       if (this.proc && this.isConnected) return; // Already restarted by something else
       try {
         await this._startProcess();

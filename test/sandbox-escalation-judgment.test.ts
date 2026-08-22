@@ -98,7 +98,7 @@ describe('sandbox judgment tier', () => {
   });
 
   test('auto-approve opt-in: looks-safe auto-approves WITHOUT prompting, leaves a receipt', async () => {
-    const { requester, seen } = spyApproval(false); // would deny if asked — proves we did NOT ask
+    const { requester, seen } = spyApproval(false); // would deny if asked, proves we did NOT ask
     const handler = createSandboxEscalationApprovalHandler(requester, {
       provider: looksSafe,
       config: { enabled: true, autoApprove: true },

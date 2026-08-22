@@ -138,7 +138,7 @@ export function stripFrozenDefaults(
       if (childIsObject && defIsObject) {
         const nested = walk(child as Record<string, unknown>, defChild as Record<string, unknown>);
         if (Object.keys(nested).length > 0) out[key] = nested;
-        else changed = true; // Every leaf under here equalled its default — prune the shell.
+        else changed = true; // Every leaf under here equalled its default, prune the shell.
         continue;
       }
       if (jsonEqual(child, defChild)) {

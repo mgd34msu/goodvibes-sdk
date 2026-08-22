@@ -41,7 +41,7 @@ function makeService(): MultimodalService {
   );
 }
 
-describe('platform/multimodal — behavior smoke', () => {
+describe('platform/multimodal: behavior smoke', () => {
   test('listProviders() resolves to a readonly array', async () => {
     const service = makeService();
     const providers = await service.listProviders();

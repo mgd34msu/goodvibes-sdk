@@ -38,7 +38,7 @@ import { GoodVibesSdkError, type DaemonErrorCategory } from '../packages/errors/
 // route-helpers.ts
 // ---------------------------------------------------------------------------
 
-describe('route-helpers — isJsonRecord', () => {
+describe('route-helpers: isJsonRecord', () => {
   test('returns true for plain objects', () => {
     expect(isJsonRecord({})).toBe(true);
     expect(isJsonRecord({ a: 1 })).toBe(true);
@@ -52,7 +52,7 @@ describe('route-helpers — isJsonRecord', () => {
   });
 });
 
-describe('route-helpers — toSerializableJson', () => {
+describe('route-helpers: toSerializableJson', () => {
   test('returns primitives unchanged', () => {
     expect(toSerializableJson(null)).toBeNull();
     expect(toSerializableJson(42)).toBe(42);
@@ -85,7 +85,7 @@ describe('route-helpers — toSerializableJson', () => {
   });
 });
 
-describe('route-helpers — serializableJsonResponse', () => {
+describe('route-helpers: serializableJsonResponse', () => {
   test('returns a JSON Response', async () => {
     const response = serializableJsonResponse({ ok: true });
     expect(response).toBeInstanceOf(Response);
@@ -98,7 +98,7 @@ describe('route-helpers — serializableJsonResponse', () => {
   });
 });
 
-describe('route-helpers — scopeMatches', () => {
+describe('route-helpers: scopeMatches', () => {
   test('exact match returns true', () => {
     expect(scopeMatches('read:agents', 'read:agents')).toBe(true);
   });
@@ -122,7 +122,7 @@ describe('route-helpers — scopeMatches', () => {
   });
 });
 
-describe('route-helpers — missingScopes', () => {
+describe('route-helpers: missingScopes', () => {
   test('returns empty array when all required scopes are granted', () => {
     expect(missingScopes(['read:agents', 'write:agents'], ['read:agents'])).toEqual([]);
   });
@@ -140,7 +140,7 @@ describe('route-helpers — missingScopes', () => {
   });
 });
 
-describe('route-helpers — readChannelLifecycleAction', () => {
+describe('route-helpers: readChannelLifecycleAction', () => {
   const validActions = ['inspect', 'setup', 'retest', 'connect', 'disconnect', 'start', 'stop', 'login', 'logout', 'wait_login'] as const;
 
   for (const action of validActions) {
@@ -156,7 +156,7 @@ describe('route-helpers — readChannelLifecycleAction', () => {
   });
 });
 
-describe('route-helpers — readChannelConversationKind', () => {
+describe('route-helpers: readChannelConversationKind', () => {
   const validKinds = ['direct', 'group', 'channel', 'thread', 'service'] as const;
 
   for (const kind of validKinds) {
@@ -175,7 +175,7 @@ describe('route-helpers — readChannelConversationKind', () => {
 // http-policy.ts
 // ---------------------------------------------------------------------------
 
-describe('http-policy — resolveAuthenticatedPrincipal', () => {
+describe('http-policy: resolveAuthenticatedPrincipal', () => {
   const resolver = {
     extractAuthToken: (req: Request) => req.headers.get('authorization')?.replace(/^Bearer /i, '') ?? '',
     describeAuthenticatedPrincipal: (token: string) =>
@@ -203,7 +203,7 @@ describe('http-policy — resolveAuthenticatedPrincipal', () => {
   });
 });
 
-describe('http-policy — buildMissingScopeBody', () => {
+describe('http-policy: buildMissingScopeBody', () => {
   test('returns null when all required scopes are granted', () => {
     expect(buildMissingScopeBody('agents.list', ['read:agents'], ['read:agents', 'write:agents'])).toBeNull();
   });
@@ -235,7 +235,7 @@ describe('http-policy — buildMissingScopeBody', () => {
   });
 });
 
-describe('http-policy — resolvePrivateHostFetchOptions', () => {
+describe('http-policy: resolvePrivateHostFetchOptions', () => {
   const configDisabled = {
     configManager: { get: (_key: string) => false },
   };
@@ -289,7 +289,7 @@ describe('http-policy — resolvePrivateHostFetchOptions', () => {
 // error-response.ts, buildErrorResponseBody
 // ---------------------------------------------------------------------------
 
-describe('error-response — buildErrorResponseBody — string error', () => {
+describe('error-response, buildErrorResponseBody, string error', () => {
   test('plain string error becomes error field', () => {
     const body = buildErrorResponseBody('something went wrong');
     expect(body.error).toBe('something went wrong');
@@ -312,7 +312,7 @@ describe('error-response — buildErrorResponseBody — string error', () => {
   });
 });
 
-describe('error-response — buildErrorResponseBody — generic Error', () => {
+describe('error-response, buildErrorResponseBody, generic Error', () => {
   test('Error instance uses message field', () => {
     const body = buildErrorResponseBody(new Error('network failure'));
     expect(body.error).toBe('network failure');
@@ -324,7 +324,7 @@ describe('error-response — buildErrorResponseBody — generic Error', () => {
   });
 });
 
-describe('error-response — buildErrorResponseBody — network error patterns', () => {
+describe('error-response, buildErrorResponseBody, network error patterns', () => {
   test('ECONNREFUSED pattern maps to network category', () => {
     const body = buildErrorResponseBody(new Error('ECONNREFUSED 127.0.0.1:3210'));
     expect(body.category).toBe('network');
@@ -354,7 +354,7 @@ describe('error-response — buildErrorResponseBody — network error patterns',
   });
 });
 
-describe('error-response — buildErrorResponseBody — GoodVibesSdkError', () => {
+describe('error-response, buildErrorResponseBody, GoodVibesSdkError', () => {
   test('GoodVibesSdkError extracts all structured fields', () => {
     const err = new GoodVibesSdkError('provider rejected auth', {
       code: 'PROVIDER_ERROR',
@@ -426,7 +426,7 @@ describe('error-response — buildErrorResponseBody — GoodVibesSdkError', () =
   });
 });
 
-describe('error-response — buildErrorResponseBody — structured body passthrough', () => {
+describe('error-response, buildErrorResponseBody, structured body passthrough', () => {
   test('StructuredDaemonErrorBody unprivileged: returns safe copy (not original reference)', () => {
     // non-privileged callers get a stripped copy, internal fields like
     // provider/operation/phase are not exposed. Source and category are safe.
@@ -482,7 +482,7 @@ describe('error-response — buildErrorResponseBody — structured body passthro
   });
 });
 
-describe('error-response — buildErrorResponseBody — message-inferred categories', () => {
+describe('error-response, buildErrorResponseBody, message-inferred categories', () => {
   const cases: Array<[string, DaemonErrorCategory]> = [
     ['invalid api_key provided', 'authentication'],
     ['access denied by policy', 'authorization'],
@@ -503,7 +503,7 @@ describe('error-response — buildErrorResponseBody — message-inferred categor
   }
 });
 
-describe('error-response — jsonErrorResponse', () => {
+describe('error-response: jsonErrorResponse', () => {
   test('returns Response with correct status', async () => {
     const res = jsonErrorResponse(new Error('fail'), { status: 503 });
     expect(res.status).toBe(503);
@@ -524,7 +524,7 @@ describe('error-response — jsonErrorResponse', () => {
   });
 });
 
-describe('error-response — summarizeErrorForRecord', () => {
+describe('error-response: summarizeErrorForRecord', () => {
   test('returns the error field from buildErrorResponseBody', () => {
     const summary = summarizeErrorForRecord(new Error('network down'));
     expect(summary).toBe('network down');
@@ -542,7 +542,7 @@ describe('error-response — summarizeErrorForRecord', () => {
 // is NEVER allocated for over-limit payloads (sentinel path exits early).
 // ---------------------------------------------------------------------------
 
-describe('remote-routes — estimateJsonByteLengthWithinLimit cap-before-allocate', () => {
+describe('remote-routes: estimateJsonByteLengthWithinLimit cap-before-allocate', () => {
   test('small value within limit: returns kind="ok" and byteLength <= maxBytes', () => {
     const result = estimateJsonByteLengthWithinLimit({ hello: 'world' }, 10_000);
     expect(result.kind).toBe('ok');

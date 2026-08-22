@@ -261,7 +261,7 @@ describe('route reconcile sees handlers, not just routes', () => {
     return catalog;
   }
 
-  test('a served route WITH a handler still reconciles live — the gate does not cry wolf', async () => {
+  test('a served route WITH a handler still reconciles live: the gate does not cry wolf', async () => {
     const catalog = catalogWithHandlers();
     const descriptor = catalog.get(SERVED_BY_GATEWAY_REST);
     expect(descriptor).toBeDefined();

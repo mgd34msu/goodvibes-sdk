@@ -70,7 +70,7 @@ function makeProvider(id: string, onEmbed?: () => Promise<void> | void): { provi
   return { provider, calls: () => calls };
 }
 
-describe('CodeIndexStore — reroot()-during-build race (epoch abort)', () => {
+describe('CodeIndexStore: reroot()-during-build race (epoch abort)', () => {
   test('a build started against tree A aborts on reroot to tree B: no tree-A paths land in B\'s db, abort recorded', async () => {
     const rootA = makeRoot('gv-code-index-reroot-a-');
     const rootB = makeRoot('gv-code-index-reroot-b-');
@@ -127,7 +127,7 @@ describe('CodeIndexStore — reroot()-during-build race (epoch abort)', () => {
   });
 });
 
-describe('CodeIndexStore — embedding-provider mismatch honesty', () => {
+describe('CodeIndexStore: embedding-provider mismatch honesty', () => {
   test('switching the default provider disables the vector path (lexical only), states the mismatch, and rebuild re-embeds', async () => {
     const root = makeRoot('gv-code-index-provider-');
     writeFileSync(join(root, 'a.ts'), 'export function fooBar(): number {\n  return 1;\n}\n');
@@ -172,7 +172,7 @@ describe('CodeIndexStore — embedding-provider mismatch honesty', () => {
   });
 });
 
-describe('CodeIndexStore — chunk accounting honesty', () => {
+describe('CodeIndexStore: chunk accounting honesty', () => {
   test('a rebuild over an unchanged tree reports chunksUnchanged, not chunksIndexed', async () => {
     const root = makeRoot('gv-code-index-counts-');
     writeFileSync(join(root, 'a.ts'), 'export function one(): number {\n  return 1;\n}\n\nexport function two(): number {\n  return 2;\n}\n\nexport const three = 3;\n');

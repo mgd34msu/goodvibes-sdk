@@ -209,7 +209,7 @@ describe('RRULE expansion (honest subset)', () => {
     expect(occ.every((o) => !o.isSeed)).toBe(true);
   });
 
-  test('an unsupported RRULE part is marked, not fabricated — only the seed appears', () => {
+  test('an unsupported RRULE part is marked, not fabricated: only the seed appears', () => {
     const e = eventWithRule('20260706', 'FREQ=MONTHLY;BYMONTHDAY=1,15');
     expect(e.recurrence?.expansion).toBe('unsupported');
     expect(e.recurrence?.unsupportedReason).toContain('BYMONTHDAY');

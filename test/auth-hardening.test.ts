@@ -61,7 +61,7 @@ function readBootstrapPassword(dir: string): string {
 // ---------------------------------------------------------------------------
 // 1. fsync parity, atomicWriteSecretFile durability
 // ---------------------------------------------------------------------------
-describe('atomicWriteSecretFile — durability', () => {
+describe('atomicWriteSecretFile: durability', () => {
   let dir: string;
   beforeEach(() => { dir = tempDir('fsync'); });
   afterEach(() => cleanup(dir));
@@ -270,12 +270,12 @@ describe('isCloudflareIp', () => {
     expect(isCloudflareIp('2001:db8::1')).toBe(false);
   });
 
-  test('handles IPv6-mapped IPv4 — CF address', () => {
+  test('handles IPv6-mapped IPv4: CF address', () => {
     // ::ffff:173.245.48.1 should be treated as 173.245.48.1 (in CF range)
     expect(isCloudflareIp('::ffff:173.245.48.1')).toBe(true);
   });
 
-  test('handles IPv6-mapped IPv4 — non-CF address', () => {
+  test('handles IPv6-mapped IPv4: non-CF address', () => {
     // ::ffff:1.2.3.4 should be treated as 1.2.3.4 (not in CF range)
     expect(isCloudflareIp('::ffff:1.2.3.4')).toBe(false);
   });
@@ -300,7 +300,7 @@ describe('isCloudflareIp', () => {
 // ---------------------------------------------------------------------------
 // 4. Retry-After header on account lockout 429
 // ---------------------------------------------------------------------------
-describe('authenticate lockedUntilMs — Retry-After integration', () => {
+describe('authenticate lockedUntilMs: Retry-After integration', () => {
   let dir: string;
   beforeEach(() => { dir = tempDir('retry-after'); });
   afterEach(() => cleanup(dir));
@@ -626,7 +626,7 @@ describe('accountLocks cap and eviction', () => {
 // ---------------------------------------------------------------------------
 // 9. Bootstrap credential retire, non-bootstrap vs bootstrap paths (M3)
 // ---------------------------------------------------------------------------
-describe('bootstrap credential retire — non-bootstrap only', () => {
+describe('bootstrap credential retire: non-bootstrap only', () => {
   let dir: string;
   beforeEach(() => { dir = tempDir('bootstrap-m3'); });
   afterEach(() => cleanup(dir));
@@ -666,7 +666,7 @@ describe('bootstrap credential retire — non-bootstrap only', () => {
     }
   });
 
-  test('getAccountLockState returns defensive copy — mutations do not affect internal state', () => {
+  test('getAccountLockState returns defensive copy: mutations do not affect internal state', () => {
     const mgr = makeManager(dir);
     // Create a lock entry
     for (let i = 0; i < 6; i++) mgr.authenticate('admin', 'wrong');
@@ -730,7 +730,7 @@ describe('lock escalation during active window (m1)', () => {
 // ---------------------------------------------------------------------------
 // 11. m2, ipv6ToBytes strict validation (zone index, oversized groups, garbage)
 // ---------------------------------------------------------------------------
-describe('isCloudflareIp — ipv6ToBytes strict validation', () => {
+describe('isCloudflareIp: ipv6ToBytes strict validation', () => {
   test('rejects IPv6 with zone index (fe80::1%eth0)', () => {
     // Zone index is not a valid routable address component
     expect(isCloudflareIp('fe80::1%eth0')).toBe(false);

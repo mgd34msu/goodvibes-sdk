@@ -36,7 +36,7 @@ function makeBroker(): SharedSessionBroker {
 // B6, Reserved-ID rejection tests
 // ---------------------------------------------------------------------------
 
-describe('SharedSessionBroker — reserved session ID validation', () => {
+describe('SharedSessionBroker: reserved session ID validation', () => {
   test('createSession with id="" throws with code INVALID_SESSION_ID', async () => {
     const broker = makeBroker();
     await expect(broker.createSession({ id: '' })).rejects.toMatchObject({

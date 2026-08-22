@@ -11,7 +11,7 @@
 import { describe, expect, test } from 'bun:test';
 import { ConversationManager } from '../packages/sdk/src/platform/core/conversation.js';
 
-describe('ConversationManager.addToolResults — content selection', () => {
+describe('ConversationManager.addToolResults: content selection', () => {
   test('failure with output present and error absent surfaces the output, not "Unknown error"', () => {
     const cm = new ConversationManager();
     const output = JSON.stringify({ exit_code: 1, stdout: 'running tests...', stderr: 'FAIL: 2 tests failed' });
@@ -23,7 +23,7 @@ describe('ConversationManager.addToolResults — content selection', () => {
     expect(content).not.toContain('Unknown error');
   });
 
-  test('failure with error only (no output) still shows the error message — regression guard', () => {
+  test('failure with error only (no output) still shows the error message: regression guard', () => {
     const cm = new ConversationManager();
     cm.addToolResults([{ callId: 'c2', success: false, error: 'permission denied' }]);
 
@@ -41,7 +41,7 @@ describe('ConversationManager.addToolResults — content selection', () => {
     expect(content).toContain('timeout');
   });
 
-  test('success with neither output nor error uses the default message — unchanged', () => {
+  test('success with neither output nor error uses the default message: unchanged', () => {
     const cm = new ConversationManager();
     cm.addToolResults([{ callId: 'c4', success: true }]);
 
@@ -49,7 +49,7 @@ describe('ConversationManager.addToolResults — content selection', () => {
     expect((msgs[0] as { content: string }).content).toBe('Tool completed successfully.');
   });
 
-  test('success with output present shows the output — unchanged', () => {
+  test('success with output present shows the output: unchanged', () => {
     const cm = new ConversationManager();
     cm.addToolResults([{ callId: 'c5', success: true, output: 'file content' }]);
 

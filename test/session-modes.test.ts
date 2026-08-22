@@ -183,7 +183,7 @@ describe('permission mode-change event', () => {
     expect(typeof listener).toBe('function');
 
     listener!('plan', 'prompt');
-    listener!('plan', 'plan'); // no-op transition — must not emit
+    listener!('plan', 'plan'); // no-op transition, must not emit
 
     expect(emitted).toHaveLength(1);
     expect(emitted[0]!.channel).toBe('permissions');

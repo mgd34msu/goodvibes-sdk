@@ -184,7 +184,7 @@ describe('worktree-mode gates + dependency composition (BIG-3 items 2/3/5)', () 
     rmSync(root, { recursive: true, force: true });
   }, 40_000);
 
-  test('shared mode is unchanged — gates do NOT run in a per-item worktree', async () => {
+  test('shared mode is unchanged: gates do NOT run in a per-item worktree', async () => {
     const root = freshRepo();
     const gateLog = join(root, 'gate-cwds.log');
     const h = makeHarness();

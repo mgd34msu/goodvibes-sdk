@@ -60,7 +60,7 @@ describe('DaemonServer.stop() with the watcher framework disabled', () => {
     await expect(daemon.server.stop()).resolves.toBeUndefined();
   });
 
-  test('stop() is idempotent — a second call is a clean no-op', async () => {
+  test('stop() is idempotent: a second call is a clean no-op', async () => {
     await expect(daemon.server.stop()).resolves.toBeUndefined();
   });
 });

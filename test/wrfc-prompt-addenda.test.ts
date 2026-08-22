@@ -50,7 +50,7 @@ describe('buildEngineerConstraintAddendum', () => {
     expect(result).toContain('issues[]');
   });
 
-  test('memoized — two calls return the same string reference', () => {
+  test('memoized: two calls return the same string reference', () => {
     const a = buildEngineerConstraintAddendum();
     const b = buildEngineerConstraintAddendum();
     expect(a === b).toBe(true);
@@ -94,7 +94,7 @@ describe('buildReviewerConstraintAddendum', () => {
     expect(result).toContain('INDEPENDENT of the rubric dimensions');
   });
 
-  test('memoized — two calls return the same string reference', () => {
+  test('memoized: two calls return the same string reference', () => {
     const a = buildReviewerConstraintAddendum();
     const b = buildReviewerConstraintAddendum();
     expect(a === b).toBe(true);
@@ -129,7 +129,7 @@ describe('buildFixerConstraintAddendum', () => {
     expect(result).toContain('same ids, same text, same order');
   });
 
-  test('memoized — two calls return the same string reference', () => {
+  test('memoized: two calls return the same string reference', () => {
     const a = buildFixerConstraintAddendum();
     const b = buildFixerConstraintAddendum();
     expect(a === b).toBe(true);

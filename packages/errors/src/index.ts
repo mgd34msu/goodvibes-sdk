@@ -148,7 +148,7 @@ function inferCategory(status?: number): ErrorCategory {
   if (status === 403) return 'authorization';
   if (status === 404) return 'not_found';
   if (status === 408) return 'timeout';
-  if (status === 409) return 'unknown'; // 409 Conflict — caller must supply category explicitly
+  if (status === 409) return 'unknown'; // 409 Conflict, caller must supply category explicitly
   if (status === 429) return 'rate_limit';
   if (status !== undefined && status >= 500) return 'service';
   return 'unknown';

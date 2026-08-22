@@ -20,7 +20,7 @@ function register(
   manager.registerServer('files', 'standard', profile as never);
 }
 
-describe('McpPermissionManager.registerServer — config refresh', () => {
+describe('McpPermissionManager.registerServer: config refresh', () => {
   test('a re-registration with a new profile replaces the stored profile', () => {
     const manager = new McpPermissionManager();
     register(manager, { role: 'general', mode: 'ask-on-risk', allowedPaths: [], allowedHosts: ['a.example'] });

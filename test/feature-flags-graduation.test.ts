@@ -18,7 +18,7 @@ function flag(id: string, defaultState: FeatureFlag['defaultState']): FeatureFla
   return { id, name: id, description: id, defaultState, tier: 1, runtimeToggleable: true };
 }
 
-describe('flag graduation — live registry report', () => {
+describe('flag graduation: live registry report', () => {
   test('report covers every registered flag exactly once', () => {
     const report = buildFlagGraduationReport();
     expect(report.entries).toHaveLength(FEATURE_FLAGS.length);
@@ -53,7 +53,7 @@ describe('flag graduation — live registry report', () => {
   });
 });
 
-describe('flag graduation — release gate over synthetic annotations', () => {
+describe('flag graduation: release gate over synthetic annotations', () => {
   const flags: FeatureFlag[] = [
     flag('ready-flag', 'disabled'),
     flag('flipped-flag', 'enabled'),
@@ -116,7 +116,7 @@ describe('flag graduation — release gate over synthetic annotations', () => {
   });
 });
 
-describe('flag graduation — annotation validation', () => {
+describe('flag graduation: annotation validation', () => {
   test('a blocked annotation without a dated blocker throws', () => {
     expect(() =>
       buildFlagGraduationReport({

@@ -185,7 +185,7 @@ describe('the alert reaches the owner on a channel that still works', () => {
     metadata: {},
   });
 
-  test('the failing surface is tried FIRST — inbound and outbound fail independently', () => {
+  test('the failing surface is tried FIRST: inbound and outbound fail independently', () => {
     // Telegram's sends worked all day while its receives were being dropped.
     const ordered = orderOwnerAlertRoutes(
       [binding('ntfy-1', 'ntfy', 900), binding('tg-old', 'telegram', 100), binding('tg-new', 'telegram', 500)],

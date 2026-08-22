@@ -188,7 +188,7 @@ describe('a channel whose bound session was closed rolls over instead of black-h
     expect(notices[0]?.text).toContain('not in this node');
   });
 
-  test('a brand-new chat is NOT announced as a rollover — nothing was lost', async () => {
+  test('a brand-new chat is NOT announced as a rollover: nothing was lost', async () => {
     const { broker, routeBindings, notices } = await makeHarness(scratch());
     const binding = await bindChat(routeBindings);
     expect(binding.sessionId).toBeUndefined();
@@ -280,7 +280,7 @@ describe('the healing does not widen past channel-bound resolution', () => {
     },
   );
 
-  test('an ACTIVE bound session is untouched — no rollover, no notice, same session', async () => {
+  test('an ACTIVE bound session is untouched: no rollover, no notice, same session', async () => {
     const { broker, routeBindings, notices } = await makeHarness(scratch());
     const binding = await bindChat(routeBindings);
     const live = await broker.createSession({ id: 'sess-live' });
@@ -293,7 +293,7 @@ describe('the healing does not widen past channel-bound resolution', () => {
     expect(notices).toHaveLength(0);
   });
 
-  test('a host that wired no notice sender still rolls over — the explanation is optional, the healing is not', async () => {
+  test('a host that wired no notice sender still rolls over: the explanation is optional, the healing is not', async () => {
     const dir = scratch();
     const routeBindings = new RouteBindingManager({
       store: new AutomationRouteStore(join(dir, 'automation-routes.json')),

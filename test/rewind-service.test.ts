@@ -57,7 +57,7 @@ const fakeConversation: RewindConversationPort = {
 
 const anchor: RewindAnchor = { sessionId: 's1', turnId: 'turn-1' };
 
-describe('rewind.plan — dry-run preview + confirm token', () => {
+describe('rewind.plan: dry-run preview + confirm token', () => {
   test('files plan resolves the anchor checkpoint and its affected file count', async () => {
     const service = new UnifiedRewindService({ workspace: fakeWorkspace() });
     const plan = await service.plan(anchor, 'files');
@@ -89,7 +89,7 @@ describe('rewind.plan — dry-run preview + confirm token', () => {
   });
 });
 
-describe('rewind.apply — confirm gate', () => {
+describe('rewind.apply: confirm gate', () => {
   test('an unconfirmed apply returns a non-error refusal naming rewind.plan', async () => {
     const service = new UnifiedRewindService({ workspace: fakeWorkspace() });
     const result = await service.apply(anchor, 'files', {});
@@ -123,7 +123,7 @@ describe('rewind.apply — confirm gate', () => {
   });
 });
 
-describe('rewind.apply — symmetric undo point (restore-the-restore)', () => {
+describe('rewind.apply: symmetric undo point (restore-the-restore)', () => {
   test('applying files records the pre-restore safety checkpoint as the undo point', async () => {
     const restoreCalls: Array<{ id: string; safety: boolean | undefined }> = [];
     const service = new UnifiedRewindService({ workspace: fakeWorkspace({ restoreCalls }) });
@@ -154,7 +154,7 @@ describe('rewind.apply — symmetric undo point (restore-the-restore)', () => {
   });
 });
 
-describe('rewind — receipt events', () => {
+describe('rewind: receipt events', () => {
   test('plan emits REWIND_PLANNED and apply emits REWIND_APPLIED', async () => {
     const events: Array<{ event: WorkspaceEvent; sessionId: string }> = [];
     const service = new UnifiedRewindService({

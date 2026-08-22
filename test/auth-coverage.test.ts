@@ -60,7 +60,7 @@ function makeOperator(loginToken = 'auth-tok') {
 // requireStorage / createBrowserTokenStore
 // ---------------------------------------------------------------------------
 
-describe('createBrowserTokenStore — storage edge cases', () => {
+describe('createBrowserTokenStore: storage edge cases', () => {
   test('throws ConfigurationError when no storage is available and globalThis.localStorage is absent', () => {
     // In bun/node there is no globalThis.localStorage, so requireStorage throws.
     expect(() => createBrowserTokenStore()).toThrow(ConfigurationError);
@@ -120,7 +120,7 @@ describe('createBrowserTokenStore — storage edge cases', () => {
 // createMemoryTokenStore, initial token
 // ---------------------------------------------------------------------------
 
-describe('createMemoryTokenStore — initial token', () => {
+describe('createMemoryTokenStore: initial token', () => {
   test('accepts an initial token', async () => {
     const store = createMemoryTokenStore('seed-token');
     expect(await store.getToken()).toBe('seed-token');
@@ -137,7 +137,7 @@ describe('createMemoryTokenStore — initial token', () => {
 // createGoodVibesAuthClient, read-only resolver (getAuthToken)
 // ---------------------------------------------------------------------------
 
-describe('createGoodVibesAuthClient — read-only getAuthToken resolver', () => {
+describe('createGoodVibesAuthClient: read-only getAuthToken resolver', () => {
   test('getToken delegates to getAuthToken when no tokenStore', async () => {
     const client = createGoodVibesAuthClient(makeOperator(), null, async () => 'readonly-token');
     expect(await client.getToken()).toBe('readonly-token');
@@ -180,7 +180,7 @@ describe('createGoodVibesAuthClient — read-only getAuthToken resolver', () => 
 // createGoodVibesAuthClient, observer auth transition events
 // ---------------------------------------------------------------------------
 
-describe('createGoodVibesAuthClient — observer onAuthTransition', () => {
+describe('createGoodVibesAuthClient: observer onAuthTransition', () => {
   test('login fires onAuthTransition from anonymous → token when no prior token', async () => {
     const transitions: AuthTransitionInfo[] = [];
     const observer: SDKObserver = {
@@ -272,7 +272,7 @@ describe('createGoodVibesAuthClient — observer onAuthTransition', () => {
 // createGoodVibesAuthClient, tokenStore and sessionManager getters
 // ---------------------------------------------------------------------------
 
-describe('createGoodVibesAuthClient — getters', () => {
+describe('createGoodVibesAuthClient: getters', () => {
   test('tokenStore getter returns TokenStore instance when tokenStore provided', () => {
     const store = createMemoryTokenStore();
     const client = createGoodVibesAuthClient(makeOperator(), store);

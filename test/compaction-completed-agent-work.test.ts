@@ -171,7 +171,7 @@ describe('buildCompletedAgentWork', () => {
   });
 });
 
-describe('buildAgentActivityTable — Files column', () => {
+describe('buildAgentActivityTable: Files column', () => {
   test('includes a file count sourced from chain.touchedPaths', () => {
     const chains = [
       makeChain({ id: 'chain-a', task: 'did something', touchedPaths: ['x.ts', 'y.ts', 'z.ts'] }),
@@ -190,7 +190,7 @@ describe('buildAgentActivityTable — Files column', () => {
   });
 });
 
-describe('resolveLineageOriginalTask — "Original task" mislabel fix', () => {
+describe('resolveLineageOriginalTask: "Original task" mislabel fix', () => {
   test('compactionCount === 0, originalTask undefined: falls back to lastUserMsg (legitimate first-compaction case)', () => {
     expect(resolveLineageOriginalTask(undefined, 'do the thing', 0)).toBe('do the thing');
   });

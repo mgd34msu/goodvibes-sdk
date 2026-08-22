@@ -103,7 +103,7 @@ describe('start-time retention sweep', () => {
     expect(statSync(newer).size).toBe(200_000);
   });
 
-  test('the full production roots sweep every registered store — none silently skipped', () => {
+  test('the full production roots sweep every registered store: none silently skipped', () => {
     const workingDirectory = tempDir();
     const homeDirectory = tempDir();
     const surfaceRoot = 'tui';

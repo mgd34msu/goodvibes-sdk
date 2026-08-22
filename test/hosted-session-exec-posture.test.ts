@@ -146,7 +146,7 @@ test("the owner's terminal is denied in BOTH postures, boundary or not", async (
   }
 });
 
-test("reading tmux state is not touching it — a workstream may still look", async () => {
+test("reading tmux state is not touching it: a workstream may still look", async () => {
   const session = hostedSession('workstream');
   const outcome = await runExec(session, 'tmux list-sessions');
   expect(outcome.stderr).not.toContain("owner's terminal is untouchable");

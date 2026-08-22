@@ -32,7 +32,7 @@ afterEach(() => {
   for (const dir of tmpDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-describe('redactAtRestLine — masks secrets, preserves content, stays valid JSON', () => {
+describe('redactAtRestLine: masks secrets, preserves content, stays valid JSON', () => {
   test('masks known credential shapes but leaves ordinary content intact', () => {
     const line = JSON.stringify({
       role: 'user',
@@ -51,7 +51,7 @@ describe('redactAtRestLine — masks secrets, preserves content, stays valid JSO
   });
 });
 
-describe('resolveAtRestPolicy — honest defaults + config overrides', () => {
+describe('resolveAtRestPolicy: honest defaults + config overrides', () => {
   test('no getter -> redaction on, generous bounded retention', () => {
     expect(resolveAtRestPolicy()).toEqual(DEFAULT_AT_REST_POLICY);
     expect(DEFAULT_AT_REST_POLICY.redact).toBe(true);
@@ -76,7 +76,7 @@ describe('resolveAtRestPolicy — honest defaults + config overrides', () => {
   });
 });
 
-describe('enforceFileRetention — age + size caps, oldest-first', () => {
+describe('enforceFileRetention: age + size caps, oldest-first', () => {
   test('deletes files older than the age cap', () => {
     const dir = mkTemp();
     const oldFile = join(dir, 'old.jsonl');
@@ -113,7 +113,7 @@ describe('enforceFileRetention — age + size caps, oldest-first', () => {
   });
 });
 
-describe('AgentSession transcript journal — redaction at write', () => {
+describe('AgentSession transcript journal: redaction at write', () => {
   test('a secret in a message is masked in the on-disk journal', () => {
     const dir = mkTemp();
     const session = new AgentSession('agent-1', 'm', 'p', { sessionsDir: dir, stateDir: dir });
@@ -149,7 +149,7 @@ describe('AgentSession transcript journal — redaction at write', () => {
   });
 });
 
-describe('LocalLedgerExporter execution ledger — redaction + replay', () => {
+describe('LocalLedgerExporter execution ledger: redaction + replay', () => {
   test('recordEvent masks secrets, and readRunEntries returns the redacted record', () => {
     const dir = mkTemp();
     const exporter = new LocalLedgerExporter({

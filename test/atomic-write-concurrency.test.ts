@@ -49,7 +49,7 @@ function ageOut(path: string): void {
 }
 
 describe('atomic write under a concurrent writer of the same store', () => {
-  test('a second writer never takes the temp file of a write still in progress — the ENOENT-at-chmod crash', () => {
+  test('a second writer never takes the temp file of a write still in progress: the ENOENT-at-chmod crash', () => {
     const dir = makeProjectTempDir('gv-atomic-race');
     const storePath = join(dir, 'watchers.json');
     mkdirSync(dir, { recursive: true });

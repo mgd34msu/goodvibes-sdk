@@ -114,7 +114,7 @@ describe('a delivery path can never be built without a secret resolver', () => {
     })).not.toThrow();
   });
 
-  test('an injected router still satisfies the manager — the guard is only for the builtin path', () => {
+  test('an injected router still satisfies the manager: the guard is only for the builtin path', () => {
     expect(() => new AutomationDeliveryManager({
       routeBindings: fakeRouteBindings(),
       deliveryRouter: {} as never,

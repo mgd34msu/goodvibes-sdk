@@ -305,7 +305,7 @@ describe('a declared credential that resolves to nothing is its own state', () =
       secrets: { TELEGRAM_BOT_TOKEN: 'a-real-looking-token' },
     });
     expect(snapshot.credentialResolves).toBe(true);
-    expect(snapshot.state).toBe('dead'); // ingress still not armed — a different fault, named differently
+    expect(snapshot.state).toBe('dead'); // ingress still not armed, a different fault, named differently
   });
 
   test('unresolved is distinguishable from unconfigured', async () => {

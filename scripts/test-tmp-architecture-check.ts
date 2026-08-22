@@ -49,7 +49,7 @@ function checkPackageJsonScripts(packageJsonPath: string): void {
   try {
     parsed = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
   } catch {
-    return; // not JSON, or missing — not this check's concern
+    return; // not JSON, or missing, not this check's concern
   }
   if (typeof parsed !== 'object' || parsed === null) return;
   const scripts = (parsed as { scripts?: unknown }).scripts;

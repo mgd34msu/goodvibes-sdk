@@ -165,7 +165,7 @@ describe('profile.* responses conform to the published contract', () => {
    * The live defect, at the exact field that broke on the owner's machine: a
    * present, closed-tier field carrying provenance.
    */
-  test('profile.get — a present field with provenance', async () => {
+  test('profile.get: a present field with provenance', async () => {
     const { catalog } = await profileHarness();
     const answer = await invokeAndCheck(
       catalog,
@@ -179,7 +179,7 @@ describe('profile.* responses conform to the published contract', () => {
     expect(answer.field?.value).toContain('401 Home St');
   });
 
-  test('profile.get — a field whose recorded value does not validate', async () => {
+  test('profile.get: a field whose recorded value does not validate', async () => {
     const { catalog } = await profileHarness();
     const answer = await invokeAndCheck(
       catalog,
@@ -191,7 +191,7 @@ describe('profile.* responses conform to the published contract', () => {
     expect(typeof answer.field?.invalidReason).toBe('string');
   });
 
-  test('profile.get — a field with no provenance suffix, and one he never recorded', async () => {
+  test('profile.get: a field with no provenance suffix, and one he never recorded', async () => {
     const { catalog } = await profileHarness();
     const handEdited = await invokeAndCheck(
       catalog,
@@ -223,7 +223,7 @@ describe('profile.* responses conform to the published contract', () => {
     await invokeAndCheck(catalog, 'profile.provenance', { fieldId: 'contact.phone' }, 'never recorded');
   });
 
-  test('profile.set, append, forget and undo — the answers a write returns', async () => {
+  test('profile.set, append, forget and undo: the answers a write returns', async () => {
     const { catalog } = await profileHarness();
     await invokeAndCheck(catalog, 'profile.set', {
       fieldId: 'commerce.shippingAddress',

@@ -281,7 +281,7 @@ describe('CLI dispatch (black-box, subprocess)', () => {
   });
 });
 
-describe('full link/restore round-trip (real build, gated — slow)', () => {
+describe('full link/restore round-trip (real build, gated: slow)', () => {
   // This exercises the actual `bun run build` + all-9-siblings-incl.-contracts
   // overlay + precise restore against a REAL scratch consumer checkout. It is
   // gated behind an env var (not run by default in the fast test loop or CI,

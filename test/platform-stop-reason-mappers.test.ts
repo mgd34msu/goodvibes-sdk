@@ -62,7 +62,7 @@ describe('isContextOverflowSignal', () => {
   it('false for completed with an ordinary raw reason', () => {
     expect(isContextOverflowSignal('completed', 'end_turn')).toBe(false);
   });
-  it('false for max_tokens — output cap is not a context warning', () => {
+  it('false for max_tokens: output cap is not a context warning', () => {
     expect(isContextOverflowSignal('max_tokens', 'max_tokens')).toBe(false);
   });
   it('false when no raw reason is provided and normalized is not overflow', () => {

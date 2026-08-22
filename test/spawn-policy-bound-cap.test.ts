@@ -18,7 +18,7 @@ import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.
 // schema-default fallback path.
 const nullConfig: Pick<ConfigManager, 'get'> = { get: (() => null) as unknown as ConfigManager['get'] };
 
-describe('spawn policy — bound cap identity', () => {
+describe('spawn policy: bound cap identity', () => {
   test('active-agents cap names fleet.maxSize when it binds (owner-renamed cap)', () => {
     const decision = evaluateOrchestrationSpawn({
       configManager: nullConfig,

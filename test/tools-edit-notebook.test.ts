@@ -79,7 +79,7 @@ function parseNotebook(content: string) {
 // Suite
 // ---------------------------------------------------------------------------
 
-describe('edit tool — notebook operations', () => {
+describe('edit tool: notebook operations', () => {
   let tmpDir: string;
   let fileCache: FileStateCache;
   let tool: ReturnType<typeof createEditTool>;

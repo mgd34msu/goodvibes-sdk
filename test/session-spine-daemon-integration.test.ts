@@ -195,7 +195,7 @@ describe('SDK SessionSpineClient against a real bootDaemon (TUI-exact adapter)',
     await waitFor(async () => (await harness!.listSessions()).find((s) => s.id === 'tui-pre-stop') ?? null,
       'session tui-pre-stop appears in sessions.list');
 
-    await harness.daemon.stop(); // genuine outage — the socket now refuses
+    await harness.daemon.stop(); // genuine outage, the socket now refuses
     expect(() => client.register({ sessionId: 'tui-after-stop', project: harness!.workingDir, title: 'T' })).not.toThrow();
     // Same reasoning as above: poll for the state the outage must produce
     // rather than guessing how long a refused socket takes to be observed.

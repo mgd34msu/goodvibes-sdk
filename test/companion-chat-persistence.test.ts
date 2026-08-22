@@ -47,7 +47,7 @@ function makeManager(
     provider: makeMockProvider(),
     eventPublisher: { publishEvent() {} },
     gcIntervalMs: 999_999, // disable automatic GC
-    persist: true, // explicitly opt into disk persistence — this file tests persistence behaviour
+    persist: true, // explicitly opt into disk persistence, this file tests persistence behaviour
     sessionsDir,
     rateLimiter: false, // disable rate limiting in tests
     ...(overrides.closedSessionMemoryGraceMs !== undefined ? { closedSessionMemoryGraceMs: overrides.closedSessionMemoryGraceMs } : {}),
@@ -197,7 +197,7 @@ describe('P3: closed sessions survive restart and stay listable', () => {
     }
   });
 
-  test('default retention: an ancient-closed session survives the sweep — listable and on disk', async () => {
+  test('default retention: an ancient-closed session survives the sweep: listable and on disk', async () => {
     const sessionsDir = mkdtempSync(join(tmpdir(), 'companion-persist-gc-'));
     try {
       // Seed a closed session whose closedAt is well past the OLD 5-min grace.

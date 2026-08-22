@@ -247,7 +247,7 @@ describe('tripwire-path async snapshots (slice 4c)', () => {
   test('scheduler.snapshotAllAsync snapshots every registered store and does not throw on a bad one', async () => withScratch(async (dir) => {
     const good = join(dir, 'good.sqlite');
     writeFileSync(good, 'good-bytes');
-    const missing = join(dir, 'missing.sqlite'); // never created — must not throw
+    const missing = join(dir, 'missing.sqlite'); // never created, must not throw
     const scheduler = new StoreSnapshotScheduler({
       stores: [{ name: 'good', dbPath: good }, { name: 'missing', dbPath: missing }],
       setTimer: () => 0 as unknown as ReturnType<typeof setTimeout>,

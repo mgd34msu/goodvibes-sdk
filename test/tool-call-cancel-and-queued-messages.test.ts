@@ -59,7 +59,7 @@ function makeRegistryWithTools(): ToolRegistry {
   return registry;
 }
 
-describe('per-tool cancel — one call dies, the turn continues', () => {
+describe('per-tool cancel: one call dies, the turn continues', () => {
   test('cancelling one call mid-flight yields a structured cancelled result; the sibling call still executes', async () => {
     const aborts = new ToolCallAbortRegistry();
     const deps = {
@@ -115,7 +115,7 @@ describe('per-tool cancel — one call dies, the turn continues', () => {
   });
 });
 
-describe('queued mid-turn messages — editable/deletable until delivery', () => {
+describe('queued mid-turn messages: editable/deletable until delivery', () => {
   function makeQueue(): QueuedMessageEntry[] {
     return [
       { id: 'qm-1', queuedAt: 1000, text: 'first pending' },
@@ -145,7 +145,7 @@ describe('queued mid-turn messages — editable/deletable until delivery', () =>
     expect(listQueuedMessages(queue).map((m) => m.id)).toEqual(['qm-2']);
   });
 
-  test('a delivered message is immutable — edit and delete both refuse', () => {
+  test('a delivered message is immutable: edit and delete both refuse', () => {
     const queue = makeQueue();
     // Delivery is a shift() (drainMessageQueue's exact mechanics).
     const delivered = queue.shift()!;
@@ -163,7 +163,7 @@ describe('queued mid-turn messages — editable/deletable until delivery', () =>
   });
 });
 
-describe('operator wire — sessions.toolCalls.cancel and sessions.queuedMessages.*', () => {
+describe('operator wire: sessions.toolCalls.cancel and sessions.queuedMessages.*', () => {
   function makeControlsWith(live: SessionLiveTurnControls | null) {
     const holder = new SessionLiveTurnControlsHolder();
     if (live) holder.bind(live);

@@ -148,7 +148,7 @@ check('rest-parity', () => {
     assert(byHttp, 'no REST route resolves ' + method.http.method + ' ' + method.http.path);
     assert(byHttp.methodId === method.id, 'REST route ' + method.http.path + ' resolves to ' + byHttp.methodId + ', not ' + method.id);
   }
-  assert(restCount > 0, 'no REST-bound methods found — packed contract looks empty');
+  assert(restCount > 0, 'no REST-bound methods found, packed contract looks empty');
   console.log('  (' + restCount + ' REST-bound methods checked)');
 });
 
@@ -209,7 +209,7 @@ async function main(): Promise<void> {
 
     console.log('[artifact-lane] running shipped conformance kit against the packed artifacts...');
     run('node', ['conformance.mjs'], projectDir, { stdio: 'inherit' });
-    console.log('[artifact-lane] artifact lane passed — packed artifacts are internally coherent');
+    console.log('[artifact-lane] artifact lane passed, packed artifacts are internally coherent');
   } finally {
     rmSync(projectDir, { recursive: true, force: true });
     rmSync(packDestination, { recursive: true, force: true });

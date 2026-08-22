@@ -57,7 +57,7 @@ const CODEX_NODE_LAUNCHER = 'node /home/u/.local/share/mise/installs/node/26.1.0
 const CODEX_BINARY = '/home/u/.local/share/mise/installs/node/26.1.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --dangerously-bypass-approvals-and-sandbox';
 const PLUGIN_MCP_NODE = 'node /home/u/.claude/plugins/cache/goodvibes-market/goodvibes/2.3.3/server/intel/index.cjs';
 
-describe('detect — classifyExternalKind (argv shapes)', () => {
+describe('detect: classifyExternalKind (argv shapes)', () => {
   test('claude CLI basename', () => expect(classifyExternalKind(CLAUDE_ARGS)).toBe('claude-code'));
   test('claude.exe basename', () => expect(classifyExternalKind('claude.exe --resume x')).toBe('claude-code'));
   test('claude npm package path', () => expect(classifyExternalKind('node /x/@anthropic-ai/claude-code/bin/x')).toBe('claude-code'));
@@ -77,12 +77,12 @@ function raw(pid: number, ppid: number, args: string, extra: Partial<ObservedRaw
   return { pid, ppid, args, cpuSeconds: 0, ...extra };
 }
 
-describe('detect — classifyObservedProcesses (dedup + one row per session)', () => {
+describe('detect: classifyObservedProcesses (dedup + one row per session)', () => {
   test('a same-kind child under its matched parent is dropped (codex binary under node launcher)', () => {
     const rows = classifyObservedProcesses([
       raw(100, 1, '-bash'),
       raw(101, 100, CODEX_NODE_LAUNCHER, { cwd: '/w/codex' }), // root launcher
-      raw(102, 101, CODEX_BINARY, { cwd: '/w/codex' }), // child helper — dropped
+      raw(102, 101, CODEX_BINARY, { cwd: '/w/codex' }), // child helper, dropped
     ]);
     expect(rows).toHaveLength(1);
     expect(rows[0]!.pid).toBe(101);
@@ -102,7 +102,7 @@ describe('detect — classifyObservedProcesses (dedup + one row per session)', (
   });
 });
 
-describe('detect — paneForTty', () => {
+describe('detect: paneForTty', () => {
   test('maps a tty to its pane', () => {
     const panes = [{ paneId: '%90', tty: '/dev/pts/11' }, { paneId: '%87', tty: '/dev/pts/14' }];
     expect(paneForTty(panes, '/dev/pts/14')?.paneId).toBe('%87');
@@ -123,7 +123,7 @@ function stubReaders(processes: ObservedRawProcess[], panes: { paneId: string; t
   };
 }
 
-describe('ObservedAgentSource — discovery, liveness, TTL', () => {
+describe('ObservedAgentSource: discovery, liveness, TTL', () => {
   test('list() surfaces rows with correct kind/cwd/pid and a tmux steer channel when a pane maps', () => {
     const procs = [raw(300, 1, CLAUDE_ARGS, { cwd: '/w/claude', tty: '/dev/pts/11', startedAt: T0 - 1000 })];
     const source = new ObservedAgentSource({
@@ -191,7 +191,7 @@ describe('ObservedAgentSource — discovery, liveness, TTL', () => {
   });
 });
 
-describe('ObservedAgentSource — steer (tmux three-send recipe)', () => {
+describe('ObservedAgentSource: steer (tmux three-send recipe)', () => {
   function makeSource(runner: TmuxCommandRunner): ObservedAgentSource {
     return new ObservedAgentSource({ steerRunner: runner, now: () => T0 });
   }
@@ -243,7 +243,7 @@ function observedRow(overrides: Partial<ObservedAgentRow> = {}): ObservedAgentRo
   };
 }
 
-describe('adaptObservedAgent — node shape', () => {
+describe('adaptObservedAgent: node shape', () => {
   test('kind, ids, cwd, elapsed, and the observed drill-in facts', () => {
     const node = adaptObservedAgent(observedRow(), T0);
     expect(node.id).toBe(observedNodeId(500));
@@ -271,7 +271,7 @@ describe('adaptObservedAgent — node shape', () => {
     expect(adaptObservedAgent(observedRow({ liveness: { state: 'quiet', cpuSeconds: 1, detail: 'x' } }), T0).state).toBe('idle');
   });
 
-  test('foreign agents report no usage/cost — honest absence', () => {
+  test('foreign agents report no usage/cost: honest absence', () => {
     const node = adaptObservedAgent(observedRow(), T0);
     expect(node.usage).toBeUndefined();
     expect(node.costUsd).toBeNull();
@@ -306,7 +306,7 @@ function tmuxRowSource(): Pick<ObservedAgentSource, 'list' | 'steer'> {
   };
 }
 
-describe('registry — observed rows fold in but never own a lifecycle', () => {
+describe('registry: observed rows fold in but never own a lifecycle', () => {
   test('absent observedAgents dep yields zero observed rows (degrade-to-today)', () => {
     const registry = createProcessRegistry(makeDeps());
     expect(registry.query().nodes.filter((n) => n.kind === 'observed-external')).toHaveLength(0);
@@ -345,7 +345,7 @@ describe('registry — observed rows fold in but never own a lifecycle', () => {
   });
 });
 
-describe('fleet-count — observed rows CANNOT enter the cap (structural)', () => {
+describe('fleet-count: observed rows CANNOT enter the cap (structural)', () => {
   test('the responsibility probe counts only owned sources; observed rows are not a source', () => {
     // One native running agent + zero ACP hosted = active 1. There is no
     // observed-source parameter on the probe AT ALL, observed rows are
@@ -383,7 +383,7 @@ function invoke(body: Record<string, unknown>): Parameters<ReturnType<typeof cre
   return { body } as unknown as Parameters<ReturnType<typeof createFleetObservedSteerHandler>>[0];
 }
 
-describe('routes/fleet — fleet.observed.steer handler', () => {
+describe('routes/fleet: fleet.observed.steer handler', () => {
   const observedNode = adaptObservedAgent(observedRow(), T0);
   const registry = {
     getNode: (id: string) => (id === observedNode.id ? observedNode : null),
@@ -400,7 +400,7 @@ describe('routes/fleet — fleet.observed.steer handler', () => {
     expect(() => handler(invoke({ id: 'observed:999', text: 'go' }))).toThrow(/No fleet node/);
   });
 
-  test('a non-observed kind is refused (400) — never a back door to a native agent', () => {
+  test('a non-observed kind is refused (400): never a back door to a native agent', () => {
     const nativeReg = {
       getNode: () => ({ id: 'a1', kind: 'agent' as const, label: 'x', state: 'thinking' as const, elapsedMs: 0, costState: 'unpriced' as const, capabilities: { interruptible: true, killable: true, pausable: false, resumable: false, steerable: true } }),
       steer: () => ({ queued: true as const, messageId: 'x' }),

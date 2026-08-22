@@ -140,7 +140,7 @@ describe('an absent optional dependency does not take the process down', () => {
     }
   });
 
-  test('the static import that shipped dies before its first statement — the baseline', () => {
+  test('the static import that shipped dies before its first statement: the baseline', () => {
     const run = runWhereOptionalsAreAbsent(staticImport.binary, emptyCwd);
     expect(run.status).toBe(1);
     // Not "it printed an error and exited": it never ran at all. Zero bytes on
@@ -197,7 +197,7 @@ describe('an absent optional client package does not take the process down', () 
     }
   });
 
-  test('the static graphql import dies before its first statement — the baseline', () => {
+  test('the static graphql import dies before its first statement: the baseline', () => {
     const run = runWhereOptionalsAreAbsent(staticImport.binary, emptyCwd);
     expect(run.status).toBe(1);
     // Not "it printed an error and exited": it never ran at all. Zero bytes on

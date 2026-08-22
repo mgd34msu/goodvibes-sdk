@@ -185,7 +185,7 @@ afterAll(() => {
   rmSync(work, { recursive: true, force: true });
 });
 
-test('bootDaemon() actually starts timers — the measurement is not vacuous', () => {
+test('bootDaemon() actually starts timers: the measurement is not vacuous', () => {
   // Guards the false pass where the graph stopped composing anything and the
   // leak count reads zero for entirely the wrong reason.
   expect(createdDuringRun).toBeGreaterThan(10);

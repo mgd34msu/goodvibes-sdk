@@ -83,7 +83,7 @@ export function runResumeRepair(options: ResumeRepairOptions): ResumeRepairResul
           {
             type: 'text',
             text: [
-              '[Session Resume — Empty State]',
+              '[Session Resume: Empty State]',
               `Session ${sessionId} was resumed with no prior messages.`,
               'Starting fresh with no context.',
             ].join('\n'),

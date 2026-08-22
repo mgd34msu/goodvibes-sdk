@@ -115,7 +115,7 @@ export interface MemoryCoreAccess {
  * The EXTENDED verbs added in 1.2.0 so a wire client can fully detach from the file.
  * Each maps to a MemoryRegistry read/write the consumers were still doing locally:
  *  - `list`         , bulk read (getAll / literal browse): knowledge injection + agent `list`.
- *  - `searchSemantic`— scored semantic recall: agent semantic path + TUI `/recall --semantic`.
+ *  - `searchSemantic`: scored semantic recall: agent semantic path + TUI `/recall --semantic`.
  *  - `update`       , edit scope/summary/detail/tags (a scope edit is how a record is "promoted" project→team).
  *  - `link`/`linksFor`, relate records / read a record's links.
  *  - `reviewQueue`  , records prioritised for review (the curator/queue surface).

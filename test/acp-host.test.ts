@@ -39,7 +39,7 @@ async function waitUntil(predicate: () => boolean, timeoutMs = 10_000): Promise<
   }
 }
 
-describe('discoverAcpAgents — read-only, quiet absence', () => {
+describe('discoverAcpAgents: read-only, quiet absence', () => {
   test('finds known binaries on PATH and in known install dirs; absence is an empty list', () => {
     const io = {
       fileExists: (path: string) => path === '/fake-bin/claude-code-acp' || path === '/home/u/.local/bin/codex',
@@ -57,7 +57,7 @@ describe('discoverAcpAgents — read-only, quiet absence', () => {
   });
 });
 
-describe('AcpHostService — full round-trip against the real protocol', () => {
+describe('AcpHostService: full round-trip against the real protocol', () => {
   test('spawn → prompt (streams) → steer (second prompt) → stop', async () => {
     const registered: Array<{ id: string; title: string }> = [];
     const host = new AcpHostService({
@@ -118,7 +118,7 @@ describe('AcpHostService — full round-trip against the real protocol', () => {
     await host.stop(hosted.id);
   }, 30_000);
 
-  test('stop lands cleanly on a mid-turn (slow) agent — cancelled, not failed', async () => {
+  test('stop lands cleanly on a mid-turn (slow) agent: cancelled, not failed', async () => {
     const host = new AcpHostService({});
     const hosted = await host.spawnAgent({ agent: fakeAgent('slow-turn'), cwd: import.meta.dir });
     host.prompt(hosted.id, 'long task');
@@ -130,7 +130,7 @@ describe('AcpHostService — full round-trip against the real protocol', () => {
   }, 30_000);
 });
 
-describe('AcpHostService — handshake-failure honesty', () => {
+describe('AcpHostService: handshake-failure honesty', () => {
   test('a binary that does not speak ACP yields a structured error, never a hung row', async () => {
     const host = new AcpHostService({ handshakeTimeoutMs: 3_000 });
     const hosted = await host.spawnAgent({ agent: fakeAgent('bad-handshake'), cwd: import.meta.dir });
@@ -151,7 +151,7 @@ describe('AcpHostService — handshake-failure honesty', () => {
   }, 15_000);
 });
 
-describe('fleet integration — the hosted row is a first-class fleet row', () => {
+describe('fleet integration: the hosted row is a first-class fleet row', () => {
   function makeDeps(host: AcpHostService): ProcessRegistryDeps {
     return {
       agentManager: { list: () => [], cancel: () => false },

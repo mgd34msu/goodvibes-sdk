@@ -327,7 +327,7 @@ describe('the silence floor measures the room instead of assuming it', () => {
     expect(adaptive.finish('silence').stopReason).toBe('silence');
   });
 
-  test('a quiet room is left exactly as it was — the floor never drops below the constant', () => {
+  test('a quiet room is left exactly as it was: the floor never drops below the constant', () => {
     // Measuring near-silence could only ever push the floor DOWN, which would
     // start clipping sentences. The lower clamp is what makes adapting safe.
     for (const quiet of [1, 10, 30, 44]) {
@@ -744,7 +744,7 @@ describe('the recorder command line, against what the real tools accept', () => 
     expect(resolveRecorderCommand('auto', { isInstalled: () => false })).toBeNull();
   });
 
-  test('a NAMED backend that is missing does not silently fall back — pinning it was the point', () => {
+  test('a NAMED backend that is missing does not silently fall back: pinning it was the point', () => {
     const resolved = resolveRecorderCommand('pw-record', { isInstalled: (c) => c === 'parecord' });
     expect(resolved).toBeNull();
   });

@@ -228,7 +228,7 @@ describe('the ingestion screen does not warn about a key the migration handles',
     expect(JSON.stringify(result.config)).not.toContain('finalStretchDays');
   });
 
-  test('the screen IS live in this section — it just has no prefix to catch', () => {
+  test('the screen IS live in this section: it just has no prefix to catch', () => {
     // The control, and the reason it is shaped this way. The screen announces an
     // unknown key only when it looks like a newer FORM of a known one, matched
     // by prefix in either direction; `finalStretchDays` shares a prefix with no

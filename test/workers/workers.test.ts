@@ -158,7 +158,7 @@ describe('Workers harness: transport-http round-trip', () => {
   // Asserts that result is non-null and contains expected fields, proving the
   // transport completed the full HTTP round-trip successfully, not just that
   // it didn't crash.
-  test('success path — mock returns real-shape JSON, result is populated', async () => {
+  test('success path: mock returns real-shape JSON, result is populated', async () => {
     const res = await mf.dispatchFetch('http://workers.test/transport-success');
     expect(res.status).toBe(200);
 
@@ -182,7 +182,7 @@ describe('Workers harness: transport-http round-trip', () => {
   // literal, not regex), proving SDK error taxonomy works under Workers runtime.
   // kind and ctor are returned as separate fields to avoid conflating
   // typed SDKErrorKind values with raw constructor names.
-  test('error path — mock returns 5xx, errorKind is typed \'service\'', async () => {
+  test('error path: mock returns 5xx, errorKind is typed \'service\'', async () => {
     const res = await mf.dispatchFetch('http://workers.test/transport-error');
     // Worker must not crash (status 200 = error was caught and returned as JSON)
     expect(res.status).toBe(200);

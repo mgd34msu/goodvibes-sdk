@@ -303,7 +303,7 @@ function createHarness(overrides?: {
 // Item 1: extractPassedFromText, phantom-pass fix
 // ---------------------------------------------------------------------------
 
-describe('Item 1: extractPassedFromText — phantom-pass fix', () => {
+describe('Item 1: extractPassedFromText: phantom-pass fix', () => {
   const THRESHOLD = 9.9;
 
   test('score below threshold + "approved" prose → false (was phantom-pass before fix)', () => {
@@ -348,7 +348,7 @@ describe('Item 1: extractPassedFromText — phantom-pass fix', () => {
 // Item 4b: extractScoreFromText, fail-closed on malformed/absent scores
 // ---------------------------------------------------------------------------
 
-describe('Item 4b: extractScoreFromText — fail-closed', () => {
+describe('Item 4b: extractScoreFromText: fail-closed', () => {
   test('empty string → null', () => {
     expect(extractScoreFromText('')).toBeNull();
   });
@@ -403,7 +403,7 @@ describe('Item 4b: extractScoreFromText — fail-closed', () => {
 // Item 2: verifyEngineerClaims, disk verification
 // ---------------------------------------------------------------------------
 
-describe('Item 2: verifyEngineerClaims — disk verification', () => {
+describe('Item 2: verifyEngineerClaims: disk verification', () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -590,7 +590,7 @@ describe('Item 3: serializeChain / deserializeChain / importChain', () => {
     expect(chain!.task).toBe('Legacy task');
   });
 
-  test('MAJ-2: future schemaVersion is rejected — fail closed', () => {
+  test('MAJ-2: future schemaVersion is rejected: fail closed', () => {
     const { controller } = createHarness();
     const futurePayload = JSON.stringify({
       schemaVersion: CURRENT_WRFC_CHAIN_SCHEMA_VERSION + 1,
@@ -768,7 +768,7 @@ describe('Item 3: serializeChain / deserializeChain / importChain', () => {
 // Item 3: resumeChain, interrupt recovery
 // ---------------------------------------------------------------------------
 
-describe('Item 3: resumeChain — interrupt recovery from reviewing state', () => {
+describe('Item 3: resumeChain: interrupt recovery from reviewing state', () => {
   test('resumeChain on reviewing state with engineerReport re-spawns a reviewer', async () => {
     const { bus, controller, agentStore, spawnedRecords } = createHarness();
 
@@ -926,7 +926,7 @@ describe('Item 4a: silent-agent watchdog', () => {
 
   test('chain passes normally when engineer completes before watchdog fires', async () => {
     const { bus, controller, agentStore, spawnedRecords, workflowEvents } = createHarness({
-      agentHeartbeatTimeoutMs: 60_000, // long timeout — won't fire
+      agentHeartbeatTimeoutMs: 60_000, // long timeout, won't fire
     });
 
     const ownerRecord = makeRecord({ id: 'owner-wd-ok', task: 'Watchdog ok test' });
@@ -1190,7 +1190,7 @@ describe('MIN-6: resume re-injects synthetic issue when claimsVerified=false', (
 // ---------------------------------------------------------------------------
 
 describe('MIN-11 (planned-fix rework): the fixer agent class no longer exists', () => {
-  test('a failing review runs the planned workstream — no fixer agent ever spawns; per-task phantom detection lives in the engine phases', async () => {
+  test('a failing review runs the planned workstream: no fixer agent ever spawns; per-task phantom detection lives in the engine phases', async () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'wrfc-fixer-gone-'));
     const { bus, controller, agentStore, spawnedRecords } = createHarness({ projectRoot: tmpDir });
     const fixRuns = installStubFixRunner(controller, 'merged');

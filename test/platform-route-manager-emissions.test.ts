@@ -59,7 +59,7 @@ function captureRouteEvents(bus: RuntimeEventBus): CapturedEvent[] {
 // Tests, upsertBinding emissions
 // ---------------------------------------------------------------------------
 
-describe('RouteBindingManager.upsertBinding — emissions', () => {
+describe('RouteBindingManager.upsertBinding: emissions', () => {
   let bus: RuntimeEventBus;
   let manager: RouteBindingManager;
   let events: CapturedEvent[];
@@ -117,7 +117,7 @@ describe('RouteBindingManager.upsertBinding — emissions', () => {
 // Tests, removeBinding emissions
 // ---------------------------------------------------------------------------
 
-describe('RouteBindingManager.removeBinding — emissions', () => {
+describe('RouteBindingManager.removeBinding: emissions', () => {
   let bus: RuntimeEventBus;
   let manager: RouteBindingManager;
   let events: CapturedEvent[];
@@ -162,7 +162,7 @@ describe('RouteBindingManager.removeBinding — emissions', () => {
     expect(removed).toBeUndefined();
   });
 
-  it('removal is idempotent — second call emits nothing', async () => {
+  it('removal is idempotent: second call emits nothing', async () => {
     const binding = await manager.upsertBinding(BASE_INPUT);
     await flush();
     await manager.removeBinding(binding.id);

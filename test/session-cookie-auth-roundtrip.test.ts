@@ -270,7 +270,7 @@ describe('authenticateOperatorToken session validation when sharedToken is set',
 // ---------------------------------------------------------------------------
 
 describe('session-cookie auth HTTP round-trip', () => {
-  test('GET /api/control-plane/auth returns authenticated:true and authMode:session after cookie login — with sharedToken set', async () => {
+  test('GET /api/control-plane/auth returns authenticated:true and authMode:session after cookie login: with sharedToken set', async () => {
     const dir = makeTmpDir();
     cleanupDirs.push(dir);
     const userAuth = makeUserAuth(dir);
@@ -370,7 +370,7 @@ describe('session-cookie auth HTTP round-trip', () => {
 // ---------------------------------------------------------------------------
 
 describe('companion-chat session creation via session-cookie auth', () => {
-  test('POST /api/companion/chat/sessions succeeds when cookie auth is valid — with sharedToken set', async () => {
+  test('POST /api/companion/chat/sessions succeeds when cookie auth is valid: with sharedToken set', async () => {
     const dir = makeTmpDir();
     cleanupDirs.push(dir);
     const userAuth = makeUserAuth(dir);

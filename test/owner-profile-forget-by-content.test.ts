@@ -87,7 +87,7 @@ function reportedIndexOf(store: OwnerProfileStore, heading: string, text: string
   return line?.lineIndex ?? -1;
 }
 
-describe('§9.2 — the concurrent-edit hazard a positional delete cannot survive', () => {
+describe('§9.2: the concurrent-edit hazard a positional delete cannot survive', () => {
   test('he inserts a line above it between the read and the forget; the RIGHT line goes', async () => {
     const { catalog, store, path } = await harness();
 
@@ -193,7 +193,7 @@ describe('the verb no longer accepts a position at all', () => {
       .rejects.toThrow(/needs either a fieldId/);
   });
 
-  test('read output still reports lineIndex — the model keeps it, the verb does not', async () => {
+  test('read output still reports lineIndex: the model keeps it, the verb does not', async () => {
     const { catalog } = await harness();
     const document = await catalog.invoke('profile.read', { ...ctx, body: {} }) as {
       sections: readonly { heading: string; prose: readonly { lineIndex: number }[] }[];
@@ -299,7 +299,7 @@ describe('the mechanical-field path is unchanged', () => {
   });
 });
 
-describe('§9.2 — the list marker is syntax, not content', () => {
+describe('§9.2: the list marker is syntax, not content', () => {
   test('the bare prose he actually said deletes the line', async () => {
     const { catalog, path } = await harness();
     // He says "forget that I'm allergic to shellfish". The `- ` in front of it
@@ -352,7 +352,7 @@ describe('§9.2 — the list marker is syntax, not content', () => {
     expect(readFileSync(path, 'utf-8')).not.toContain('Freezer');
   });
 
-  test('normalising cannot delete the wrong line — ambiguity still refuses', async () => {
+  test('normalising cannot delete the wrong line: ambiguity still refuses', async () => {
     // `- Foo` and a bare `Foo` now both normalise to `Foo`. That is two
     // matches, which is a refusal, not a guess. Deleting the wrong one of two
     // identical lines is unrecoverable; asking is not.

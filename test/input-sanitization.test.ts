@@ -10,7 +10,7 @@ import {
   buildOperatorSessionCookie,
 } from '../packages/sdk/src/platform/security/http-auth.js';
 
-describe('platform/security — http-auth smoke', () => {
+describe('platform/security: http-auth smoke', () => {
   test('OPERATOR_SESSION_COOKIE_NAME is a non-empty string', () => {
     expect(typeof OPERATOR_SESSION_COOKIE_NAME).toBe('string');
     expect(OPERATOR_SESSION_COOKIE_NAME.length).toBeGreaterThan(0);

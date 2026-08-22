@@ -56,7 +56,7 @@ describe('fan-out request / constraint-shape detectors', () => {
 // Ruling: explicit parallel fan-out request is honored (not collapsed)
 // --------------------------------------------------------------------------
 
-describe('evaluateWrfcBatchPolicy — explicit parallel fan-out ruling', () => {
+describe('evaluateWrfcBatchPolicy: explicit parallel fan-out ruling', () => {
   test('honors an explicit parallel request for independent implementation deliverables (no collapse)', () => {
     const decision = evaluateWrfcBatchPolicy({
       mode: 'batch-spawn',
@@ -173,7 +173,7 @@ function emitAgentCompleted(bus: RuntimeEventBus, agentId: string): void {
   bus.emit('agents', createEventEnvelope('AGENT_COMPLETED', { type: 'AGENT_COMPLETED', agentId, durationMs: 0 }, { sessionId: 'test', traceId: 'test', source: 'test' }));
 }
 
-describe('WrfcController — fan-out-collapse system-unsatisfiable constraints', () => {
+describe('WrfcController: fan-out-collapse system-unsatisfiable constraints', () => {
   test('a fan-out-shape constraint on a collapsed chain is excluded from the rubric and cannot fail the review', async () => {
     const h = createHarness();
     const owner = makeRecord({ id: 'owner-1', task: 'implement three endpoints, one separate agent per file in parallel' });

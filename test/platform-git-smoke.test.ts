@@ -10,7 +10,7 @@ import { GitService, conflictPathsFromMergeOutput } from '../packages/sdk/src/pl
 
 const CWD = resolve(import.meta.dir, '..');
 
-describe('platform/git — behavior smoke', () => {
+describe('platform/git: behavior smoke', () => {
   test('GitService.isGitRepo returns true for the SDK repo', async () => {
     const result = await GitService.isGitRepo(CWD);
     expect(result).toBe(true);
@@ -33,7 +33,7 @@ describe('platform/git — behavior smoke', () => {
 // raw merge-failure message has two real shapes depending on the
 // git/simple-git output pairing; both are pinned here as recorded fixtures so
 // the parse never depends on the host's git version.
-describe('platform/git — merge-conflict path extraction (both raw output shapes)', () => {
+describe('platform/git: merge-conflict path extraction (both raw output shapes)', () => {
   test("git's own informational lines: `CONFLICT (content): Merge conflict in <path>`", () => {
     const raw = [
       'Auto-merging shared.txt',

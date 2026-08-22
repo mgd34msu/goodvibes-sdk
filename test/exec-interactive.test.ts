@@ -112,7 +112,7 @@ describe('buildPtyArgv', () => {
     expect(() => buildPtyArgv({ available: false, backend: 'none', reason: 'no' }, 'x')).toThrow();
   });
 
-  test('the sandbox argv wraps the PTY argv — boundary outermost, unchanged', () => {
+  test('the sandbox argv wraps the PTY argv: boundary outermost, unchanged', () => {
     const sandboxArgv = buildBwrapArgv({
       bwrapPath: '/usr/bin/bwrap', workspaceDir: '/ws', cwd: '/ws',
       writableExtras: [], networkEnabled: false,
@@ -227,7 +227,7 @@ describe('buildExecPromptAnswerHandler', () => {
     expect(await handler(ask)).toEqual({ answered: false });
   });
 
-  test('approval WITHOUT a typed answer is a decline — nothing is fabricated', async () => {
+  test('approval WITHOUT a typed answer is a decline: nothing is fabricated', async () => {
     const handler = buildExecPromptAnswerHandler({
       requestApproval: async () => ({ approved: true }),
     });

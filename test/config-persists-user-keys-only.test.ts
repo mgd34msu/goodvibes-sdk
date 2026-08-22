@@ -27,7 +27,7 @@ function readSettings(configDir: string): Record<string, unknown> {
 }
 
 describe('config persists only user-set keys', () => {
-  test('a set() writes only that key to disk — defaults never land', () => {
+  test('a set() writes only that key to disk: defaults never land', () => {
     const configDir = tempConfigDir();
     const manager = new ConfigManager({ configDir });
     manager.set('provider.model', 'openai:gpt-test');

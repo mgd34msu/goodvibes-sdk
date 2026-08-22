@@ -109,7 +109,7 @@ function makeTelemetryHandlers(
 // describe: telemetry routes, happy paths
 // ---------------------------------------------------------------------------
 
-describe('router-e2e telemetry — GET /api/v1/telemetry (happy path)', () => {
+describe('router-e2e telemetry: GET /api/v1/telemetry (happy path)', () => {
   test('returns 200 with snapshot shape when telemetryApi is present', async () => {
     const handlers = makeTelemetryHandlers({ telemetryApiPresent: true });
     const req = makeRequest('GET', 'http://localhost/api/v1/telemetry');
@@ -204,7 +204,7 @@ describe('router-e2e telemetry — GET /api/v1/telemetry (happy path)', () => {
 // describe: telemetry routes, failure paths (telemetryApi absent)
 // ---------------------------------------------------------------------------
 
-describe('router-e2e telemetry — failure paths (telemetryApi null)', () => {
+describe('router-e2e telemetry: failure paths (telemetryApi null)', () => {
   test('returns 503 when telemetryApi is null', async () => {
     const handlers = makeTelemetryHandlers({ telemetryApiPresent: false });
     const req = makeRequest('GET', 'http://localhost/api/v1/telemetry');

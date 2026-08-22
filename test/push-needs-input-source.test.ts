@@ -107,12 +107,12 @@ describe('PushService.attachFleetNeedsInputSource', () => {
     service.attachFleetNeedsInputSource(source);
 
     push(blocked('n1', 's1'));
-    push(blocked('n1', 's1')); // duplicate — suppressed
+    push(blocked('n1', 's1')); // duplicate, suppressed
     await Promise.resolve();
     expect(delivered).toHaveLength(1);
 
     push({ type: 'FLEET_NODE_UNBLOCKED', nodeId: 'n1' });
-    push(blocked('n1', 's1')); // re-block after clear — notifies again
+    push(blocked('n1', 's1')); // re-block after clear, notifies again
     await Promise.resolve();
     expect(delivered).toHaveLength(2);
   });

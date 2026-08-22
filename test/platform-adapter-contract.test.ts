@@ -264,7 +264,7 @@ describe('constantTimeEquals', () => {
 // handleNtfySurfacePayload, delivery-echo short-circuit
 // ---------------------------------------------------------------------------
 
-describe('handleNtfySurfacePayload — delivery echo', () => {
+describe('handleNtfySurfacePayload: delivery echo', () => {
   test('acknowledges a GoodVibes self-echo without queuing', async () => {
     const ctx = makePassingContext();
     // isGoodVibesNtfyDeliveryEcho checks for headers['X-Goodvibes-Origin'] === 'goodvibes-sdk'
@@ -289,7 +289,7 @@ describe('handleNtfySurfacePayload — delivery echo', () => {
 // handleNtfySurfacePayload, missing topic guard
 // ---------------------------------------------------------------------------
 
-describe('handleNtfySurfacePayload — topic validation', () => {
+describe('handleNtfySurfacePayload: topic validation', () => {
   test('returns 400 when topic is missing from body and URL', async () => {
     const ctx = makePassingContext();
     const res = await handleNtfySurfacePayload({}, ctx);
@@ -318,7 +318,7 @@ describe('handleNtfySurfacePayload — topic validation', () => {
 // handleNtfySurfacePayload, authorization guard
 // ---------------------------------------------------------------------------
 
-describe('handleNtfySurfacePayload — authorization', () => {
+describe('handleNtfySurfacePayload: authorization', () => {
   test('returns 403 when authorizeSurfaceIngress blocks the request', async () => {
     const ctx = makeBlockingContext();
     // topic must match the configured agentTopic, but since configManager

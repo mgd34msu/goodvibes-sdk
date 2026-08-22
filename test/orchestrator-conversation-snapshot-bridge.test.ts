@@ -31,7 +31,7 @@ import type { LLMProvider } from '../packages/sdk/src/platform/providers/interfa
 import type { ConversationMessageSnapshot } from '../packages/sdk/src/platform/core/conversation.js';
 import type { FeatureFlagManager } from '../packages/sdk/src/platform/runtime/feature-flags/manager.js';
 
-describe('AgentOrchestrator — conversation-sink wiring', () => {
+describe('AgentOrchestrator: conversation-sink wiring', () => {
   test('setConversationSink wires register/release into createRunContext(); unset → both undefined so orchestrator-runner\'s ?.() calls are no-ops', () => {
     const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
     // createRunContext() reads this.toolDeps!.providerRegistry! directly,
@@ -158,7 +158,7 @@ function makeMinimalRunContext(overrides: {
   };
 }
 
-describe('runAgentTask — conversation-snapshot bridge call sites', () => {
+describe('runAgentTask: conversation-snapshot bridge call sites', () => {
   test('registers a live source right after creating the ConversationManager, then releases exactly once on normal completion', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'snapshot-bridge-'));
     try {

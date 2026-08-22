@@ -48,7 +48,7 @@ import {
 const contract = loadWebuiContract();
 const methods = contract.operator.methods;
 
-describe('webui facade — REST vs ws disposition', () => {
+describe('webui facade: REST vs ws disposition', () => {
   test('WEBUI_METHOD_ROUTES is exactly the REST-bound methods, verbatim', () => {
     const expected = buildRoutes(methods);
     // buildRoutes()'s RouteRow types `method` as a bare `string` (scripts/generate-webui-facade.ts);
@@ -88,14 +88,14 @@ describe('webui facade — REST vs ws disposition', () => {
   });
 });
 
-describe('webui facade — drift guard', () => {
+describe('webui facade: drift guard', () => {
   test('the checked-in module matches a fresh generation', () => {
     const onDisk = readFileSync(WEBUI_FACADE_OUT_PATH, 'utf8');
     expect(onDisk).toBe(renderWebui(contract));
   });
 });
 
-describe('HA python client — generated transport', () => {
+describe('HA python client: generated transport', () => {
   const haContract = loadHaContract();
   const py = readFileSync(HA_CLIENT_OUT_PATH, 'utf8');
   const consumed = consumedIdsFor(haContract);

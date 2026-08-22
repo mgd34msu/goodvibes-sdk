@@ -93,7 +93,7 @@ describe('a relayed message does not', () => {
     expect(getProcessUntrustedContentLedger().hasIngestedThisTurn()).toBe(true);
   });
 
-  test('Home Assistant attests nothing either — a room is not a person', () => {
+  test('Home Assistant attests nothing either: a room is not a person', () => {
     recordAPageRead();
     expect(startCompanionTurn(undefined)).toBe(false);
     expect(getProcessUntrustedContentLedger().hasIngestedThisTurn()).toBe(true);

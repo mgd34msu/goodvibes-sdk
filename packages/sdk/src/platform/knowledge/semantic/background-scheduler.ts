@@ -129,7 +129,7 @@ export class BackgroundSelfImproveScheduler {
         // Concrete gap evidence still clears it, exactly like a scoped key.
         if (input.gapIds?.length) sweep.zeroGapUntil = 0;
         if (sweep.pending) return; // one queued sweep absorbs the whole burst
-        if (now < sweep.zeroGapUntil) return; // the sweep found nothing recently — parked
+        if (now < sweep.zeroGapUntil) return; // the sweep found nothing recently, parked
       }
     }
     const minDelayMs = Math.max(0, this.deps.minDelayMs());

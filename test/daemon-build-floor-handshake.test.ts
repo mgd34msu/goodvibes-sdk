@@ -20,7 +20,7 @@ import {
 } from '../packages/sdk/src/platform/control-plane/daemon-compatibility.ts';
 import { evaluateClientCompatibility } from '../packages/sdk/src/platform/control-plane/client-compatibility.ts';
 
-describe('readDaemonVersion — /status already answers this', () => {
+describe('readDaemonVersion: /status already answers this', () => {
   test('reads the version out of a /status body', () => {
     expect(readDaemonVersion({ status: 'running', version: '1.21.0' })).toBe('1.21.0');
     expect(readDaemonVersion({ status: 'running', version: '  1.21.0 ' })).toBe('1.21.0');
@@ -75,12 +75,12 @@ describe('evaluateDaemonCompatibility', () => {
     expect(evaluateDaemonCompatibility({ daemonVersion: undefined, floor: '  ' }).status).toBe('ok');
   });
 
-  test('a release candidate counts as its release — the floor gates on behavior', () => {
+  test('a release candidate counts as its release: the floor gates on behavior', () => {
     expect(evaluateDaemonCompatibility({ daemonVersion: '1.21.0-rc.1', floor: '1.21.0' }).status).toBe('ok');
   });
 });
 
-describe('evaluateDaemonStatusCompatibility — the shape a client attaching actually has', () => {
+describe('evaluateDaemonStatusCompatibility: the shape a client attaching actually has', () => {
   test('takes the /status body straight from the liveness probe', () => {
     const verdict = evaluateDaemonStatusCompatibility(
       { status: 'running', version: '1.19.0' },

@@ -100,7 +100,7 @@ function putOrphanSidecar(sessionId: string): string {
   // Past the settle window, so the sweep treats it as residue rather than as a
   // file another instance might still be rewriting.
   ageTo(path, ANCHOR_SIDECAR_SETTLE_MS + 86_400_000);
-  return path; // no <sessionId>.jsonl beside it — the owner is gone
+  return path; // no <sessionId>.jsonl beside it, the owner is gone
 }
 
 describe('runDurabilityHousekeeping', () => {

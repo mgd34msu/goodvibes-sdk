@@ -212,7 +212,7 @@ async function build(input: {
 // The scope gate, §3.4a, §3.4b
 // ---------------------------------------------------------------------------
 
-describe('gmail source — capability sufficiency', () => {
+describe('gmail source: capability sufficiency', () => {
   test('a grant with no Gmail scope is insufficient, not an empty successful poll', async () => {
     const harness = await build({ scopes: [], seedHistoryId: '100' });
     const verdict = await harness.source.start(new AbortController().signal);
@@ -385,7 +385,7 @@ describe('gmail source — capability sufficiency', () => {
 // Delivery
 // ---------------------------------------------------------------------------
 
-describe('gmail source — delivery', () => {
+describe('gmail source: delivery', () => {
   test('a delta is delivered in the source-discriminated Gmail shape', async () => {
     const harness = await build({
       seedHistoryId: '100',
@@ -468,7 +468,7 @@ describe('gmail source — delivery', () => {
  * already draws on the IMAP side: a message that is GONE may be dropped and
  * stepped over; a message we FAILED TO FETCH may be neither.
  */
-describe('gmail source — a delta that could not be fully read', () => {
+describe('gmail source: a delta that could not be fully read', () => {
   const RATE_LIMITED: GoogleApiFailure = {
     ok: false,
     status: 429,
@@ -616,7 +616,7 @@ describe('gmail source — a delta that could not be fully read', () => {
 // Losing our place, §3.4d, §4
 // ---------------------------------------------------------------------------
 
-describe('gmail source — resync', () => {
+describe('gmail source: resync', () => {
   test('resync-required discards, re-establishes at the high-water mark, discloses, and does not replay', async () => {
     const harness = await build({
       seedHistoryId: '100',
@@ -647,7 +647,7 @@ describe('gmail source — resync', () => {
 // The adaptive interval, §3.4d
 // ---------------------------------------------------------------------------
 
-describe('gmail source — adaptive interval', () => {
+describe('gmail source: adaptive interval', () => {
   test('it polls every 5 s while an expectation is open and every 60 s when none is', async () => {
     const harness = await build({ seedHistoryId: '100', page: historyPage('100', []) });
     harness.state.expectationOpen = true;

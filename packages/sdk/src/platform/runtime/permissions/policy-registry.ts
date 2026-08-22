@@ -30,7 +30,7 @@ import type { EnforceGateResult } from './divergence-dashboard.js';
  * - `simulating`, Simulation pipeline is active; divergence being collected.
  * - `promoting` , Gate check in progress; simulation evidence collected.
  * - `active`    , Bundle is the enforced policy.
- * - `rolled-back`— Bundle was superseded by a rollback operation.
+ * - `rolled-back`: Bundle was superseded by a rollback operation.
  */
 export type BundleLifecycleState =
   | 'loaded'

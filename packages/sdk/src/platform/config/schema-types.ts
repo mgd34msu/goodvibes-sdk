@@ -61,24 +61,24 @@ export interface GoodVibesConfig {
     showToolPreview: boolean;   // default: false
   };
   provider: {
-    reasoningEffort: string;    // default: 'medium' — per-model levels, see providers/reasoning-effort.ts
+    reasoningEffort: string;    // default: 'medium'. Per-model levels, see providers/reasoning-effort.ts
     model: string;              // default: 'openrouter:openrouter/free'
     embeddingProvider: string;  // default: 'hashed-local'
     systemPromptFile: string;   // default: ''
-    optimizerMode: 'off' | 'manual' | 'auto' | 'pinned'; // default: 'off' — provider routing optimizer ('off' = optimizer inactive)
-    optimizerPinnedModel: string; // default: '' — provider-qualified model id applied when optimizerMode is 'pinned'
-    localContextIngestion: boolean; // default: true — ingest max_context_length from local/custom provider /v1/models
+    optimizerMode: 'off' | 'manual' | 'auto' | 'pinned'; // default: 'off'. Provider routing optimizer ('off' = optimizer inactive)
+    optimizerPinnedModel: string; // default: ''. Provider-qualified model id applied when optimizerMode is 'pinned'
+    localContextIngestion: boolean; // default: true. Ingest max_context_length from local/custom provider /v1/models
   };
   behavior: {
     autoApprove: boolean;       // default: false
     autoCompactThreshold: number; // default: 80
-    compactionStrategy: 'off' | 'structured' | 'distiller'; // default: 'structured' — 'off' runs sessions uncompacted
+    compactionStrategy: 'off' | 'structured' | 'distiller'; // default: 'structured'. 'off' runs sessions uncompacted
     staleContextWarnings: boolean; // default: true
     saveHistory: boolean;       // default: true
     notifyOnComplete: boolean;  // default: true
     suggestAlternativeOnProviderFail: boolean; // default: false
-    hitlMode: 'off' | 'quiet' | 'balanced' | 'operator'; // default: 'balanced' — 'off' keeps the baseline notification policy
-    toolResultReconciliation: 'reconcile' | 'warn-only'; // default: 'reconcile' — inject synthetic results for dangling tool calls at turn end
+    hitlMode: 'off' | 'quiet' | 'balanced' | 'operator'; // default: 'balanced'. 'off' keeps the baseline notification policy
+    toolResultReconciliation: 'reconcile' | 'warn-only'; // default: 'reconcile'. Inject synthetic results for dangling tool calls at turn end
     returnContextMode: 'off' | 'local' | 'assisted'; // default: 'off'
     guidanceMode: 'off' | 'minimal' | 'guided'; // default: 'minimal'
   };
@@ -92,26 +92,26 @@ export interface GoodVibesConfig {
     mode: PermissionMode;       // default: 'prompt'
     tools: PermissionsToolConfig;
     backgroundAgents: BackgroundAgentsMode; // default: 'inherit'
-    engine: 'baseline' | 'policy-engine'; // default: 'baseline' — layered tool/path policy evaluator (restart to apply)
-    simulation: boolean;        // default: true — dual-evaluator shadow pipeline recording divergence (restart to apply)
-    divergenceDashboard: boolean; // default: true — divergence aggregation + enforce-mode gate
-    commandParser: 'ast' | 'flat'; // default: 'ast' — shell AST per-segment verdicts vs flat segmentation
-    divergenceThreshold: number; // default: 0.05 — divergence-gate max divergence rate
-    maxDivergenceRecords: number; // default: 500 — retained divergence records for the simulation dashboard
+    engine: 'baseline' | 'policy-engine'; // default: 'baseline'. Layered tool/path policy evaluator (restart to apply)
+    simulation: boolean;        // default: true. Dual-evaluator shadow pipeline recording divergence (restart to apply)
+    divergenceDashboard: boolean; // default: true. Divergence aggregation + enforce-mode gate
+    commandParser: 'ast' | 'flat'; // default: 'ast'. Shell AST per-segment verdicts vs flat segmentation
+    divergenceThreshold: number; // default: 0.05. Divergence-gate max divergence rate
+    maxDivergenceRecords: number; // default: 500. Retained divergence records for the simulation dashboard
   };
   diagnostics: {
-    postEdit: 'on' | 'off';     // default: 'on' — cheap in-process post-edit syntax diagnostics
+    postEdit: 'on' | 'off';     // default: 'on'. Cheap in-process post-edit syntax diagnostics
   };
   orchestration: {
-    recursionEnabled: boolean;  // default: false — allow recursive agent spawning under bounded policy
-    maxDepth: number;           // default: 0 — 0=off, higher values allow deeper bounded recursion
+    recursionEnabled: boolean;  // default: false. Allow recursive agent spawning under bounded policy
+    maxDepth: number;           // default: 0. 0=off, higher values allow deeper bounded recursion
   };
   planner: {
-    decomposition: 'agent' | 'heuristic';  // default: 'agent' — 'heuristic' forces the old single-item path
-    maxTurns: number;                       // default: 6 — turn ceiling for the planning-decomposition agent
-    tokenCeiling: number;                   // default: 120000 — token budget for the planning-decomposition agent
-    wallTimeoutMs: number;                  // default: 60000 — wall-clock timeout for the planning-decomposition agent
-    adaptive: boolean;                      // default: false — score single/cohort/background/remote strategies each turn
+    decomposition: 'agent' | 'heuristic';  // default: 'agent'. 'heuristic' forces the old single-item path
+    maxTurns: number;                       // default: 6. Turn ceiling for the planning-decomposition agent
+    tokenCeiling: number;                   // default: 120000. Token budget for the planning-decomposition agent
+    wallTimeoutMs: number;                  // default: 60000. Wall-clock timeout for the planning-decomposition agent
+    adaptive: boolean;                      // default: false. Score single/cohort/background/remote strategies each turn
   };
   sandbox: {
     // Per-command exec sandbox (bubblewrap). enabled is the operator switch
@@ -162,18 +162,18 @@ export interface GoodVibesConfig {
   payments: PaymentsConfig;
     // default: enabled true, run the local session daemon (loopback only); timezone '', IANA name the daemon reckons calendar days in, empty means UTC
   danger: {
-    httpListener: boolean;          // default: false — enable HTTP webhook listener
+    httpListener: boolean;          // default: false. Enable HTTP webhook listener
   };
   tools: {
-    llmEnabled: boolean;            // default: false — enable dedicated tool LLM for internal operations
-    llmProvider: string;            // default: '' — provider for tool LLM calls (empty = use current)
-    llmModel: string;               // default: '' — model for tool LLM calls (empty = fastest available)
-    autoHeal: boolean;              // default: false — auto-fix syntax errors on write/edit
-    defaultTokenBudget: number;     // default: 5000 — default token budget for read operations
-    hooksFile: string;              // default: 'hooks.json' — hook configuration file name
-    overflowSpillBackend: 'file' | 'ledger' | 'diagnostics'; // default: 'file' — where overflow content spills
-    contractVerification: boolean;  // default: true — registration-time contract checks on every tool
-    outputSchemaFingerprints: boolean; // default: false — append _meta schema fingerprints to find/analyze/inspect results
+    llmEnabled: boolean;            // default: false. Enable dedicated tool LLM for internal operations
+    llmProvider: string;            // default: ''. Provider for tool LLM calls (empty = use current)
+    llmModel: string;               // default: ''. Model for tool LLM calls (empty = fastest available)
+    autoHeal: boolean;              // default: false. Auto-fix syntax errors on write/edit
+    defaultTokenBudget: number;     // default: 5000. Default token budget for read operations
+    hooksFile: string;              // default: 'hooks.json'. Hook configuration file name
+    overflowSpillBackend: 'file' | 'ledger' | 'diagnostics'; // default: 'file'. Where overflow content spills
+    contractVerification: boolean;  // default: true. Registration-time contract checks on every tool
+    outputSchemaFingerprints: boolean; // default: false. Append _meta schema fingerprints to find/analyze/inspect results
   };
   wrfc: {
     scoreThreshold: number;

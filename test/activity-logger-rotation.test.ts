@@ -66,7 +66,7 @@ describe('ActivityLogger rotation', () => {
     expect(live).not.toContain('XXXX');
   });
 
-  test('only one backup is kept — a second rotation overwrites .1', async () => {
+  test('only one backup is kept: a second rotation overwrites .1', async () => {
     const dir = tempLogDir();
     const activity = join(dir, 'activity.md');
     const logger = new ActivityLogger();

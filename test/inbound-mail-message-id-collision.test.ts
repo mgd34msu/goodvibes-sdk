@@ -152,7 +152,7 @@ describe('a forged Message-ID cannot suppress a message (gate #14)', () => {
     expect(harness.messageIds).toEqual([FORGED_ID, FORGED_ID]);
   });
 
-  test('the harness really does forge it — the default is per-UID and distinct', async () => {
+  test('the harness really does forge it: the default is per-UID and distinct', async () => {
     // The control for the test above. If `deliver()` silently ignored the
     // override, both messages would carry `<uid-101…>` and `<uid-102…>` and
     // the collision assertion would be about two different strings.

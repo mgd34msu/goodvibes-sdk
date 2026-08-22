@@ -13,7 +13,7 @@
 import { describe, expect, test } from 'bun:test';
 import { InputTokenizer, type InputToken } from '../packages/sdk/src/platform/core/tokenizer.js';
 
-describe('InputTokenizer — focus-reporting sequences (CSI ?1004h)', () => {
+describe('InputTokenizer: focus-reporting sequences (CSI ?1004h)', () => {
   test('\\x1b[I parses to a focus-in token', () => {
     const tokenizer = new InputTokenizer();
     const tokens = tokenizer.feed('\x1b[I');
@@ -57,7 +57,7 @@ describe('InputTokenizer — focus-reporting sequences (CSI ?1004h)', () => {
   });
 });
 
-describe('InputTokenizer — baseline sanity (text and key tokens)', () => {
+describe('InputTokenizer: baseline sanity (text and key tokens)', () => {
   test('a plain printable character produces a text token', () => {
     const tokenizer = new InputTokenizer();
     const tokens = tokenizer.feed('a');

@@ -102,7 +102,7 @@ function spyFullTransport(): { transport: MemoryTransport; calls: string[] } {
   return { transport, calls };
 }
 
-describe('memory-spine — offline/local fallback (no daemon adopted)', () => {
+describe('memory-spine: offline/local fallback (no daemon adopted)', () => {
   test('with no transport, every op resolves against the LOCAL store', async () => {
     const { store, calls } = spyLocalStore();
     const client = new MemorySpineClient({ local: createLocalMemoryAccess(store) });
@@ -122,7 +122,7 @@ describe('memory-spine — offline/local fallback (no daemon adopted)', () => {
   });
 });
 
-describe('memory-spine — client-of-adopted-daemon mode', () => {
+describe('memory-spine: client-of-adopted-daemon mode', () => {
   test('activate routes EVERY op through the wire and never touches the local store', async () => {
     const local = spyLocalStore();
     const wire = spyTransport();
@@ -165,7 +165,7 @@ describe('memory-spine — client-of-adopted-daemon mode', () => {
     expect(wire.calls).toEqual([]);
   });
 
-  test('deactivating says so, with the reason — never a silent flip', () => {
+  test('deactivating says so, with the reason: never a silent flip', () => {
     // This wording was pinned from a consumer repo until that consumer stopped
     // carrying its own copy of the wire transport. The behaviour is this
     // client's, so the pin belongs here: a surface that silently reverted to
@@ -190,7 +190,7 @@ describe('memory-spine — client-of-adopted-daemon mode', () => {
   });
 });
 
-describe('memory-spine — extended catalog (full detach)', () => {
+describe('memory-spine: extended catalog (full detach)', () => {
   test('local mode routes every extended verb against the LOCAL store', async () => {
     const { store, calls } = spyLocalStore();
     const client = new MemorySpineClient({ local: createLocalMemoryAccess(store) });
@@ -237,7 +237,7 @@ describe('memory-spine — extended catalog (full detach)', () => {
     expect(local.calls).toEqual([]);
   });
 
-  test('COMPILE-TIME guard: a transport object that OMITS an extended verb rejects honestly — never the local file', async () => {
+  test('COMPILE-TIME guard: a transport object that OMITS an extended verb rejects honestly: never the local file', async () => {
     // A surface pinned to an adapter that predates the verb: the transport object
     // literally has no `list`/`searchSemantic`/`exportBundle` function. The client's
     // routeExtended catches the `call === undefined` case. (This is the secondary
@@ -298,7 +298,7 @@ describe('memory-spine — extended catalog (full detach)', () => {
   });
 });
 
-describe('memory-spine — sync-recall snapshot seam', () => {
+describe('memory-spine: sync-recall snapshot seam', () => {
   test('before any refresh, the snapshot is empty and SAYS SO (never a silent empty)', () => {
     const { store } = spyLocalStore();
     const client = new MemorySpineClient({ local: createLocalMemoryAccess(store) });

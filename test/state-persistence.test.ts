@@ -161,7 +161,7 @@ describe('state persistence failures', () => {
     await expect(kv.load()).rejects.toThrow('JsonFileStore failed to load');
   });
 
-  test('KVState treats a corrupt LEGACY file as absent — the fallback may only recover data, never fail a clean session', async () => {
+  test('KVState treats a corrupt LEGACY file as absent: the fallback may only recover data, never fail a clean session', async () => {
     // The legacy unscoped state dir is dual-read for one release. Before that
     // dual-read existed, junk sitting there was simply never opened and a new
     // session started clean; a corrupt legacy file must not now turn that

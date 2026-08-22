@@ -167,7 +167,7 @@ describe('hosted-session event stream carries render-grade frames', () => {
     expect(usage?.payload?.outputTokens).toBe(64);
   });
 
-  test('the default domain set carries the text but no tool frame — why the render-grade set exists', async () => {
+  test('the default domain set carries the text but no tool frame: why the render-grade set exists', async () => {
     // Pins the defect this change fixes. DEFAULT_DOMAINS is the set every
     // un-configured subscriber gets; `tools` is absent from it by construction.
     expect(DEFAULT_DOMAINS).toContain('turn');

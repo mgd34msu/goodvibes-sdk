@@ -80,7 +80,7 @@ describe('capability-bundle manifest', () => {
   });
 });
 
-describe('capability guard — deny by default', () => {
+describe('capability guard: deny by default', () => {
   const guard = createBundleCapabilityGuard(validManifest());
 
   test('allows declared surfaces', () => {

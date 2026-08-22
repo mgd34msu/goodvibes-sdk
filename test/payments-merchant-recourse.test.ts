@@ -200,7 +200,7 @@ describe('the merchant is judged against a profile', () => {
     expect(verdict.reason).toContain('consumer protections');
   });
 
-  test('Micro Center qualifies — accountability, not size', async () => {
+  test('Micro Center qualifies: accountability, not size', async () => {
     const verdict = await classifyMerchant({ checkoutHost: 'www.microcenter.com' }, worldJudge);
     expect(verdict.isMajor).toBe(true);
     expect(windowForPurchase({ aboveBudget: false, merchantIsMajor: true })).toBe('veto');
@@ -224,7 +224,7 @@ describe('the merchant is judged against a profile', () => {
     expect((await classifyMerchant({ checkoutHost: 'www.maybe.example' }, unsure)).isMajor).toBe(false);
   });
 
-  test('NO PAGE CONTENT REACHES THE JUDGEMENT — the input is the domain alone', async () => {
+  test('NO PAGE CONTENT REACHES THE JUDGEMENT: the input is the domain alone', async () => {
     // This is the entire safety argument. If the judge is ever handed anything
     // the merchant controls, the gate becomes injectable again.
     const judge = stubJudge(() => ({ qualifies: true, confident: true, recourse: 'established' }));

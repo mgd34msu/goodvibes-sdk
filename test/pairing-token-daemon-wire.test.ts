@@ -56,7 +56,7 @@ afterAll(async () => {
 });
 
 describe('per-pairing tokens over the operator contract', () => {
-  test('two devices, revoke one — the other still works; revoked gets 401', async () => {
+  test('two devices, revoke one: the other still works; revoked gets 401', async () => {
     // Mint two per-device tokens (via the shared token, which is admin).
     const a = await invoke(SHARED, 'pairing.tokens.create', { name: 'Phone' });
     const b = await invoke(SHARED, 'pairing.tokens.create', { name: 'Laptop' });

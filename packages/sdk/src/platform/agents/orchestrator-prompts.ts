@@ -385,7 +385,7 @@ export function buildLayeredOrchestratorSystemPrompt(
   }
   const baseTokens = estimateTokens(base);
   if (baseTokens <= remainingTokens) {
-    return base; // Full prompt fits — return as-is
+    return base; // Full prompt fits, return as-is
   }
 
   // Try without conventions

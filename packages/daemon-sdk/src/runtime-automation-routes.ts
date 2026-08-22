@@ -294,7 +294,7 @@ function filterRunsSince<T extends { readonly queuedAt: number; readonly endedAt
  * With pagination params: returns `PaginatedResponse<AutomationRunLike>` as `{ items, nextCursor, hasMore }`.
  *
  * ### Deletion recovery
- * `AutomationRunLike` carries a required `queuedAt: number` field which serves as
+ * `AutomationRunLike` carries a required `queuedAt: number` field which is
  * the stable creation-time timestamp.  Insertion-point recovery on mid-walk
  * deletion is **active** for this endpoint via `getCreatedAt: (r) => r.queuedAt`.
  * Runs are listed in descending `queuedAt` order (newest first), so

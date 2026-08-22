@@ -134,7 +134,7 @@ describe('the catalog surface', () => {
     ]);
   });
 
-  test('removal is marked dangerous — it deletes a line he owns', () => {
+  test('removal is marked dangerous: it deletes a line he owns', () => {
     const { catalog } = harness();
     expect(catalog.get('occasions.remove')?.dangerous).toBe(true);
     expect(catalog.get('occasions.list')?.dangerous).toBeFalsy();
@@ -152,7 +152,7 @@ describe('the catalog surface', () => {
 });
 
 describe('the verbs, invoked', () => {
-  test('occasions.list answers with the dates — the owner asking his own system', async () => {
+  test('occasions.list answers with the dates: the owner asking his own system', async () => {
     const { catalog } = harness();
     const result = await catalog.invoke('occasions.list', { ...ctx, body: {} }) as {
       today: string;

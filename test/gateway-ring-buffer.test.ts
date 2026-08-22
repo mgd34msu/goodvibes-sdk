@@ -131,7 +131,7 @@ function pushMessages(gateway: ControlPlaneGateway, count: number): void {
   }
 }
 
-describe('ControlPlaneGateway — recentMessages ring buffer', () => {
+describe('ControlPlaneGateway: recentMessages ring buffer', () => {
   let gateway: ControlPlaneGateway;
 
   beforeEach(() => {

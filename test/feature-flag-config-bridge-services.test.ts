@@ -69,7 +69,7 @@ function buildServices() {
   return { configManager, runtimeServices };
 }
 
-describe('createRuntimeServices — live feature-settings bridge', () => {
+describe('createRuntimeServices: live feature-settings bridge', () => {
   test('config.set on a runtime-toggleable flag applies live and notifies subscribers', () => {
     const { configManager, runtimeServices } = buildServices();
     const seen: Array<{ flagId: string; state: string }> = [];
@@ -200,7 +200,7 @@ function servicesWithOtelMode(mode: string): { configManager: ConfigManager } {
   return { configManager };
 }
 
-describe('createRuntimeServices — telemetry.otelMode governs the platform tracer', () => {
+describe('createRuntimeServices: telemetry.otelMode governs the platform tracer', () => {
   const savedEnv = {
     traces: process.env['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'],
     general: process.env['OTEL_EXPORTER_OTLP_ENDPOINT'],

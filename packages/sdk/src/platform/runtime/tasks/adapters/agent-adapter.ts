@@ -107,7 +107,7 @@ export class AgentTaskAdapter {
       (envelope) => {
         if (typeof envelope.payload?.agentId !== 'string') return;
         const taskId = this._agentToTask.get(envelope.payload.agentId);
-        if (taskId === undefined) return; // not a tracked agent — no-op
+        if (taskId === undefined) return; // not a tracked agent, no-op
         this.handleAgentStateChange(envelope.payload.agentId, 'completed');
       },
     );

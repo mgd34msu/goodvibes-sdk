@@ -585,7 +585,7 @@ describe('email health reads live supervisor state', () => {
     expect(off.supervisor.health().state).toBe('disabled');
   });
 
-  test('the health entry carries no channel surface — email is not a ManagedSurface', async () => {
+  test('the health entry carries no channel surface: email is not a ManagedSurface', async () => {
     const rig = buildRig({ sources: factoryFor(new RecordingSource(HEALTHY, { kind: 'push' })) });
     const health = rig.supervisor.health() as unknown as Record<string, unknown>;
     expect(health.kind).toBe('email-inbound');

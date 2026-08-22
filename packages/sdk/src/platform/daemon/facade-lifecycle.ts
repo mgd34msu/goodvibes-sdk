@@ -741,7 +741,7 @@ export class DaemonLifecycleRuntime {
     try {
       status = this.options.platformServiceManager.status();
     } catch {
-      return; // no service manager on this platform — nothing to promote into
+      return; // no service manager on this platform, nothing to promote into
     }
     if (status.installed && status.running) return; // already supervised
     const actions = this.buildServiceActions();

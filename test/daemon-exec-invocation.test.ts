@@ -30,7 +30,7 @@ describe('isCompiledBinaryInvocation', () => {
 });
 
 describe('resolveDaemonExecInvocation', () => {
-  test('a compiled binary launches ITSELF with its real args — no source-file path', () => {
+  test('a compiled binary launches ITSELF with its real args: no source-file path', () => {
     const inv = resolveDaemonExecInvocation(
       { execPath: '/opt/app/goodvibes', argv: ['/opt/app/goodvibes', 'daemon', '--port', '3421'] },
       '/home/u/proj',

@@ -73,7 +73,7 @@ function stackOptions() {
 }
 
 describe('how the registry is built', () => {
-  test('the default is a plain ProviderRegistry — omitting the option changes nothing', () => {
+  test('the default is a plain ProviderRegistry: omitting the option changes nothing', () => {
     const stack = createProviderStack(stackOptions());
     expect(stack.providerRegistry).toBeInstanceOf(ProviderRegistry);
   });
@@ -112,7 +112,7 @@ describe('whether model discovery runs at construction', () => {
     return { calls, factory: (options: ProviderRegistryConstructionOptions) => new Recording(options) };
   }
 
-  test('the default runs it — an omitted option is the pre-option behaviour', () => {
+  test('the default runs it: an omitted option is the pre-option behaviour', () => {
     const probe = discoveryProbe();
     createProviderStack({ ...stackOptions(), providerRegistryFactory: probe.factory });
     expect(probe.calls).toEqual(['discovery']);
@@ -167,7 +167,7 @@ describe('whether a hook can reach the agent manager', () => {
     return JSON.stringify(services.hookActivityTracker.listRecent(10));
   }
 
-  test('the default attaches it — an agent hook is not refused for want of a runner', async () => {
+  test('the default attaches it: an agent hook is not refused for want of a runner', async () => {
     const services = compose();
     const rendered = await fireAgentHook(services);
     // The hook must actually have RUN, or the absence below proves nothing.

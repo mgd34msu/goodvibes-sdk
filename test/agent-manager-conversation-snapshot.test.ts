@@ -35,7 +35,7 @@ function makeManager(conversationSnapshotRetention?: number): AgentManager {
 
 const snap = (text: string): ConversationMessageSnapshot[] => [{ role: 'user', content: text }];
 
-describe('AgentManager — conversation snapshot bridge', () => {
+describe('AgentManager: conversation snapshot bridge', () => {
   test('unknown / never-registered agent returns an empty array', () => {
     const manager = makeManager();
     expect(manager.getConversationSnapshot('never-seen')).toEqual([]);
@@ -70,7 +70,7 @@ describe('AgentManager — conversation snapshot bridge', () => {
     expect(manager.getConversationSnapshot('owner-never-ran-a-turn-loop')).toEqual([]);
   });
 
-  test('releaseConversationSource is idempotent — a second release is a no-op, not a re-freeze', () => {
+  test('releaseConversationSource is idempotent: a second release is a no-op, not a re-freeze', () => {
     const manager = makeManager();
     manager.registerConversationSource('ag-idem', () => snap('final'));
     manager.releaseConversationSource('ag-idem');

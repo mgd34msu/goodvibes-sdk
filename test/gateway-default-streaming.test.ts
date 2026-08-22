@@ -53,7 +53,7 @@ function makeManager(gateway: ControlPlaneGateway): CompanionChatManager {
 /** A real gateway seeded from a fresh (stock) feature-flag manager + real runtime bus. */
 function makeStockGateway(): { gateway: ControlPlaneGateway; bus: RuntimeEventBus } {
   const bus = new RuntimeEventBus();
-  const featureFlags = createFeatureFlagManager(); // seeds declared defaults — no config
+  const featureFlags = createFeatureFlagManager(); // seeds declared defaults, no config
   const gateway = new ControlPlaneGateway({ runtimeBus: bus, featureFlags });
   return { gateway, bus };
 }
@@ -124,7 +124,7 @@ function makeRouterContext(
 // Flag default + kill switch
 // ---------------------------------------------------------------------------
 
-describe('S2a — control-plane-gateway defaults ON', () => {
+describe('S2a: control-plane-gateway defaults ON', () => {
   test('a fresh (stock) feature-flag manager reports the gateway ENABLED', () => {
     const flags = createFeatureFlagManager();
     expect(flags.isEnabled(FLAG)).toBe(true);
@@ -166,7 +166,7 @@ describe('S2a — control-plane-gateway defaults ON', () => {
 // Stock-daemon streaming proof (the W1 repro)
 // ---------------------------------------------------------------------------
 
-describe('S2a — stock daemon streams companion chat (no 503 dead end)', () => {
+describe('S2a: stock daemon streams companion chat (no 503 dead end)', () => {
   test('GET companion /events returns 200 text/event-stream through the real gateway', async () => {
     const { gateway } = makeStockGateway();
     const manager = makeManager(gateway);
@@ -211,7 +211,7 @@ describe('S2a — stock daemon streams companion chat (no 503 dead end)', () => 
 // Honest degraded mode, flag explicitly OFF is legible, not silent
 // ---------------------------------------------------------------------------
 
-describe('S2a — honest degraded mode when the flag is explicitly OFF', () => {
+describe('S2a: honest degraded mode when the flag is explicitly OFF', () => {
   function makeDisabledGateway(): ControlPlaneGateway {
     const bus = new RuntimeEventBus();
     const featureFlags = createFeatureFlagManager();
@@ -246,7 +246,7 @@ describe('S2a — honest degraded mode when the flag is explicitly OFF', () => {
 // Auth is orthogonal to the flag, flipping it ON exposes nothing un-authed
 // ---------------------------------------------------------------------------
 
-describe('S2a — auth still gates every entry point when the flag is ON', () => {
+describe('S2a: auth still gates every entry point when the flag is ON', () => {
   function makeControlHandlers(gateway: ControlPlaneGateway, principal: unknown) {
     return createDaemonControlRouteHandlers({
       authToken: 'shared-token',

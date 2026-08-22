@@ -23,7 +23,7 @@ function makeConfig() {
   };
 }
 
-describe('platform/runtime/network — behavior smoke', () => {
+describe('platform/runtime/network: behavior smoke', () => {
   test('inspectInboundTls for controlPlane returns snapshot with surface and mode', () => {
     const snapshot = inspectInboundTls(makeConfig(), 'controlPlane');
     expect(snapshot).toHaveProperty('mode');

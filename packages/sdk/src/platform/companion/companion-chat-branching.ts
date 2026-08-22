@@ -55,7 +55,7 @@ function supersedeFrom(
   const superseded: string[] = [];
   for (let i = fromIndex; i < session.messages.length; i++) {
     const msg = session.messages[i]!;
-    if (msg.supersededAt !== undefined) continue; // already retained history — leave as-is
+    if (msg.supersededAt !== undefined) continue; // already retained history, leave as-is
     session.messages[i] = { ...msg, supersededAt: now, supersededReason: reason };
     superseded.push(msg.id);
   }

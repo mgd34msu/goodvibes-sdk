@@ -92,7 +92,7 @@ describe('the cursor survives a restart', () => {
     expect(cursor?.uidValidity).toBe(100);
   });
 
-  test('lastSeenUid of 0 is valid and survives — the only honest value for an empty mailbox on first run', async () => {
+  test('lastSeenUid of 0 is valid and survives: the only honest value for an empty mailbox on first run', async () => {
     const store = new MailboxCursorStore(storePath);
     const resolution = await store.resolve({
       account: 'acct-empty',
@@ -273,7 +273,7 @@ describe('resolve() never replays the mailbox', () => {
     await store.advance({ account: 'acct-1', mailbox: 'INBOX', uidValidity: 7, lastSeenUid: 60 });
     const resolution = await store.resolve({ account: 'acct-1', mailbox: 'INBOX', serverUidValidity: 7, currentHighestUid: 999, currentMessageCount: 999 });
     expect(resolution.kind).toBe('resumed');
-    expect(resolution.cursor.lastSeenUid).toBe(60); // NOT 999 — the stored cursor stands.
+    expect(resolution.cursor.lastSeenUid).toBe(60); // NOT 999, the stored cursor stands.
     expect(resolution.skippedMessageCount).toBe(0);
   });
 
@@ -322,7 +322,7 @@ describe('the cursor advances only after processing completes', () => {
     const afterRestart = new MailboxCursorStore(storePath);
     const cursor = await afterRestart.get('acct-1', 'INBOX');
     expect(cursor?.lastSeenUid).toBe(beforeCrash?.lastSeenUid);
-    expect(cursor?.lastSeenUid).toBe(10); // UID 11 was never marked processed — a UID SEARCH UID 11:* refetches it.
+    expect(cursor?.lastSeenUid).toBe(10); // UID 11 was never marked processed, a UID SEARCH UID 11:* refetches it.
   });
 
   test('advance() never moves the cursor backwards, so a late write cannot resurrect handled mail', async () => {
@@ -421,7 +421,7 @@ describe('the two shapes are never read as one another', () => {
     expect((await store.get('acct-1', 'INBOX'))?.lastSeenUid).toBe(50);
   });
 
-  test('a stored record with no source field reads as IMAP — the one documented leniency', async () => {
+  test('a stored record with no source field reads as IMAP: the one documented leniency', async () => {
     // The only shape that existed before the union. Every IMAP field is still
     // validated on the way in; a Gmail record can never take this path because
     // it carries `source` explicitly.
@@ -492,7 +492,7 @@ describe('resolveGmail() never replays', () => {
     await store.resolveGmail({ account: 'acct-1', mailbox: 'INBOX', currentHistoryId: '100' });
     const resolution = await store.resolveGmail({ account: 'acct-1', mailbox: 'INBOX', currentHistoryId: '999' });
     expect(resolution.kind).toBe('resumed');
-    expect(resolution.cursor.historyId).toBe('100'); // NOT 999 — the delta between them is ours to fetch.
+    expect(resolution.cursor.historyId).toBe('100'); // NOT 999, the delta between them is ours to fetch.
     expect(resolution.previous).toBeUndefined();
   });
 

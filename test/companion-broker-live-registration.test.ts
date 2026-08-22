@@ -38,7 +38,7 @@ function makeBroker(storePath: string): SharedSessionBroker {
   } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]));
 }
 
-describe('R3 — companion registers into the broker live (same-process)', () => {
+describe('R3: companion registers into the broker live (same-process)', () => {
   test('createSession → broker.listSessions shows the companion session without restart', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'companion-live-'));
     try {
@@ -142,7 +142,7 @@ function makeRouteContext(chatManager: CompanionChatManager): CompanionChatRoute
 // time each route's Response comes back, with NO extra manual flush call.
 // ---------------------------------------------------------------------------
 
-describe('F2 — companion HTTP routes flush the broker mirror before responding', () => {
+describe('F2: companion HTTP routes flush the broker mirror before responding', () => {
   test('POST /sessions: the broker already lists the session by the time the route responds', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'companion-route-flush-create-'));
     try {
@@ -214,7 +214,7 @@ describe('F2 — companion HTTP routes flush the broker mirror before responding
   });
 });
 
-describe('R2 — companion sessions dir honors the injected home', () => {
+describe('R2: companion sessions dir honors the injected home', () => {
   test('defaultSessionsDir(home) stays inside the injected home, not the OS home', () => {
     const dir = defaultSessionsDir('/isolated/home');
     expect(dir).toBe('/isolated/home/.goodvibes/companion-chat/sessions');

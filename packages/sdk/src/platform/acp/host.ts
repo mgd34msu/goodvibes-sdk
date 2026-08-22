@@ -333,7 +333,7 @@ export class AcpHostService {
         }
       })
       .catch((error: unknown) => {
-        if (record.info.state === 'stopped') return; // stop() raced the in-flight turn — not a failure
+        if (record.info.state === 'stopped') return; // stop() raced the in-flight turn, not a failure
         record.info.state = 'failed';
         record.info.completedAt = this.now();
         record.info.error = { binary: record.info.binaryPath, stage: 'prompt', message: summarizeError(error) };

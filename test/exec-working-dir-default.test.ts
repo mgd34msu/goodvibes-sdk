@@ -27,7 +27,7 @@ function tempRoot(prefix: string): string {
   return realpathSync(mkdtempSync(join(tmpdir(), prefix)));
 }
 
-describe('exec tool — working_dir default fallback', () => {
+describe('exec tool: working_dir default fallback', () => {
   test('omitting working_dir runs in the session working directory supplied at registration', async () => {
     const root = tempRoot('gv-exec-default-cwd-');
     const tool = createExecTool(new ProcessManager(), {

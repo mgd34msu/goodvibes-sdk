@@ -234,7 +234,7 @@ describe('the two-raise ceiling', () => {
 });
 
 describe('an acknowledgement mutes the push and never the pull', () => {
-  test('after acknowledging, no sweep pushes it again — and the pull still has it', async () => {
+  test('after acknowledging, no sweep pushes it again: and the pull still has it', async () => {
     const h = harness({ now: Date.parse('2026-08-10T10:00:00Z') });
     await h.service.sweep();
     expect(h.pushes).not.toHaveLength(0);

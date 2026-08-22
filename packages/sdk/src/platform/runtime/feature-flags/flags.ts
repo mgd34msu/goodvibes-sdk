@@ -320,7 +320,7 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
       + 'is a newer, higher-variance signal than reviewed project memory, code chunks carry no '
       + 'review/trust provenance and a weak similarity match can pull in a plausibly-worded but '
       + 'wrong chunk, so this first landing is opt-in, earned on by the same hard-budget + '
-      + 'honest-record discipline before it becomes a default. Also respects the embedder’s '
+      + 'honest-record discipline before it becomes a default. Also respects the embedder\'s '
       + 'storage.codeIndexEnabled setting; disable either to revert to memory-only injection.',
     defaultState: 'disabled',
     tier: 9,

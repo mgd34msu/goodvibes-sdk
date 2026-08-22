@@ -73,7 +73,7 @@ async function passItem(h: OrchestrationTestHarness, itemId: string): Promise<vo
   await flushMicrotasks(20);
 }
 
-describe('dependency gating — concurrency, waiting, release', () => {
+describe('dependency gating: concurrency, waiting, release', () => {
   test('C+A run concurrently, B waits honestly, B claims after A passes, all pass', async () => {
     const h = createOrchestrationHarness();
     const engine = makeEngine(h);
@@ -116,7 +116,7 @@ describe('dependency gating — concurrency, waiting, release', () => {
   });
 });
 
-describe('dependency gating — failed dependency + retry recovery', () => {
+describe('dependency gating: failed dependency + retry recovery', () => {
   test("A fails ⇒ B blocked 'dependency failed: A' (not failed); retryItem(A) recovers", async () => {
     const h = createOrchestrationHarness();
     const engine = makeEngine(h);
@@ -162,7 +162,7 @@ describe('dependency gating — failed dependency + retry recovery', () => {
   });
 });
 
-describe('dependency gating — resume preserves the wait', () => {
+describe('dependency gating: resume preserves the wait', () => {
   test('a blocked-dependency item stays blocked across serialize→import into a fresh engine', async () => {
     const h = createOrchestrationHarness();
     const engine = makeEngine(h);

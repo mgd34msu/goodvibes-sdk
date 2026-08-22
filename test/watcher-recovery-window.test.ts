@@ -140,7 +140,7 @@ describe('a restart outside the recovery window waits for the normal tick', () =
     expect(record.lastCheckpoint).toBe('checkpoint-from-before-the-restart');
   });
 
-  test('the watcher is still re-armed — skipping catch-up is not stopping it', async () => {
+  test('the watcher is still re-armed: skipping catch-up is not stopping it', async () => {
     const registry = restoredRegistry(90 * 60_000, 10);
     await restoreAndSettle(registry);
     // Re-arming is what `stopWatcher` has to undo; a watcher that was never

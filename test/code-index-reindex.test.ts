@@ -56,7 +56,7 @@ describe('extractReindexPaths', () => {
   });
 });
 
-describe('scheduler — edit→reindex fires, debounced and coalesced', () => {
+describe('scheduler: edit→reindex fires, debounced and coalesced', () => {
   test('a successful write schedules a reindex of the resolved absolute path', async () => {
     const { target, calls } = makeTarget();
     const s = new CodeIndexReindexScheduler({ target, workingDirectory: ROOT, debounceMs: 1 });
@@ -88,7 +88,7 @@ describe('scheduler — edit→reindex fires, debounced and coalesced', () => {
   });
 });
 
-describe('scheduler — no-op gates', () => {
+describe('scheduler: no-op gates', () => {
   test('failed tool call schedules nothing', async () => {
     const { target, calls } = makeTarget();
     const s = new CodeIndexReindexScheduler({ target, workingDirectory: ROOT, debounceMs: 1 });
@@ -125,7 +125,7 @@ describe('scheduler — no-op gates', () => {
   });
 });
 
-describe('scheduler — contained failure & honest activity', () => {
+describe('scheduler: contained failure & honest activity', () => {
   test('reindexFile throwing is caught, recorded as error, never rethrown', async () => {
     const { target } = makeTarget({ reindex: async () => { throw new Error('disk gone'); } });
     const s = new CodeIndexReindexScheduler({ target, workingDirectory: ROOT, debounceMs: 1 });

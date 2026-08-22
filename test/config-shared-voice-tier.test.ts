@@ -32,7 +32,7 @@ afterEach(() => {
   for (const dir of roots.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-describe('shared voice tier — cross-surface-root resolution (Fix 1)', () => {
+describe('shared voice tier: cross-surface-root resolution (Fix 1)', () => {
   test('a voice set on one surface root is read by another surface root', () => {
     const h = home();
     const tui = new ConfigManager({ homeDir: h, surfaceRoot: 'tui' });

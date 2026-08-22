@@ -5,7 +5,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 
-describe('platform/workflow — smoke', () => {
+describe('platform/workflow: smoke', () => {
   test('fireTriggers has arity >= 1 (accepts trigger config)', async () => {
     const { fireTriggers } = await import('../packages/sdk/src/platform/workflow/index.js');
     expect(fireTriggers.length).toBeGreaterThanOrEqual(1);

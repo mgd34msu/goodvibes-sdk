@@ -108,7 +108,7 @@ describe('every promoted key is a real, valid CONFIG_SCHEMA row', () => {
     expect(row.default).toBe(expected);
   });
 
-  test('there are exactly twenty-two connector keys — not more, not fewer', () => {
+  test('there are exactly twenty-two connector keys: not more, not fewer', () => {
     const connectorKeys = CONFIG_SCHEMA
       .map((s) => s.key)
       .filter((key) => key.startsWith('email.') || key.startsWith('calendar.') || key.startsWith('google.'));
@@ -213,7 +213,7 @@ describe('every promoted key is daemon-owned, exactly once, in the owned-path wa
     },
   );
 
-  test('conversationGate.gatedSurfaces, cluster.peers and cluster.groupMaterial are kept — they are genuinely non-scalar', () => {
+  test('conversationGate.gatedSurfaces, cluster.peers and cluster.groupMaterial are kept: they are genuinely non-scalar', () => {
     for (const kept of ['conversationGate.gatedSurfaces', 'cluster.peers', 'cluster.groupMaterial']) {
       expect((DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS as readonly string[])).toContain(kept);
     }

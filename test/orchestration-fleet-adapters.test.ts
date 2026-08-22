@@ -53,7 +53,7 @@ function makeWorkstream(overrides: Partial<Workstream> & { id: string }): Workst
   };
 }
 
-describe('adapters/orchestration — node id namespacing', () => {
+describe('adapters/orchestration: node id namespacing', () => {
   test('ids never collide with agent/process/chain ids', () => {
     expect(workstreamNodeId('a')).toBe('workstream:a');
     expect(phaseNodeId('a', 'b')).toBe('phase:a:b');
@@ -85,7 +85,7 @@ describe('adaptWorkItem', () => {
   });
 });
 
-describe('adaptPhase — pure grouping node', () => {
+describe('adaptPhase: pure grouping node', () => {
   test('reports zero usage/cost even when its work items have real usage (no double count)', () => {
     const phase = makePhase({ id: 'p1', ordinal: 1 });
     const item = makeItem({
@@ -102,7 +102,7 @@ describe('adaptPhase — pure grouping node', () => {
   });
 });
 
-describe('adaptWorkstream — sums every item exactly once', () => {
+describe('adaptWorkstream: sums every item exactly once', () => {
   test('cost/usage totals come from items directly, never via phase (adaptPhase reports nothing)', () => {
     const phase = makePhase({ id: 'p1', ordinal: 1 });
     const itemA = makeItem({ id: 'i1', currentPhaseId: 'p1', usage: { ...emptyWorkItemUsage(), inputTokens: 100, outputTokens: 50, costUsd: 1, costState: 'priced' } });
@@ -126,7 +126,7 @@ describe('adaptWorkstream — sums every item exactly once', () => {
   });
 });
 
-describe('registry integration — nesting + kill/steer dispatch', () => {
+describe('registry integration: nesting + kill/steer dispatch', () => {
   function makeRegistryHarness() {
     const killCalls: string[] = [];
     const cancelCalls: string[] = [];
@@ -301,7 +301,7 @@ describe('mid-phase rollup shows live usage, never n/a; presence is monotone', (
     const item = makeItem({ id: 'i1', state: 'passed', currentPhaseId: null, completedAt: T0, usage: committed(40, 0.25) });
     // A stale overlay whose numbers already got folded into `committed`.
     const node = adaptWorkItem(item, 'ws1', 'wsnode', { steerable: false, live: liveOverlay(40, 0.25) });
-    expect(node.usage?.inputTokens).toBe(40); // committed only — NOT 80
+    expect(node.usage?.inputTokens).toBe(40); // committed only, NOT 80
     expect(node.costUsd).toBe(0.25);
   });
 

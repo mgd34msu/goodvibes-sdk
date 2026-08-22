@@ -101,7 +101,7 @@ describe('defaultPairingTokenName', () => {
 });
 
 describe('formatPairingOffers copy', () => {
-  test('each offer renders label — consequence', () => {
+  test('each offer renders label: consequence', () => {
     const lines = formatPairingOffers(['notifications', 'passkey']);
     expect(lines[0]).toContain('Notifications,');
     expect(lines[1]).toContain('Passkey,');

@@ -297,7 +297,7 @@ describe('ProviderRegistry model catalog cache', () => {
     );
   });
 
-  test('a configured AMBIGUOUS bare model names the real candidate keys and the accepted forms — never a format lecture', () => {
+  test('a configured AMBIGUOUS bare model names the real candidate keys and the accepted forms: never a format lecture', () => {
     // 'gpt-5.4' exists on several providers' baselines: the construction-time
     // error routes through the shared resolver, listing the actual candidate
     // registryKeys plus the accepted forms with a concrete example.
@@ -372,7 +372,7 @@ describe('ProviderRegistry model catalog cache', () => {
 // by synthesizing a minimal definition when the configured registryKey names
 // an actually-registered provider whose own static `models` list already
 // declares that id, narrow enough that a genuinely bad ref still throws.
-describe('ProviderRegistry.getCurrentModel() — fresh-home default fallback', () => {
+describe('ProviderRegistry.getCurrentModel(): fresh-home default fallback', () => {
   test('the stock default resolves with no catalog cache and no initCatalog() call', () => {
     const registry = makeRegistry();
     const current = registry.getCurrentModel();
@@ -428,7 +428,7 @@ describe('ProviderRegistry.getCurrentModel() — fresh-home default fallback', (
 // current model). Before this fix that second call was unguarded, so a
 // configured model that still can't resolve, even after the fallback above,
 // turned this into an unhandled throw instead of an honest JSON payload.
-describe('getProviderUsageSnapshot() — honest degrade on an unresolvable current model', () => {
+describe('getProviderUsageSnapshot(): honest degrade on an unresolvable current model', () => {
   test('reports the resolved default cleanly for the provider that owns it', async () => {
     const registry = makeRegistry();
     // Swap the real builtin 'openrouter' (whose describeRuntime() needs full

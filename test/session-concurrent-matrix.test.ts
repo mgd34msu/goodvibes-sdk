@@ -58,7 +58,7 @@ const MATRIX = [
   { sessionId: 'webui-client-1', kind: 'webui', project: '/beta', surfaceId: 'surface:webui-1' },
 ] as const;
 
-describe('D7c — N concurrent sessions across surfaces on one daemon', () => {
+describe('D7c: N concurrent sessions across surfaces on one daemon', () => {
   let home: string | null = null;
   let work: string | null = null;
   let daemon: BootedDaemon | null = null;

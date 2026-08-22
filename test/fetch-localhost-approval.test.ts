@@ -52,7 +52,7 @@ function startDevServer(): { url: string } {
   return { url: `http://localhost:${server.port}/` };
 }
 
-describe('localhost dev-server fetch — ask once, allow for this project', () => {
+describe('localhost dev-server fetch: ask once, allow for this project', () => {
   test('one approval persists per project, the fetch succeeds, and a restart never re-asks', async () => {
     const { configManager, projectSettingsPath, makeFresh } = makeProjectConfig();
     const { url } = startDevServer();
@@ -136,7 +136,7 @@ describe('localhost dev-server fetch — ask once, allow for this project', () =
   });
 });
 
-describe('private-IP / metadata blocking — silent and absolute', () => {
+describe('private-IP / metadata blocking: silent and absolute', () => {
   test('a metadata-endpoint fetch fails to the model with an honest reason and never asks', async () => {
     let asked = false;
     const result = await executeFetchInput({ urls: [{ url: 'http://169.254.169.254/latest/meta-data/' }] }, {

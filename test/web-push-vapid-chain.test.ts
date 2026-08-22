@@ -307,7 +307,7 @@ afterAll(async () => {
   rmSync(work, { recursive: true, force: true });
 });
 
-describe('web push — VAPID keypair lifecycle (generate once, reuse forever)', () => {
+describe('web push: VAPID keypair lifecycle (generate once, reuse forever)', () => {
   test('the first need mints and persists the pair into the secrets store', async () => {
     // Nothing has asked for a key yet, so nothing should exist.
     expect(await readStoredKeypair()).toBeNull();
@@ -325,7 +325,7 @@ describe('web push — VAPID keypair lifecycle (generate once, reuse forever)', 
     expect(typeof stored.privateJwk.d).toBe('string');
   });
 
-  test('later needs reuse the SAME pair — no silent regeneration', async () => {
+  test('later needs reuse the SAME pair: no silent regeneration', async () => {
     const storedBefore = await readStoredKeypair();
     const first = (await invokeVerb('push.vapid.get')).json.publicKey as string;
 
@@ -409,7 +409,7 @@ describe('web push — VAPID keypair lifecycle (generate once, reuse forever)', 
   });
 });
 
-describe('web push — the published application-server key', () => {
+describe('web push: the published application-server key', () => {
   test('push.vapid.get returns an importable 65-byte P-256 point', async () => {
     const publicKey = (await invokeVerb('push.vapid.get')).json.publicKey as string;
     const point = Buffer.from(publicKey, 'base64url');
@@ -433,7 +433,7 @@ describe('web push — the published application-server key', () => {
   });
 });
 
-describe('web push — the VAPID Authorization JWT on a real delivery', () => {
+describe('web push: the VAPID Authorization JWT on a real delivery', () => {
   test('the signature verifies against the published key, with the right aud and sub', async () => {
     const created = await invokeVerb('push.subscriptions.create', {
       endpoint: `${sinkOrigin}/push/jwt-probe`,
@@ -492,7 +492,7 @@ describe('web push — the VAPID Authorization JWT on a real delivery', () => {
   });
 });
 
-describe('web push — subscription storage survives a restart', () => {
+describe('web push: subscription storage survives a restart', () => {
   test('a registered subscription is persisted on disk and served after a reboot', async () => {
     const created = await invokeVerb('push.subscriptions.create', {
       endpoint: `${sinkOrigin}/push/persisted`,
@@ -536,7 +536,7 @@ describe('web push — subscription storage survives a restart', () => {
   });
 });
 
-describe('web push — failure handling distinguishes gone from broken', () => {
+describe('web push: failure handling distinguishes gone from broken', () => {
   test('a 5xx keeps the subscription; only gone (or exhausted retries) removes it', async () => {
     const created = await invokeVerb('push.subscriptions.create', {
       endpoint: `${sinkOrigin}/fail/keeps-record`,
@@ -576,7 +576,7 @@ describe('web push — failure handling distinguishes gone from broken', () => {
   });
 });
 
-describe('web push — the fleet triggers reach dispatch', () => {
+describe('web push: the fleet triggers reach dispatch', () => {
   test('a node blocked on the operator arrives as a needs-input push', async () => {
     const created = await invokeVerb('push.subscriptions.create', {
       endpoint: `${sinkOrigin}/push/needs-input`,

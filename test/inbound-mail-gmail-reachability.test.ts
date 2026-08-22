@@ -623,7 +623,7 @@ describe('Gmail-ness comes from the credential, with accounts as a filter over i
     return { kind: snapshot.source.kind, basis: snapshot.source.basis };
   };
 
-  test('an identifier account with no IMAP host is the connected mailbox — Gmail', async () => {
+  test('an identifier account with no IMAP host is the connected mailbox: Gmail', async () => {
     // `["primary"]` is the schema description's own example, and this machine
     // has no IMAP host. Nothing here names a mailbox other than the one the
     // credential reads, and the credential resolved.

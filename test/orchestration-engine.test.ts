@@ -260,7 +260,7 @@ afterEach(() => {
   rmSync(projectRoot, { recursive: true, force: true });
 });
 
-describe('scheduler — pipeline flow, no pairwise binding', () => {
+describe('scheduler: pipeline flow, no pairwise binding', () => {
   test('two engineers share a single reviewer slot; whichever finishes first claims it', async () => {
     const engine = h.makeEngine();
     const items: WorkItemSpec[] = [{ id: 'item-a', title: 'A', task: 'do A' }, { id: 'item-b', title: 'B', task: 'do B' }];
@@ -367,7 +367,7 @@ describe('dynamic phase insertion', () => {
     expect(item.state).toBe('passed');
   });
 
-  test('visits bound the re-review cycle — repeated failures eventually fail the item, not loop forever', async () => {
+  test('visits bound the re-review cycle: repeated failures eventually fail the item, not loop forever', async () => {
     const engine = h.makeEngine({ maxPhaseVisits: 2 });
     const ws = engine.createWorkstream({
       title: 'ws',
@@ -428,7 +428,7 @@ describe('budget refusal', () => {
     expect(h.spawnedTasks.length).toBe(1);
   });
 
-  test('engine.updateBudget raises the ceiling and immediately re-ticks the blocked item back into the waiting set — no need to wait on an unrelated sibling', async () => {
+  test('engine.updateBudget raises the ceiling and immediately re-ticks the blocked item back into the waiting set: no need to wait on an unrelated sibling', async () => {
     const engine = h.makeEngine();
     const ws = engine.createWorkstream({
       title: 'ws',
@@ -787,12 +787,12 @@ describe('resume prefix replay', () => {
   });
 });
 
-describe('resume reconciliation — the exact restart-mid-phase blocker', () => {
+describe('resume reconciliation: the exact restart-mid-phase blocker', () => {
   test('an item persisted in-phase (agent running when the process died) is re-queued as pending on import, unstarves its capacity-1 sibling, and the workstream reaches terminal', async () => {
     const engine = h.makeEngine();
     const ws = engine.createWorkstream({
       title: 'ws',
-      phases: [enginePhase()], // capacity 1, single phase — a clean gate passes an item immediately.
+      phases: [enginePhase()], // capacity 1, single phase, a clean gate passes an item immediately.
       items: [{ id: 'item-a', title: 'A', task: 'do A' }, { id: 'item-b', title: 'B', task: 'do B' }],
     });
     engine.start(ws.id);

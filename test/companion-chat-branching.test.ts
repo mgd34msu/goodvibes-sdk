@@ -63,7 +63,7 @@ const activeOnly = <T extends { supersededAt?: number | undefined }>(
   messages: readonly T[],
 ): T[] => messages.filter((m) => m.supersededAt === undefined);
 
-describe('regenerate — honest lineage', () => {
+describe('regenerate: honest lineage', () => {
   test('supersedes the prior response (retained, retrievable) and produces a fresh one', async () => {
     const provider = makeScriptedProvider(['first answer', 'second answer']);
     const manager = makeManager(provider);
@@ -118,7 +118,7 @@ describe('regenerate — honest lineage', () => {
   });
 });
 
-describe('edit-and-branch — honest lineage', () => {
+describe('edit-and-branch: honest lineage', () => {
   test('supersedes the original message (retained) and branches with revisionOf', async () => {
     const provider = makeScriptedProvider(['answer to red', 'answer to blue']);
     const manager = makeManager(provider);

@@ -83,7 +83,7 @@ function makeRegistry(root: string, secretsManager: SecretsManager): ProviderReg
 }
 
 describe('request-time credential resolution', () => {
-  test('a key written to the secrets store makes the provider usable in the same process — no restart', async () => {
+  test('a key written to the secrets store makes the provider usable in the same process: no restart', async () => {
     const root = mkdtempSync(join(tmpdir(), 'gv-cred-live-'));
     try {
       const secrets = makeSecrets(root);

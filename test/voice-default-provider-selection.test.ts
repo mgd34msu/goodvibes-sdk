@@ -37,7 +37,7 @@ function provider(
 }
 
 describe('unnamed voice requests resolve by configured state, not registration order', () => {
-  test('the original defect: unconfigured cloud first, configured local last — local wins now', async () => {
+  test('the original defect: unconfigured cloud first, configured local last: local wins now', async () => {
     const registry = new VoiceProviderRegistry();
     registry.register(provider('openai', false));
     registry.register(provider('deepgram', false));

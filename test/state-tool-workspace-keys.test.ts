@@ -39,7 +39,7 @@ function makeStateTool(
 // B7, Well-known keys: get behavior
 // ---------------------------------------------------------------------------
 
-describe('state tool — well-known key reads', () => {
+describe('state tool: well-known key reads', () => {
   test('get runtime.workingDir returns the workingDir value', async () => {
     const tool = makeStateTool('/abc', '/def');
     const result = await tool.execute({ mode: 'get', keys: ['runtime.workingDir'] });
@@ -61,7 +61,7 @@ describe('state tool — well-known key reads', () => {
 // B7, Well-known keys: set behavior
 // ---------------------------------------------------------------------------
 
-describe('state tool — runtime.workingDir set', () => {
+describe('state tool: runtime.workingDir set', () => {
   test('set runtime.workingDir triggers swap manager', async () => {
     const calls: string[] = [];
     const mockSwap = {

@@ -308,7 +308,7 @@ class FeatureFlagManagerImpl {
    */
   private _applyPersistedState(id: string, desiredState: FlagState): void {
     const current = this._states.get(id) as FlagState;
-    if (current === desiredState) return; // already correct — skip
+    if (current === desiredState) return; // already correct, skip
 
     if (desiredState === 'killed') {
       this._killReasons.set(id, 'Loaded from config');

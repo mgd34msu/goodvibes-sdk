@@ -54,7 +54,7 @@ describe('Orchestrator.abort() animInterval cleanup', () => {
     expect(orch.isThinking).toBe(false);
   });
 
-  test('abort() is idempotent — calling twice does not throw', () => {
+  test('abort() is idempotent: calling twice does not throw', () => {
     const orch = new MockOrchestrator();
     orch.startThinking();
     expect(() => {
@@ -71,7 +71,7 @@ describe('Orchestrator.abort() animInterval cleanup', () => {
     expect(orch.isThinking).toBe(false);
   });
 
-  test('no outstanding timer after abort() — setImmediate fires with null interval', async () => {
+  test('no outstanding timer after abort(): setImmediate fires with null interval', async () => {
     const orch = new MockOrchestrator();
     orch.startThinking();
     orch.abort();

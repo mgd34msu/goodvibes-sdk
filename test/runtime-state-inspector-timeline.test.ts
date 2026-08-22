@@ -27,7 +27,7 @@ function fillBuffer(buf: TimelineBuffer, count: number, baseTs = 1000): Timeline
 
 // ── Construction ─────────────────────────────────────────────────────────────
 
-describe('TimelineBuffer — construction', () => {
+describe('TimelineBuffer: construction', () => {
   test('initialises with size 0 and live cursor', () => {
     const buf = new TimelineBuffer(10);
     expect(buf.size).toBe(0);
@@ -48,7 +48,7 @@ describe('TimelineBuffer — construction', () => {
 
 // ── Append ────────────────────────────────────────────────────────────────────
 
-describe('TimelineBuffer — append', () => {
+describe('TimelineBuffer: append', () => {
   test('assigns monotonic seq numbers starting at 1', () => {
     const buf = new TimelineBuffer(10);
     const e1 = buf.append(makeEvent('a', 100, 1));
@@ -90,7 +90,7 @@ describe('TimelineBuffer — append', () => {
 
 // ── getAll / getAt ────────────────────────────────────────────────────────────
 
-describe('TimelineBuffer — getAll / getAt', () => {
+describe('TimelineBuffer: getAll / getAt', () => {
   test('returns events in chronological order (non-wrapped)', () => {
     const buf = new TimelineBuffer(5);
     const evts = fillBuffer(buf, 3);
@@ -131,7 +131,7 @@ describe('TimelineBuffer — getAll / getAt', () => {
 
 // ── Time-travel step controls ─────────────────────────────────────────────────
 
-describe('TimelineBuffer — stepBack / stepForward', () => {
+describe('TimelineBuffer: stepBack / stepForward', () => {
   test('stepBack moves cursor from live to last event', () => {
     const buf = new TimelineBuffer(5);
     fillBuffer(buf, 3);
@@ -187,7 +187,7 @@ describe('TimelineBuffer — stepBack / stepForward', () => {
 
 // ── seekTo / seekToTime ───────────────────────────────────────────────────────
 
-describe('TimelineBuffer — seekTo / seekToTime', () => {
+describe('TimelineBuffer: seekTo / seekToTime', () => {
   test('seekTo clamps to valid range [0, size]', () => {
     const buf = new TimelineBuffer(5);
     fillBuffer(buf, 3);
@@ -244,7 +244,7 @@ describe('TimelineBuffer — seekTo / seekToTime', () => {
 
 // ── exitTimeTravel ────────────────────────────────────────────────────────────
 
-describe('TimelineBuffer — exitTimeTravel', () => {
+describe('TimelineBuffer: exitTimeTravel', () => {
   test('returns cursor to live after seekTo', () => {
     const buf = new TimelineBuffer(5);
     fillBuffer(buf, 4);
@@ -257,7 +257,7 @@ describe('TimelineBuffer — exitTimeTravel', () => {
 
 // ── getCurrentEvent ───────────────────────────────────────────────────────────
 
-describe('TimelineBuffer — getCurrentEvent', () => {
+describe('TimelineBuffer: getCurrentEvent', () => {
   test('returns undefined when live', () => {
     const buf = new TimelineBuffer(5);
     fillBuffer(buf, 3);
@@ -275,7 +275,7 @@ describe('TimelineBuffer — getCurrentEvent', () => {
 
 // ── clear ────────────────────────────────────────────────────────────────────
 
-describe('TimelineBuffer — clear', () => {
+describe('TimelineBuffer: clear', () => {
   test('resets all state', () => {
     const buf = new TimelineBuffer(5);
     fillBuffer(buf, 5);
@@ -298,7 +298,7 @@ describe('TimelineBuffer — clear', () => {
 
 // ── Ring-buffer correctness after wrap ───────────────────────────────────────
 
-describe('TimelineBuffer — ring-buffer correctness', () => {
+describe('TimelineBuffer: ring-buffer correctness', () => {
   test('retains only the most recent maxSize events', () => {
     const buf = new TimelineBuffer(4);
     for (let i = 1; i <= 10; i++) {

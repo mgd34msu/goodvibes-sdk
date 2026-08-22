@@ -159,7 +159,7 @@ describe('per-hunk approvals over HTTP', () => {
     expect((await decided).modifiedArgs?.['edits']).toEqual([e0, e2]);
   });
 
-  test('approve with NO selectedHunks is approve-all (no modifiedArgs) — back-compat', async () => {
+  test('approve with NO selectedHunks is approve-all (no modifiedArgs): back-compat', async () => {
     const { id, decided } = await seedPending('call-all');
     const res = await fetch(`${daemon.url}/api/approvals/${id}/approve`, {
       method: 'POST', headers: auth(), body: JSON.stringify({}),

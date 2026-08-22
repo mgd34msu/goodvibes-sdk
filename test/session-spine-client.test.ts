@@ -176,7 +176,7 @@ const adapters: Array<() => AdapterFixture> = [typedAdapter, restAdapter];
 
 for (const makeAdapter of adapters) {
   const sample = makeAdapter();
-  describe(`SessionSpineClient parity — ${sample.name} adapter`, () => {
+  describe(`SessionSpineClient parity: ${sample.name} adapter`, () => {
     test('activate() flushes everything queued while dormant, exactly once each', async () => {
       const fix = makeAdapter();
       const client = new SessionSpineClient({ participant: fix.participant, log: silent });
@@ -204,7 +204,7 @@ for (const makeAdapter of adapters) {
       client.reopen({ sessionId: 's2', project: '/p' });
       client.close('s3');
       expect(Date.now() - start).toBeLessThan(20);
-      expect(client.status()).toBe('unknown'); // network has not settled — no premature online
+      expect(client.status()).toBe('unknown'); // network has not settled, no premature online
       client.dispose();
     });
 
@@ -332,7 +332,7 @@ for (const makeAdapter of adapters) {
   });
 }
 
-describe('SessionSpineClient — recordKind stamping (divergence: TUI stamps kind, agent omits)', () => {
+describe('SessionSpineClient: recordKind stamping (divergence: TUI stamps kind, agent omits)', () => {
   test('recordKind:"tui" stamps kind on every input; unset omits it entirely', async () => {
     const typed = typedAdapter();
     const withKind = new SessionSpineClient({ participant: TUI_SPINE_PARTICIPANT, transport: typed.transport, recordKind: 'tui', log: silent });
@@ -360,7 +360,7 @@ describe('SessionSpineClient — recordKind stamping (divergence: TUI stamps kin
   });
 });
 
-describe('SessionSpineClient — result-kind folding (REST adapter)', () => {
+describe('SessionSpineClient: result-kind folding (REST adapter)', () => {
   test('a durable reject (auth_required) does NOT enqueue+retry-forever; a transient offline DOES queue', async () => {
     const calls: CapturedCall[] = [];
     const state = { kind: 'auth_required' as 'auth_required' | 'connected_host_unavailable' };
@@ -389,7 +389,7 @@ describe('SessionSpineClient — result-kind folding (REST adapter)', () => {
   });
 });
 
-describe('SessionSpineClient — activation modes', () => {
+describe('SessionSpineClient: activation modes', () => {
   test('dormant-until-activate: nothing hits the wire before activate()', async () => {
     const typed = typedAdapter();
     const client = new SessionSpineClient({ participant: TUI_SPINE_PARTICIPANT, log: silent });
@@ -405,7 +405,7 @@ describe('SessionSpineClient — activation modes', () => {
     client.dispose();
   });
 
-  test('live-immediately: registers on construct (agent — live for the whole process)', async () => {
+  test('live-immediately: registers on construct (agent: live for the whole process)', async () => {
     const rest = restAdapter();
     const client = new SessionSpineClient({ participant: AGENT_SPINE_PARTICIPANT, transport: rest.transport, log: silent });
     expect(client.active).toBe(true);
@@ -451,7 +451,7 @@ describe('SessionSpineClient — activation modes', () => {
 // set, what SessionUnionCache consults instead of assuming a caller's local
 // reader id happens to match what THIS client actually sent to the wire.
 // ---------------------------------------------------------------------------
-describe('SessionSpineClient — mirroredSessionIds (the true shared identity for a self-mirrored wire row)', () => {
+describe('SessionSpineClient: mirroredSessionIds (the true shared identity for a self-mirrored wire row)', () => {
   test('starts empty; register() adds the id even while dormant (queued, not yet flushed)', () => {
     const client = new SessionSpineClient({ participant: TUI_SPINE_PARTICIPANT, log: silent });
     expect(client.mirroredSessionIds.size).toBe(0);
@@ -468,7 +468,7 @@ describe('SessionSpineClient — mirroredSessionIds (the true shared identity fo
     client.dispose();
   });
 
-  test('close() removes exactly that id — a closed session is no longer "mine" on the wire', async () => {
+  test('close() removes exactly that id: a closed session is no longer "mine" on the wire', async () => {
     const typed = typedAdapter();
     const client = new SessionSpineClient({ participant: TUI_SPINE_PARTICIPANT, transport: typed.transport, log: silent });
     client.register({ sessionId: 's1', project: '/p' });
@@ -533,7 +533,7 @@ describe('foldLegacySpineStore', () => {
     expect(called).toBe(0);
   });
 
-  test('a marker that does not assert completion is not believed — the fold re-runs', () => {
+  test('a marker that does not assert completion is not believed: the fold re-runs', () => {
     const storePath = join(root, 'sessions.json');
     const markerPath = join(root, 'sessions.json.spine-migrated');
     writeFileSync(storePath, JSON.stringify({ sessions: { 'sess-1': { id: 'sess-1', status: 'active' } } }));

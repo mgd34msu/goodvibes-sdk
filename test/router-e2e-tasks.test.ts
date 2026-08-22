@@ -22,7 +22,7 @@ import { makeRequest } from './_helpers/router-requests.js';
 // describe: task routes, happy paths
 // ---------------------------------------------------------------------------
 
-describe('router-e2e tasks — POST /task (happy path)', () => {
+describe('router-e2e tasks: POST /task (happy path)', () => {
   test('POST /task delegates to postTask and returns response', async () => {
     let handlerCalled = false;
     const handlers = makeDefaultDaemonHandlerStub({
@@ -122,7 +122,7 @@ describe('router-e2e tasks — POST /task (happy path)', () => {
 // describe: task routes, failure paths
 // ---------------------------------------------------------------------------
 
-describe('router-e2e tasks — failure paths', () => {
+describe('router-e2e tasks: failure paths', () => {
   test('returns null for GET /task (explicit pass-through in dispatcher)', async () => {
     // The dispatcher has an explicit `return null` for GET /task
     const handlers = makeDefaultDaemonHandlerStub();

@@ -221,7 +221,7 @@ describe('routing decides by ownership, and unreachable is a failure', () => {
     expect(route.endpoint.baseUrl).toBe('http://127.0.0.1:3421');
   });
 
-  test('the daemon process itself writes locally — it IS the owning runtime', () => {
+  test('the daemon process itself writes locally: it IS the owning runtime', () => {
     const route = resolveConfigWriteRoute('surfaces.telegram.botUsername', {
       hostsDaemon: true,
       daemonHomeDir: '/tmp/does-not-matter',

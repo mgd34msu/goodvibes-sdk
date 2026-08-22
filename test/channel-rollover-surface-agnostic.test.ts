@@ -123,7 +123,7 @@ describe('the healed seam is shared: a non-Telegram surface behaves identically'
     }
   });
 
-  test('a WhatsApp message heals the same way — a third surface, same seam, no adapter change', async () => {
+  test('a WhatsApp message heals the same way: a third surface, same seam, no adapter change', async () => {
     const signingSecret = 'whatsapp-signing-secret';
     const h = await makeHarness({
       'surfaces.whatsapp.phoneNumberId': '15550002222',

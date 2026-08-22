@@ -179,7 +179,7 @@ describe('shipped default model × live builtin registration', () => {
     return captured;
   }
 
-  test('fresh install (no keys anywhere): the shipped default honestly asks for a key — never promises keyless', () => {
+  test('fresh install (no keys anywhere): the shipped default honestly asks for a key: never promises keyless', () => {
     const providers = registerBuiltins(() => '');
     const defaultModelKey = coreConfigDefaults.provider.model; // the REAL shipped default
     const providerId = defaultModelKey.split(':')[0]!;

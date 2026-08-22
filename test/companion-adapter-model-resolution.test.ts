@@ -103,7 +103,7 @@ function makeMultiModelRegistry(
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('createCompanionProviderAdapter — model id resolution', () => {
+describe('createCompanionProviderAdapter: model id resolution', () => {
   test('passes provider-local model id to provider.chat() when options.model is a registry key', async () => {
     const modelDef = makeModelDef('mercury-2', 'inceptionlabs');
     const recordingProvider = makeRecordingProvider('inception');
@@ -147,7 +147,7 @@ describe('createCompanionProviderAdapter — model id resolution', () => {
     const modelDef = makeModelDef('unknown-model', 'unknown-provider');
     const emptyRegistry: ProviderRegistry = {
       getForModel(): LLMProvider { return unexpectedProvider; },
-      listModels(): ModelDefinition[] { return []; },  // empty — no def found
+      listModels(): ModelDefinition[] { return []; },  // empty, no def found
       getCurrentModel(): ModelDefinition { return modelDef; },
     } as unknown as ProviderRegistry;
 

@@ -39,7 +39,7 @@ describe('getProviderIdFromModel', () => {
     expect(getProviderIdFromModel('  anthropic:claude-fable-5  ')).toBe('anthropic');
   });
 
-  test('a leading colon is not a separator — the whole value is the provider', () => {
+  test('a leading colon is not a separator: the whole value is the provider', () => {
     // indexOf(':') === 0 is not > 0, so there is no provider half to take.
     expect(getProviderIdFromModel(':claude-fable-5')).toBe(':claude-fable-5');
   });

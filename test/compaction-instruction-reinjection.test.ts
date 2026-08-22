@@ -44,7 +44,7 @@ function occurrences(haystack: string, needle: string): number {
   return haystack.split(needle).length - 1;
 }
 
-describe('compaction — instruction / skill re-injection', () => {
+describe('compaction: instruction / skill re-injection', () => {
   test('re-includes the system instruction chain after compaction', async () => {
     const CHAIN = 'ZZ_STANDING_INSTRUCTION_CHAIN_ZZ never skip the checks';
     const result = await compactMessages(baseCtx({ instructionChain: CHAIN }), stubRegistry);

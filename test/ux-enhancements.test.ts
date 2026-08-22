@@ -659,7 +659,7 @@ describe('Task 5: onTransportEvent typed event dispatch', () => {
     expect(bpEvents[0]!.transportId.length).toBeGreaterThan(0);
   });
 
-  test('code 1005 (No Status Received) schedules reconnect — not a clean close per RFC 6455 §7.4.1', async () => {
+  test('code 1005 (No Status Received) schedules reconnect: not a clean close per RFC 6455 §7.4.1', async () => {
     const { MockWebSocket, instances } = createMockWebSocketClass();
     const states: ConnectionState[] = [];
     const events: ConnectorTransportEvent[] = [];
@@ -685,7 +685,7 @@ describe('Task 5: onTransportEvent typed event dispatch', () => {
     expect(reconnectEvents.length).toBeGreaterThanOrEqual(1);
   });
 
-  test('clean close (code 1000) does NOT trigger reconnect — state sequence is connecting→connected→disconnected', async () => {
+  test('clean close (code 1000) does NOT trigger reconnect: state sequence is connecting→connected→disconnected', async () => {
     const { MockWebSocket, instances } = createMockWebSocketClass();
     const states: ConnectionState[] = [];
     const events: ConnectorTransportEvent[] = [];

@@ -147,7 +147,7 @@ describe('ensureDaemonHome', () => {
 // resolveOperatorTokenPath / writeOperatorTokenFile / readOperatorTokenFile
 // ---------------------------------------------------------------------------
 
-describe('operator token path — global-only', () => {
+describe('operator token path: global-only', () => {
   let daemonHome: string;
 
   beforeEach(() => { daemonHome = tempDir('op-token'); });

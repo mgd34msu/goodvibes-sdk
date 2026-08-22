@@ -85,7 +85,7 @@ describe('reapOrphanedJournals', () => {
     expect(existsSync(path)).toBe(true);
   });
 
-  test('a torn tail does NOT make a recent journal reapable — an unparseable tail is what replay salvages', () => {
+  test('a torn tail does NOT make a recent journal reapable: an unparseable tail is what replay salvages', () => {
     const path = putJournal(
       'torn-tail',
       60_000,
@@ -100,7 +100,7 @@ describe('reapOrphanedJournals', () => {
     expect(existsSync(path)).toBe(true);
   });
 
-  test('a zero-byte journal for a dead session is reaped immediately — it holds no records to lose', () => {
+  test('a zero-byte journal for a dead session is reaped immediately: it holds no records to lose', () => {
     const path = putJournal('empty-journal', 1_000, '');
     const result = reapOrphanedJournals(surface, { now: () => NOW, isSessionLive: neverLive });
     expect(result.reaped).toBe(1);

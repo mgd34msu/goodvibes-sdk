@@ -153,7 +153,7 @@ describe('correlation gates on delivery evidence, never on the To: header', () =
     expect(result.kind).toBe('matched');
   });
 
-  test('a match works even when the To: header is absent entirely — evidence is what counts', () => {
+  test('a match works even when the To: header is absent entirely: evidence is what counts', () => {
     const book = bookExpecting(ALIAS);
     const result = book.matchCandidate(
       candidate({ toHeaderClaim: '', deliveredTo: deliveredRecipientFromAliasMailbox(ALIAS) }),

@@ -69,7 +69,7 @@ function fakeConfigManager() {
   };
 }
 
-describe('FeatureFlagManager.applyConfigState — direct unit coverage', () => {
+describe('FeatureFlagManager.applyConfigState: direct unit coverage', () => {
   test('runtime-toggleable gate: applies live and notifies subscribers', () => {
     const manager = createFeatureFlagManager();
     const seen: Array<{ flagId: string; state: FlagState; previous: FlagState }> = [];
@@ -139,7 +139,7 @@ describe('FeatureFlagManager.applyConfigState — direct unit coverage', () => {
   });
 });
 
-describe('feature-settings bindings — derivation', () => {
+describe('feature-settings bindings: derivation', () => {
   test('every registry capability has exactly one binding', () => {
     expect(FEATURE_SETTINGS_BINDINGS.length).toBe(FEATURE_FLAG_MAP.size);
     for (const id of FEATURE_FLAG_MAP.keys()) {
@@ -181,7 +181,7 @@ describe('feature-settings bindings — derivation', () => {
   });
 });
 
-describe('bindFeatureSettingsBridge — subscription wiring', () => {
+describe('bindFeatureSettingsBridge: subscription wiring', () => {
   test('subscribes each bound settings key once and applies a live change', () => {
     const configManager = fakeConfigManager();
     const manager = createFeatureFlagManager();
@@ -222,7 +222,7 @@ describe('bindFeatureSettingsBridge — subscription wiring', () => {
     expect(manager.isEnabled('compaction-distiller-strategy')).toBe(false);
   });
 
-  test('constant bindings are not subscribed — their domain keys act directly', () => {
+  test('constant bindings are not subscribed: their domain keys act directly', () => {
     const configManager = fakeConfigManager();
     const manager = createFeatureFlagManager();
     bindFeatureSettingsBridge(configManager, manager);

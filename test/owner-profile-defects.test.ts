@@ -39,7 +39,7 @@ async function storeFor(content: string): Promise<{ store: OwnerProfileStore; pa
   return { store, path };
 }
 
-describe('defect 1 — one character of punctuation must not enumerate the People section', () => {
+describe('defect 1: one character of punctuation must not enumerate the People section', () => {
   const DOC = [
     '## People',
     '',
@@ -74,7 +74,7 @@ describe('defect 1 — one character of punctuation must not enumerate the Peopl
   });
 });
 
-describe('defect 2 — a nested fence must not desynchronise the scanner', () => {
+describe('defect 2: a nested fence must not desynchronise the scanner', () => {
   const DOC = [
     '## Commerce',
     '',
@@ -140,7 +140,7 @@ describe('defect 2 — a nested fence must not desynchronise the scanner', () =>
   });
 });
 
-describe('defect 3 — a concurrent hand edit must not be silently destroyed', () => {
+describe('defect 3: a concurrent hand edit must not be silently destroyed', () => {
   const DOC = [
     '## Location',
     '',
@@ -216,7 +216,7 @@ describe('defect 3 — a concurrent hand edit must not be silently destroyed', (
   });
 });
 
-describe('defect 4 — a duplicated field line must not survive its own deletion', () => {
+describe('defect 4: a duplicated field line must not survive its own deletion', () => {
   const DOC = [
     '## Contact',
     '',
@@ -249,7 +249,7 @@ describe('defect 4 — a duplicated field line must not survive its own deletion
   });
 });
 
-describe('defect 5 — a duplicate heading must not put history outside every section', () => {
+describe('defect 5: a duplicate heading must not put history outside every section', () => {
   const DOC = [
     "# Avery's profile",
     '',
@@ -295,7 +295,7 @@ describe('defect 5 — a duplicate heading must not put history outside every se
   });
 });
 
-describe('defect 6 — a suffix-shaped quote must not forge provenance', () => {
+describe('defect 6: a suffix-shaped quote must not forge provenance', () => {
   const DOC = ['## Contact', '', 'email: owner@example.com', ''].join('\n');
 
   test('a quote ending in a well-formed suffix does not become the provenance', async () => {
@@ -362,7 +362,7 @@ describe('defect 6 — a suffix-shaped quote must not forge provenance', () => {
   });
 });
 
-describe('defect 7 — a positional delete must be an in-range integer and not a heading', () => {
+describe('defect 7: a positional delete must be an in-range integer and not a heading', () => {
   const DOC = [
     "# Avery's profile",
     '',
@@ -420,7 +420,7 @@ describe('defect 7 — a positional delete must be an in-range integer and not a
   });
 });
 
-describe('defect 8 — forget must not deny a value that read still serves', () => {
+describe('defect 8: forget must not deny a value that read still serves', () => {
   const DOC = [
     '## Shopping',
     '',
@@ -454,7 +454,7 @@ describe('defect 8 — forget must not deny a value that read still serves', () 
   });
 });
 
-describe('defect 9 — one stray CR must not convert the document to CRLF', () => {
+describe('defect 9: one stray CR must not convert the document to CRLF', () => {
   test('a mostly-LF file keeps LF for machine-written lines', async () => {
     const doc = ['## Location', '', 'city: Lansing, MI\r', 'home address: 401 Home St', ''].join('\n');
     const { store, path } = await storeFor(doc);

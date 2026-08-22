@@ -55,7 +55,7 @@ const record = { id: 'agent-42', template: 'engineer' } as const;
 
 // ── mode matrix (inherit) ────────────────────────────────────────────────────
 
-describe('background permission gate — inherit applies the session mode', () => {
+describe('background permission gate: inherit applies the session mode', () => {
   test('allow-all session mode: everything auto-approves, no ask', async () => {
     const { manager, asks } = makeManager('allow-all', 'inherit');
     const outcome = await gateBackgroundToolCall({ permissionManager: manager }, record, 'exec', { command: 'ls' });
@@ -100,12 +100,12 @@ describe('background permission gate — inherit applies the session mode', () =
 
 // ── escape hatch ──────────────────────────────────────────────────────────────
 
-describe('background permission gate — allow-all escape hatch exempts background agents', () => {
+describe('background permission gate: allow-all escape hatch exempts background agents', () => {
   test('backgroundAgents=allow-all approves even when the session mode would ask', async () => {
     const { manager, asks } = makeManager('prompt', 'allow-all', false);
     const outcome = await gateBackgroundToolCall({ permissionManager: manager }, record, 'exec', { command: 'ls' });
     expect(outcome.approved).toBe(true);
-    expect(asks).toEqual([]); // exempt — never brokered
+    expect(asks).toEqual([]); // exempt, never brokered
   });
 
   test('backgroundAgents=allow-all bypasses even a plan-mode refusal', async () => {
@@ -117,7 +117,7 @@ describe('background permission gate — allow-all escape hatch exempts backgrou
 
 // ── attribution ────────────────────────────────────────────────────────────────
 
-describe('background permission gate — subagent attribution rides on the ask', () => {
+describe('background permission gate: subagent attribution rides on the ask', () => {
   test('a brokered background ask carries the subagent id + template', async () => {
     const { manager, asks } = makeManager('prompt', 'inherit', true);
     await gateBackgroundToolCall({ permissionManager: manager }, record, 'write', { path: 'a.ts' });
@@ -138,7 +138,7 @@ describe('background permission gate — subagent attribution rides on the ask',
 
 // ── ungated fallback ────────────────────────────────────────────────────────────
 
-describe('background permission gate — no manager leaves the call ungated', () => {
+describe('background permission gate: no manager leaves the call ungated', () => {
   test('absent permissionManager approves without consulting anything', async () => {
     const outcome = await gateBackgroundToolCall({ permissionManager: undefined }, record, 'exec', { command: 'ls' });
     expect(outcome.approved).toBe(true);

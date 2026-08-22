@@ -22,7 +22,7 @@ function io(files: readonly string[]): DeriveSetupIo {
   };
 }
 
-describe('deriveWorktreeSetup — lockfile → install command', () => {
+describe('deriveWorktreeSetup: lockfile → install command', () => {
   const cases: Array<[string, string]> = [
     ['bun.lock', 'bun install'],
     ['bun.lockb', 'bun install'],
@@ -63,7 +63,7 @@ describe('deriveWorktreeSetup — lockfile → install command', () => {
   });
 });
 
-describe('resolveEffectiveWorktreeSetup — user config OVERRIDES the derivation', () => {
+describe('resolveEffectiveWorktreeSetup: user config OVERRIDES the derivation', () => {
   const repoIo = io(['bun.lock', '.env']);
   const get = (config: Record<string, unknown>) => (key: string) => config[key];
 

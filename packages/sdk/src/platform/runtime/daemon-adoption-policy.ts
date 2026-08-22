@@ -72,11 +72,11 @@ export function classifyDaemonProbe(input: DaemonProbeClassificationInput): Daem
 /** The action the adopt-or-spawn policy selects. */
 export type DaemonAdoptionAction =
   | 'disabled'      // daemon.enabled is false
-  | 'adopt'         // a compatible GoodVibes daemon is already running — attach
-  | 'incompatible'  // a GoodVibes daemon is running on an incompatible band — refuse both adopt and spawn
-  | 'blocked'       // the port is occupied by an unverified process — continue without a daemon
-  | 'spawn'         // port free — spawn a detached daemon (default lifecycle ownership)
-  | 'adopt-only-idle'; // port free + adopt-only policy — do not spawn; run without a local daemon
+  | 'adopt'         // a compatible GoodVibes daemon is already running, attach
+  | 'incompatible'  // a GoodVibes daemon is running on an incompatible band, refuse both adopt and spawn
+  | 'blocked'       // the port is occupied by an unverified process, continue without a daemon
+  | 'spawn'         // port free, spawn a detached daemon (default lifecycle ownership)
+  | 'adopt-only-idle'; // port free + adopt-only policy, do not spawn; run without a local daemon
 
 export interface DaemonAdoptionDecision {
   readonly action: DaemonAdoptionAction;

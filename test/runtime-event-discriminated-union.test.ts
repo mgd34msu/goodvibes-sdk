@@ -219,7 +219,7 @@ function exhaustiveWorkflowSwitch(event: WorkflowEvent): string {
 // Runtime tests
 // ---------------------------------------------------------------------------
 
-describe('discriminated union — AgentEvent', () => {
+describe('discriminated union: AgentEvent', () => {
   test('AGENT_SPAWNING: agentId and task are accessible without cast', () => {
     const event: AgentEvent = { type: 'AGENT_SPAWNING', agentId: 'agent-1', task: 'build feature' };
     expect(describeAgentEvent(event)).toBe('spawning:agent-1:build feature');
@@ -255,7 +255,7 @@ describe('discriminated union — AgentEvent', () => {
     }
   });
 
-  test('exhaustive switch — all variants covered (never check in default)', () => {
+  test('exhaustive switch: all variants covered (never check in default)', () => {
     const events: AgentEvent[] = [
       { type: 'AGENT_SPAWNING', agentId: 'a1', task: 'task' },
       { type: 'AGENT_RUNNING', agentId: 'a1' },
@@ -274,7 +274,7 @@ describe('discriminated union — AgentEvent', () => {
   });
 });
 
-describe('discriminated union — TurnEvent', () => {
+describe('discriminated union: TurnEvent', () => {
   test('TURN_SUBMITTED: turnId and prompt are accessible without cast', () => {
     const event: TurnEvent = { type: 'TURN_SUBMITTED', turnId: 'turn-1', prompt: 'hello world' };
     expect(describeTurnEvent(event)).toBe('submitted:turn-1:hello world');
@@ -285,7 +285,7 @@ describe('discriminated union — TurnEvent', () => {
     expect(describeTurnEvent(event)).toBe('completed:turn-2:completed');
   });
 
-  test('exhaustive switch — all variants covered (never check in default)', () => {
+  test('exhaustive switch: all variants covered (never check in default)', () => {
     const events: TurnEvent[] = [
       { type: 'TURN_SUBMITTED', turnId: 't1', prompt: 'hello' },
       { type: 'PREFLIGHT_OK', turnId: 't1' },
@@ -309,7 +309,7 @@ describe('discriminated union — TurnEvent', () => {
   });
 });
 
-describe('discriminated union — SessionEvent', () => {
+describe('discriminated union: SessionEvent', () => {
   test('SESSION_STARTED: sessionId, profileId, workingDir are accessible without cast', () => {
     const event: SessionEvent = { type: 'SESSION_STARTED', sessionId: 'sess-1', profileId: 'profile-a', workingDir: '/tmp/test-workdir' };
     if (event.type === 'SESSION_STARTED') {
@@ -330,7 +330,7 @@ describe('discriminated union — SessionEvent', () => {
   });
 });
 
-describe('discriminated union — WorkflowEvent', () => {
+describe('discriminated union: WorkflowEvent', () => {
   test('WORKFLOW_CHAIN_CREATED: chainId and task are accessible without cast', () => {
     const event: WorkflowEvent = { type: 'WORKFLOW_CHAIN_CREATED', chainId: 'chain-1', task: 'implement feature' };
     if (event.type === 'WORKFLOW_CHAIN_CREATED') {
@@ -349,7 +349,7 @@ describe('discriminated union — WorkflowEvent', () => {
     }
   });
 
-  test('exhaustive switch — all variants covered (never check in default)', () => {
+  test('exhaustive switch: all variants covered (never check in default)', () => {
     const events: WorkflowEvent[] = [
       { type: 'WORKFLOW_CHAIN_CREATED', chainId: 'c1', task: 'build' },
       { type: 'WORKFLOW_STATE_CHANGED', chainId: 'c1', from: 'engineering', to: 'reviewing' },

@@ -30,7 +30,7 @@
  *
  * ══ The merchant the owner named, and the merchant class ═════════════════
  *
- * The taint gate stands as written: the merchant, the checkout url, the item
+ * The taint gate applies exactly as written: the merchant, the checkout url, the item
  * and any stated limit come from the owner or the purchase is refused. The owner
  * names the merchant, or there is no purchase. Buying "the cheapest X you can find
  * online" is therefore refused, and taint-gate.ts documents that as a designed

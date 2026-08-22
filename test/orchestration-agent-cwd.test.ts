@@ -50,7 +50,7 @@ type PrivateOrchestrator = {
   createRunContext(workingDirectory?: string): AgentOrchestratorRunContext;
 };
 
-describe('AgentOrchestrator — createRunContext cwd threading (wiring)', () => {
+describe('AgentOrchestrator: createRunContext cwd threading (wiring)', () => {
   test('an override reaches BOTH workingDirectory and the bound getFullRegistry closure; omitted matches the default toolDeps cwd', () => {
     const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() }) as unknown as PrivateOrchestrator;
     orchestrator.toolDeps = { providerRegistry: {}, workingDirectory: '/default/cwd' };
@@ -129,7 +129,7 @@ function makeRealToolDeps(defaultDir: string, scratchRoot: string): Record<strin
   };
 }
 
-describe('AgentOrchestrator — getFullRegistry(cwd) against REAL tool deps', () => {
+describe('AgentOrchestrator: getFullRegistry(cwd) against REAL tool deps', () => {
   test('two distinct cwds get two DISTINCT registries; the default cwd is unaffected by a later override call', () => {
     const defaultDir = mkdtempSync(join(tmpdir(), 'agent-cwd-default-'));
     const otherDir = mkdtempSync(join(tmpdir(), 'agent-cwd-other-'));

@@ -61,7 +61,7 @@ function makeBuildStats(overrides: Partial<CodeIndexBuildStats> = {}): CodeIndex
   };
 }
 
-describe('adapters/code-index — node id + shape', () => {
+describe('adapters/code-index: node id + shape', () => {
   test('codeIndexNodeId is a single well-known id', () => {
     expect(codeIndexNodeId()).toBe('code-index:main');
   });
@@ -111,7 +111,7 @@ describe('adapters/code-index — node id + shape', () => {
   });
 });
 
-describe('adapters/code-index — registry integration (degrade-to-today)', () => {
+describe('adapters/code-index: registry integration (degrade-to-today)', () => {
   function makeDeps(overrides: Partial<ProcessRegistryDeps> = {}): ProcessRegistryDeps {
     const timers: RegistryTimers = { setInterval: () => 0, clearInterval: () => {} };
     return {

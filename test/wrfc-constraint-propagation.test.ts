@@ -408,7 +408,7 @@ describe('Review → planned-fix propagation', () => {
 // constraint list, derived from the ORIGINAL ask, never from task output.
 // ---------------------------------------------------------------------------
 
-describe('Planned fix — authoritative constraints survive to the terminal gate', () => {
+describe('Planned fix: authoritative constraints survive to the terminal gate', () => {
   test('after a merged fix cycle the terminal-gate reviewer receives the ORIGINAL ask and the authoritative constraints', async () => {
     const constraints: Constraint[] = [
       { id: 'c1', text: 'must be pure', source: 'prompt' },
@@ -446,7 +446,7 @@ describe('Planned fix — authoritative constraints survive to the terminal gate
     h.controller.dispose();
   });
 
-  test('a slice-green fix cycle does NOT complete the chain — the terminal gate decides (test pins this exact case)', async () => {
+  test('a slice-green fix cycle does NOT complete the chain: the terminal gate decides (test pins this exact case)', async () => {
     const constraints: Constraint[] = [{ id: 'c1', text: 'must be pure', source: 'prompt' }];
     const { h, chain, reviewerAgentId, fixRuns } = await seedChainWithConstraints(constraints, {
       maxFixAttempts: 3,
@@ -505,7 +505,7 @@ describe('Planned fix — authoritative constraints survive to the terminal gate
 // A7: Empty-list no-op, reviewer side
 // ---------------------------------------------------------------------------
 
-describe('Empty-list no-op — reviewer side', () => {
+describe('Empty-list no-op: reviewer side', () => {
   test('constraints:[] → review task has no constraint section', async () => {
     const { h, chain } = await seedChainWithConstraints([]);
 
@@ -526,7 +526,7 @@ describe('Empty-list no-op — reviewer side', () => {
 // A8: Empty-list no-op, fixer side
 // ---------------------------------------------------------------------------
 
-describe('Empty-list no-op — planned-fix side', () => {
+describe('Empty-list no-op: planned-fix side', () => {
   test('constraints:[] → the parsed fix tasks carry no constraint tasks', async () => {
     const { h, chain, reviewerAgentId, fixRuns } = await seedChainWithConstraints([], { maxFixAttempts: 3 });
 
@@ -624,7 +624,7 @@ function waitForEvent(bus: RuntimeEventBus, eventType: string): Promise<void> {
   });
 }
 
-describe('Gate retry — same-chain fix', () => {
+describe('Gate retry: same-chain fix', () => {
   test('gate failure keeps owner chain active and sends constraints to the fixer', async () => {
     const { bus, controller, agentStore, spawnedRecords } = createGateHarness('always-fail-a9');
 
@@ -671,7 +671,7 @@ describe('Gate retry — same-chain fix', () => {
 // A10: Gate retry does not create child chains
 // ---------------------------------------------------------------------------
 
-describe('Gate retry — no child chain', () => {
+describe('Gate retry: no child chain', () => {
   test('gate failure does not create a second WRFC chain', async () => {
     const { bus, controller, agentStore, spawnedRecords } = createGateHarness('always-fail-a10');
 

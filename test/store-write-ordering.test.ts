@@ -93,7 +93,7 @@ function alwaysAllowRule(id: string): StoredUserPermissionRule {
   };
 }
 
-describe('UserPermissionRuleStore — a revoked rule does not come back', () => {
+describe('UserPermissionRuleStore: a revoked rule does not come back', () => {
   test('the rule an operator revoked is absent from the file a fresh store reads', async () => {
     const { store, path, cleanup } = makeControllableStore<UserRuleFileShape>('user-rules', 'user-rules.json');
     try {
@@ -177,7 +177,7 @@ interface BatchStoreShape extends Record<string, unknown> {
   readonly jobs: Record<string, { readonly status: string }>;
 }
 
-describe('DaemonBatchManager — a cancelled job does not read back queued', () => {
+describe('DaemonBatchManager: a cancelled job does not read back queued', () => {
   test("the operator's cancel survives a tick whose write was already in flight", async () => {
     const { store, path, cleanup } = makeControllableStore<BatchStoreShape>('batch-order', 'batch-jobs.json');
     const configDir = tempDir('batch-config');
@@ -256,7 +256,7 @@ function makeSessionBroker(store: ControllableStore<SessionStoreShape>): SharedS
   } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]);
 }
 
-describe('SharedSessionBroker — a cancelled input does not read back queued', () => {
+describe('SharedSessionBroker: a cancelled input does not read back queued', () => {
   test("the GC sweep's unawaited write cannot undo a cancel requested after it", async () => {
     const { store, path, cleanup } = makeControllableStore<SessionStoreShape>('session-order', 'sessions.json');
     try {
@@ -307,7 +307,7 @@ interface ChannelPolicyShape extends Record<string, unknown> {
   readonly policies: readonly { readonly surface: string; readonly enabled: boolean }[];
 }
 
-describe('ChannelPolicyManager — a disabled surface stays disabled', () => {
+describe('ChannelPolicyManager: a disabled surface stays disabled', () => {
   test('the debounced audit flush cannot put an enabled surface back', async () => {
     const { store, path, cleanup } = makeControllableStore<ChannelPolicyShape>('channel-policy-order', 'channel-policies.json');
     try {

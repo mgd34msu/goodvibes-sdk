@@ -171,7 +171,7 @@ prose bullets for everything else.
 ```markdown
 # Alex's profile
 
-<!-- GoodVibes keeps this file. Edit it by hand whenever you like — your edits
+<!-- GoodVibes keeps this file. Edit it by hand whenever you like. Your edits
      win and are never rewritten. Lines it learned from you carry a short note
      at the end saying where it heard it. Delete the note if you find it noisy;
      delete the line to make it forget. -->

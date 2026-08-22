@@ -59,7 +59,7 @@ function invoke(helper: DaemonControlPlaneHelper): Promise<{ status: number; ok:
   return helper.invokeGatewayMethodCall({ authToken: 'irrelevant', methodId: DESCRIPTOR.id, body: {} });
 }
 
-describe('readGatewayVerbRefusal — what counts as a refusal', () => {
+describe('readGatewayVerbRefusal: what counts as a refusal', () => {
   test('our own GatewayVerbError, with its field attribution intact', () => {
     const refusal = readGatewayVerbRefusal(new GatewayVerbError('sessionId is required', 'INVALID_ARGUMENT', 400, 'sessionId'));
     expect(refusal).toEqual({ status: 400, code: 'INVALID_ARGUMENT', message: 'sessionId is required', field: 'sessionId' });
@@ -72,7 +72,7 @@ describe('readGatewayVerbRefusal — what counts as a refusal', () => {
     expect(refusal?.message).toBe('This call needs confirmation.');
   });
 
-  test('a plain Error is not a refusal — it stays a server fault', () => {
+  test('a plain Error is not a refusal: it stays a server fault', () => {
     expect(readGatewayVerbRefusal(new Error('the disk went away'))).toBeNull();
   });
 
@@ -86,7 +86,7 @@ describe('readGatewayVerbRefusal — what counts as a refusal', () => {
   });
 });
 
-describe('invokeGatewayMethodCall — a foreign refusal reaches the wire as itself', () => {
+describe('invokeGatewayMethodCall: a foreign refusal reaches the wire as itself', () => {
   test('a daemon-repo-shaped confirmation refusal is a 403 REQUIRE_CONFIRM, not a 500', async () => {
     const helper = helperWithHandler(() => {
       throw new HandlerError('This action needs an explicit confirmation.', 'REQUIRE_CONFIRM', 403);
@@ -126,7 +126,7 @@ describe('invokeGatewayMethodCall — a foreign refusal reaches the wire as itse
   });
 });
 
-describe('one envelope — the fields every client already parses keep their names', () => {
+describe('one envelope: the fields every client already parses keep their names', () => {
   test('the refusal body is a superset of the thin {error, code} shape', async () => {
     const helper = helperWithHandler(() => {
       throw new GatewayVerbError('workspaceRoot must be absolute.', 'INVALID_ARGUMENT', 400, 'workspaceRoot');

@@ -130,7 +130,7 @@ describe('applying a snapshot the user asked for', () => {
     expect(conversation.title).toBe('Crashed session');
   });
 
-  test('retires the snapshot file — applying and retiring are one operation', () => {
+  test('retires the snapshot file: applying and retiring are one operation', () => {
     const surface = tempSurface();
     writeRecoveryFile({ messages: messages(2) }, 'sess-b', '', { surface });
     expect(existsSync(surface.recoveryFile('sess-b'))).toBe(true);

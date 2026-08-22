@@ -68,7 +68,7 @@ function makeWebhookContext(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-describe('webhook adapter — contract surface', () => {
+describe('webhook adapter: contract surface', () => {
   test('rejects requests without a valid shared secret or signature', async () => {
     const { context } = makeWebhookContext();
     const res = await handleGenericWebhookSurface(new Request('http://localhost/webhook', {

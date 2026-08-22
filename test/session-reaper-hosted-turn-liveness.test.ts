@@ -89,7 +89,7 @@ function sweepAt(
   return events;
 }
 
-describe('idle reaper — a live hosted turn is activity', () => {
+describe('idle reaper: a live hosted turn is activity', () => {
   test('without a liveness probe the stale-clocked hosted session IS reaped (the reported defect)', () => {
     const sessions = new Map([['hosted-1', brokerRecord()]]);
     sweepAt(sessions, NOW);
@@ -159,7 +159,7 @@ describe('idle reaper — a live hosted turn is activity', () => {
 
 const BOOT_SWEEP = { idleEmptyMs: IDLE_EMPTY_MS, idleLongMs: IDLE_LONG_MS, now: NOW };
 
-describe('boot sweep — a session left active by a dead process', () => {
+describe('boot sweep: a session left active by a dead process', () => {
   test('the ghost is closed WITH ITS REASON, not deleted', () => {
     // The observed ghost: "active", 0 messages, left by a pty-forked second
     // instance that died without closing it.

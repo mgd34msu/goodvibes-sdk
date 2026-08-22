@@ -341,7 +341,7 @@ describe('feature flag safe-default gates', () => {
     expect(registry.has('invalid_contract_tool')).toBe(true);
   });
 
-  test('fetch blocks SSRF-risk hosts before fetching — absolutely', async () => {
+  test('fetch blocks SSRF-risk hosts before fetching: absolutely', async () => {
     const output = await executeFetchInput(
       {
         urls: [{ url: 'http://10.0.0.5:1/private' }],

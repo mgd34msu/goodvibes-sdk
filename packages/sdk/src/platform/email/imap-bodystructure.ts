@@ -80,7 +80,7 @@ function readQuoted(text: string, from: number): { value: string; next: number }
     out += ch;
     i += 1;
   }
-  return { value: out, next: i }; // unterminated — take what we read
+  return { value: out, next: i }; // unterminated, take what we read
 }
 
 function readAtom(text: string, from: number): { value: string; next: number } {
@@ -154,7 +154,7 @@ function parseList(text: string, from: number, depth: number): { items: SNode[];
     }
     const atom = readAtom(text, i);
     if (atom.next === i) {
-      i += 1; // no progress possible on this character — step over it
+      i += 1; // no progress possible on this character, step over it
       continue;
     }
     items.push(/^nil$/i.test(atom.value) ? null : atom.value);

@@ -189,7 +189,7 @@ describe('reading what he declared', () => {
   });
 });
 
-describe('capture — confirmed once, kind never inferred', () => {
+describe('capture: confirmed once, kind never inferred', () => {
   test('a proposal with no kind asks for one and writes nothing', async () => {
     const { service, profilePath } = harness();
     const before = readFileSync(profilePath, 'utf-8');
@@ -326,7 +326,7 @@ describe('the sweep and the answer', () => {
     expect(later.nudge).toBeNull();
   });
 
-  test('a later is not a decline — the item stays open and moves', async () => {
+  test('a later is not a decline: the item stays open and moves', async () => {
     const h = harness();
     await h.service.sweep();
     await h.service.answer({ occasionId: "sarah's birthday", answer: 'later' });

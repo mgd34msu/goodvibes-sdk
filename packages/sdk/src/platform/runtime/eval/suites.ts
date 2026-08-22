@@ -195,7 +195,7 @@ const safetyBaselineScenarios: EvalScenario[] = [
 
   {
     id: 'safety:recovery-success',
-    name: 'Recovery Path — Succeeded',
+    name: 'Recovery Path, Succeeded',
     suite: 'safety-baseline',
     description: 'Validates that a successfully recovered scenario scores correctly on recovery dimension.',
     tags: ['safety', 'recovery'],
@@ -212,7 +212,7 @@ const safetyBaselineScenarios: EvalScenario[] = [
 
   {
     id: 'safety:recovery-failure-score',
-    name: 'Recovery Path — Failed (Score Validation)',
+    name: 'Recovery Path, Failed (Score Validation)',
     suite: 'safety-baseline',
     description:
       'Validates that a failed recovery scenario scores below the recovery floor, ' +
@@ -254,7 +254,7 @@ const costTokenScenarios: EvalScenario[] = [
 
   {
     id: 'cost:low-token-usage',
-    name: 'Low Token Usage — Under Target',
+    name: 'Low Token Usage, Under Target',
     suite: 'cost-tokens',
     description:
       'Validates that minimal token usage stays within the cost budget.',

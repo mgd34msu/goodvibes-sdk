@@ -20,7 +20,7 @@ export interface SpawnToken {
   depth: number;            // 0 for orchestrator, 1 for agent tokens
   maxDepth: number;         // from config, always 0 or 1
   canGenerate: boolean;     // true for orchestrator, false for agent
-  expiresAt: number;        // Unix ms timestamp — Date.now() + TTL
+  expiresAt: number;        // Unix ms timestamp, Date.now() + TTL
   signature: string;        // HMAC-SHA256
 }
 

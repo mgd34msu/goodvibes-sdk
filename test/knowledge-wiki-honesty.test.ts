@@ -63,7 +63,7 @@ function reviewState(node: KnowledgeNodeRecord | undefined): string | undefined 
   return provenance && typeof provenance === 'object' ? (provenance as Record<string, unknown>).state as string : undefined;
 }
 
-describe('knowledge wiki honesty — revision history (Defect 1)', () => {
+describe('knowledge wiki honesty: revision history (Defect 1)', () => {
   test('every content-changing upsert preserves prior content and records what changed', async () => {
     const store = createStore();
     await store.upsertNode({ kind: 'topic', slug: 'widget', title: 'Widget', summary: 'First summary', confidence: 90 });
@@ -89,7 +89,7 @@ describe('knowledge wiki honesty — revision history (Defect 1)', () => {
     expect(store.listNodeRevisions(node.id).length).toBe(1);
   });
 
-  test('a slug-only identity change records a revision listing slug — the prior slug is not lost (Finding 3)', async () => {
+  test('a slug-only identity change records a revision listing slug: the prior slug is not lost (Finding 3)', async () => {
     const store = createStore();
     // Everything identical except the slug: an id-based upsert that renames the slug.
     const created = await store.upsertNode({ kind: 'topic', slug: 'old-slug', title: 'Widget', summary: 'S', confidence: 90 });
@@ -116,7 +116,7 @@ describe('knowledge wiki honesty — revision history (Defect 1)', () => {
   });
 });
 
-describe('knowledge wiki honesty — confidence scale + non-finite guard (Findings 4 & 5)', () => {
+describe('knowledge wiki honesty: confidence scale + non-finite guard (Findings 4 & 5)', () => {
   test('a non-finite (NaN) confidence resolves to the auto-accept default, never a silent draft (Finding 5)', async () => {
     const store = createStore();
     // NaN slips past `??` (which only catches null/undefined); before the fix the
@@ -166,7 +166,7 @@ describe('knowledge wiki honesty — confidence scale + non-finite guard (Findin
   });
 });
 
-describe('knowledge wiki honesty — review gate (Defect 2)', () => {
+describe('knowledge wiki honesty: review gate (Defect 2)', () => {
   test('a low-confidence synthesized node is held as draft with pending-review provenance', async () => {
     const store = createStore('knowledge-wiki.sqlite', { family: 'wiki' });
     const node = await store.upsertNode({ kind: 'topic', slug: 'weak', title: 'Weak', confidence: 20 });
@@ -222,7 +222,7 @@ describe('knowledge wiki honesty — review gate (Defect 2)', () => {
   });
 });
 
-describe('knowledge wiki honesty — fabricated answer-gap evidence (Defect 3)', () => {
+describe('knowledge wiki honesty: fabricated answer-gap evidence (Defect 3)', () => {
   const base: KnowledgeNodeRecord = {
     id: 'gap-1', kind: 'knowledge_gap', slug: 'g', title: 'g', aliases: [], status: 'active',
     confidence: 70, metadata: {}, createdAt: 1, updatedAt: 1,
@@ -243,7 +243,7 @@ describe('knowledge wiki honesty — fabricated answer-gap evidence (Defect 3)',
   });
 });
 
-describe('knowledge wiki honesty — mergeNodes re-points edges (Defect 5)', () => {
+describe('knowledge wiki honesty: mergeNodes re-points edges (Defect 5)', () => {
   test('merging re-points cross-reference edges onto the survivor and marks the loser', async () => {
     const store = createStore();
     const winner = await store.upsertNode({ kind: 'topic', slug: 'winner', title: 'Winner', confidence: 90 });
@@ -265,7 +265,7 @@ describe('knowledge wiki honesty — mergeNodes re-points edges (Defect 5)', () 
   });
 });
 
-describe('knowledge wiki honesty — honest hard delete and forget filter (Defect 6)', () => {
+describe('knowledge wiki honesty: honest hard delete and forget filter (Defect 6)', () => {
   test('queryNodes hides forgotten (stale) nodes by default but returns them on request', async () => {
     const { store, artifactStore } = createStores();
     const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, { memoryRegistry: fakeMemoryRegistry() }), disposeKnowledgeService);
@@ -289,7 +289,7 @@ describe('knowledge wiki honesty — honest hard delete and forget filter (Defec
   });
 });
 
-describe('knowledge wiki honesty — delete cascades refinement tasks (Defect 7)', () => {
+describe('knowledge wiki honesty: delete cascades refinement tasks (Defect 7)', () => {
   test('deleting a node removes refinement tasks that reference it', async () => {
     const store = createStore();
     const node = await store.upsertNode({ kind: 'topic', slug: 'subject', title: 'Subject', confidence: 90 });
@@ -302,7 +302,7 @@ describe('knowledge wiki honesty — delete cascades refinement tasks (Defect 7)
   });
 });
 
-describe('knowledge wiki honesty — packet truncation disclosure (Defect 9)', () => {
+describe('knowledge wiki honesty: packet truncation disclosure (Defect 9)', () => {
   test('a packet that drops candidates over the limit reports it honestly', async () => {
     const { store, artifactStore } = createStores();
     const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, { memoryRegistry: fakeMemoryRegistry() }), disposeKnowledgeService);
@@ -363,7 +363,7 @@ describe('knowledge wiki honesty — packet truncation disclosure (Defect 9)', (
   });
 });
 
-describe('knowledge wiki honesty — unlink is a real reversal (unlink sub-defect)', () => {
+describe('knowledge wiki honesty: unlink is a real reversal (unlink sub-defect)', () => {
   test('unlinking a never-linked target creates no phantom node or edge', async () => {
     const { store, artifactStore } = createStores();
     const service = disposables.add(new HomeGraphService(store, artifactStore));
@@ -383,7 +383,7 @@ describe('knowledge wiki honesty — unlink is a real reversal (unlink sub-defec
   });
 });
 
-describe('knowledge wiki honesty — shared artifact reset does not orphan foreign blobs (Hazard H1)', () => {
+describe('knowledge wiki honesty: shared artifact reset does not orphan foreign blobs (Hazard H1)', () => {
   test('home-graph reset preserves a blob owned by another knowledge family', async () => {
     const { store, artifactStore } = createStores();
     const spaceId = homeAssistantKnowledgeSpaceId('house');
@@ -407,7 +407,7 @@ describe('knowledge wiki honesty — shared artifact reset does not orphan forei
   });
 });
 
-describe('knowledge wiki honesty — forgotten nodes are not served over the wire (Defect 6)', () => {
+describe('knowledge wiki honesty: forgotten nodes are not served over the wire (Defect 6)', () => {
   test('the GET /api/knowledge/nodes route excludes a forgotten (stale) node by default', async () => {
     const { store, artifactStore } = createStores();
     const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, { memoryRegistry: fakeMemoryRegistry() }), disposeKnowledgeService);
@@ -428,7 +428,7 @@ describe('knowledge wiki honesty — forgotten nodes are not served over the wir
   });
 });
 
-describe('knowledge wiki honesty — constructor family assert', () => {
+describe('knowledge wiki honesty: constructor family assert', () => {
   test('a mis-wired db file for a declared family fails loudly', () => {
     const root = mkdtempSync(join(tmpdir(), 'goodvibes-wiki-honesty-'));
     tmpRoots.push(root);

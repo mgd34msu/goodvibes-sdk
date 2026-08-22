@@ -31,7 +31,7 @@ function decl(root: string): DeclinedWorkspaceRecord {
   return { root, declinedAt: '2026-07-10T00:00:00.000Z' };
 }
 
-describe('resolveWorkspaceRegistration — pure semantics', () => {
+describe('resolveWorkspaceRegistration: pure semantics', () => {
   test('coverage flows DOWN a registered root subtree, never up', () => {
     const registrations = [reg('/home/dev/proj')];
     // A descendant is covered.
@@ -147,7 +147,7 @@ describe('resolveWorkspaceRegistration — pure semantics', () => {
   });
 });
 
-describe('probeWorktreeLink — worktree→main-repo link resolution', () => {
+describe('probeWorktreeLink: worktree→main-repo link resolution', () => {
   test('a linked worktree reports the MAIN worktree root from --git-common-dir, not path ancestry', () => {
     // Simulate: worktree at /tmp/wt/item, main repo at /home/dev/proj.
     const runner: GitRunner = (_cwd, args) => {
@@ -182,7 +182,7 @@ describe('probeWorktreeLink — worktree→main-repo link resolution', () => {
   });
 });
 
-describe('WorkspaceRegistrationStore — persistence + broad-root guard', () => {
+describe('WorkspaceRegistrationStore: persistence + broad-root guard', () => {
   function store(probe?: (p: string) => { mainWorktreeRoot?: string }): WorkspaceRegistrationStore {
     return new WorkspaceRegistrationStore({
       path: ':memory:',

@@ -43,7 +43,7 @@ function connect(
 // ---------------------------------------------------------------------------
 // Pure helper, the null=deliver-all + untagged-inert contract
 // ---------------------------------------------------------------------------
-describe('clientMayReceiveEventDomain — the migration-safe default', () => {
+describe('clientMayReceiveEventDomain: the migration-safe default', () => {
   test('null client domains deliver everything (opt-in narrowing)', () => {
     expect(clientMayReceiveEventDomain(null, 'session-update')).toBe(true);
     expect(clientMayReceiveEventDomain(null, 'approval-update')).toBe(true);
@@ -75,7 +75,7 @@ describe('clientMayReceiveEventDomain — the migration-safe default', () => {
 // ---------------------------------------------------------------------------
 // Fan-out behavior
 // ---------------------------------------------------------------------------
-describe('publishEvent — domain-scoped delivery', () => {
+describe('publishEvent: domain-scoped delivery', () => {
   test('(1) session-update reaches only the session subscriber, not the tasks subscriber', () => {
     const gateway = makeGateway();
     const sessionSub = connect(gateway, { clientKind: 'web', domains: ['session'] });
@@ -113,7 +113,7 @@ describe('publishEvent — domain-scoped delivery', () => {
       gateway.publishEvent('approval-update', { id: 'a1' });
     }).not.toThrow();
 
-    expect(webui.received).not.toContain('session-update'); // the fix — was over-delivered before
+    expect(webui.received).not.toContain('session-update'); // the fix, was over-delivered before
     expect(webui.received).toContain('approval-update'); // permissions ∈ webui domains
   });
 
@@ -131,7 +131,7 @@ describe('publishEvent — domain-scoped delivery', () => {
     expect(scopedDown.received).not.toContain('session-update');
   });
 
-  test('(W3-S3) a session-detached update reaches only the session subscriber — detach rides the session-update channel', () => {
+  test('(W3-S3) a session-detached update reaches only the session subscriber: detach rides the session-update channel', () => {
     const gateway = makeGateway();
     const sessionSub = connect(gateway, { clientKind: 'web', domains: ['session'] });
     const tasksSub = connect(gateway, { clientKind: 'web', domains: ['tasks'] });
@@ -209,7 +209,7 @@ async function readSseFrames(
   }
 }
 
-describe('replay parity — reconnect must mirror live delivery (Finding 1)', () => {
+describe('replay parity: reconnect must mirror live delivery (Finding 1)', () => {
   test('(WS) a default consumer that reconnects during a pending approval receives the replayed approval-update', () => {
     const gateway = makeGateway();
     // Connect + disconnect first so the event is recorded to the shared ring

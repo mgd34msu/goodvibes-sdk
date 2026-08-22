@@ -175,7 +175,7 @@ describe('the real SecretsManager', () => {
     expect(await storedScope(manager, key)).toBe('daemon');
   });
 
-  test('and reading it back still finds it — the onboarding wizard\'s own assertion', async () => {
+  test('and reading it back still finds it: the onboarding wizard\'s own assertion', async () => {
     const { manager } = makeManager();
     const key = daemonSecretKeyFor('surfaces.slack.botToken');
     await manager.set(key, 'xoxb-secret', { scope: 'project', medium: 'plaintext' });

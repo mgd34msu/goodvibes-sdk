@@ -98,7 +98,7 @@ describe('atomicWriteFileSync', () => {
     expect(readFileSync(path, 'utf-8')).toBe('original content');
   });
 
-  test('tmp file naming includes pid and timestamp — only destination file remains', () => {
+  test('tmp file naming includes pid and timestamp: only destination file remains', () => {
     const path = join(tmpDir, 'named.json');
     atomicWriteFileSync(path, 'named test');
     const files = readdirSync(tmpDir);
@@ -114,7 +114,7 @@ describe('atomicWriteFileSync', () => {
     const subDir = join(tmpDir, 'subdir');
     mkdirSync(subDir);
     const path = join(subDir, 'a'.repeat(240) + '.json'); // 245 chars < 255
-    writeFileSync(path, 'original content'); // plain write — fits under NAME_MAX
+    writeFileSync(path, 'original content'); // plain write, fits under NAME_MAX
 
     expect(() => atomicWriteFileSync(path, 'new content that should not land')).toThrow();
 

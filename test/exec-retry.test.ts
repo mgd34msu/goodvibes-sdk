@@ -33,27 +33,27 @@ describe('isRetryableExecResult', () => {
     expect(isRetryableExecResult(result)).toBe(false);
   });
 
-  test('ENOENT is terminal — no retry', () => {
+  test('ENOENT is terminal: no retry', () => {
     const result = makeResult({ stderr: 'spawn ENOENT /usr/bin/nonexistent' });
     expect(isRetryableExecResult(result)).toBe(false);
   });
 
-  test('EACCES is terminal — no retry', () => {
+  test('EACCES is terminal: no retry', () => {
     const result = makeResult({ stderr: 'EACCES: permission denied' });
     expect(isRetryableExecResult(result)).toBe(false);
   });
 
-  test('command not found is terminal — no retry', () => {
+  test('command not found is terminal: no retry', () => {
     const result = makeResult({ stderr: 'bash: foobar: command not found' });
     expect(isRetryableExecResult(result)).toBe(false);
   });
 
-  test('Permission denied (shell) is terminal — no retry', () => {
+  test('Permission denied (shell) is terminal: no retry', () => {
     const result = makeResult({ stderr: '/bin/sh: ./script.sh: Permission denied' });
     expect(isRetryableExecResult(result)).toBe(false);
   });
 
-  test('No such file or directory is terminal — no retry', () => {
+  test('No such file or directory is terminal: no retry', () => {
     const result = makeResult({ stderr: 'No such file or directory' });
     expect(isRetryableExecResult(result)).toBe(false);
   });
@@ -88,12 +88,12 @@ describe('isRetryableExecResult', () => {
     expect(isRetryableExecResult(result, ['network'])).toBe(false);
   });
 
-  test('retry.on filter: only network allowed — EBUSY not retried', () => {
+  test('retry.on filter: only network allowed: EBUSY not retried', () => {
     const result = makeResult({ stderr: 'EBUSY: locked' });
     expect(isRetryableExecResult(result, ['network'])).toBe(false);
   });
 
-  test('plain non-zero exit with no matching pattern — not retryable', () => {
+  test('plain non-zero exit with no matching pattern: not retryable', () => {
     const result = makeResult({ exit_code: 1, stderr: 'some other error' });
     expect(isRetryableExecResult(result)).toBe(false);
   });

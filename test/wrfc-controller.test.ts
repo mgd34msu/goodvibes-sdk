@@ -340,7 +340,7 @@ function createHarness(overrides?: {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('WrfcController — happy path', () => {
+describe('WrfcController: happy path', () => {
   test('creates correlated work-plan tasks for owner and phase agents', async () => {
     const h = createHarness();
 
@@ -782,7 +782,7 @@ describe('WrfcController — happy path', () => {
   });
 });
 
-describe('WrfcController — wrfc.commitScope', () => {
+describe('WrfcController: wrfc.commitScope', () => {
   test('commitScope: scoped (default) stages only the paths the chain\'s engineer report claims to have touched', async () => {
     const h = createHarness({ autoCommit: true, gitRepo: true }); // commitScope defaults to 'scoped'
 
@@ -994,7 +994,7 @@ describe('WrfcController — wrfc.commitScope', () => {
   });
 });
 
-describe('WrfcController — gate failure', () => {
+describe('WrfcController: gate failure', () => {
   test('score passes but configured gate fails → same WRFC chain starts a gate fix', async () => {
     // Use a gate that is configured (enabled) so it runs. The gate command will
     // fail because no real command can succeed in this unit test environment.
@@ -1223,7 +1223,7 @@ describe('WrfcController — gate failure', () => {
   });
 });
 
-describe('WrfcController — escalation', () => {
+describe('WrfcController: escalation', () => {
   test('score below threshold after maxFixAttempts → WORKFLOW_CHAIN_FAILED emitted', async () => {
     const h = createHarness({ scoreThreshold: 9.9, maxFixAttempts: 1 });
     const fixRuns = installStubFixRunner(h.controller, 'merged');
@@ -1386,7 +1386,7 @@ describe('WrfcController — escalation', () => {
     h.controller.dispose();
   });
 
-  test('transport retry budget of 0 fails the chain immediately (no retry) — config is respected', async () => {
+  test('transport retry budget of 0 fails the chain immediately (no retry): config is respected', async () => {
     const h = createHarness({ transportRetryLimit: 0 });
 
     const ownerRecord = h.addAgent('owner-transport-2', 'task with retries disabled');
@@ -1452,7 +1452,7 @@ function makeReviewerOutput(
   });
 }
 
-describe('WrfcController — constraint integration', () => {
+describe('WrfcController: constraint integration', () => {
   test('Full chain with constraints ending in pass', async () => {
     const h = createHarness();
 
@@ -1528,7 +1528,7 @@ describe('WrfcController — constraint integration', () => {
     h.controller.dispose();
   });
 
-  test('constraint-forced fail → planned fix → pass — full state sequence', async () => {
+  test('constraint-forced fail → planned fix → pass: full state sequence', async () => {
     const h = createHarness({ maxFixAttempts: 3 });
     const fixRuns = installStubFixRunner(h.controller, 'merged');
 
@@ -1583,7 +1583,7 @@ describe('WrfcController — constraint integration', () => {
   });
 });
 
-describe('WrfcController — state machine', () => {
+describe('WrfcController: state machine', () => {
   test('createChain returns chain in engineering state with correct task', () => {
     const h = createHarness();
     const record = h.addAgent('eng-sm-1', 'state machine task');
@@ -1673,7 +1673,7 @@ function makeImportableChain(overrides: Partial<WrfcChain> & { id: string }): Wr
   };
 }
 
-describe('WrfcController — importChain zombie reap (d5)', () => {
+describe('WrfcController: importChain zombie reap (d5)', () => {
   test('reaps a reimported non-terminal chain whose entire roster is absent from the live AgentManager', async () => {
     const h = createHarness();
     const chain = makeImportableChain({
@@ -1752,7 +1752,7 @@ describe('WrfcController — importChain zombie reap (d5)', () => {
 
     expect(imported).toBe(true);
     const stored = h.controller.getChain('wrfc-not-zombie')!;
-    expect(stored.state).toBe('reviewing'); // untouched — left exactly as imported
+    expect(stored.state).toBe('reviewing'); // untouched, left exactly as imported
     expect(stored.error).toBeUndefined();
 
     h.controller.dispose();
@@ -1815,7 +1815,7 @@ describe('WrfcController — importChain zombie reap (d5)', () => {
     h.controller.dispose();
   });
 
-  test('reap logic runs only at import — listChains() never mutates a stale non-terminal chain on its own', async () => {
+  test('reap logic runs only at import: listChains() never mutates a stale non-terminal chain on its own', async () => {
     const h = createHarness();
     const record = h.addAgent('will-die', 'work that never completes');
     const chain = h.controller.createChain(record);
@@ -1840,7 +1840,7 @@ describe('WrfcController — importChain zombie reap (d5)', () => {
   });
 });
 
-describe('WrfcController — acceptance-checklist gate (deterministic, both review paths)', () => {
+describe('WrfcController: acceptance-checklist gate (deterministic, both review paths)', () => {
   function reviewJson(report: Record<string, unknown>): string {
     return ['```json', JSON.stringify({
       version: 1, archetype: 'reviewer', summary: 'review', dimensions: [], issues: [], constraintFindings: [],
@@ -1848,7 +1848,7 @@ describe('WrfcController — acceptance-checklist gate (deterministic, both revi
     }), '```'].join('\n');
   }
 
-  test('a compound SUBTASK review with an unverified checklist item and a passing score does NOT pass — a fix cycle starts', async () => {
+  test('a compound SUBTASK review with an unverified checklist item and a passing score does NOT pass: a fix cycle starts', async () => {
     const h = createHarness({ maxFixAttempts: 3 });
     const ownerRecord = h.addAgent('owner-gate-1', 'Build two modules.', 'orchestrator');
     ownerRecord.wrfcSubtasks = [
@@ -1924,7 +1924,7 @@ describe('WrfcController — acceptance-checklist gate (deterministic, both revi
   });
 });
 
-describe('WrfcController — the review record rides the wire (checklist + verdict)', () => {
+describe('WrfcController: the review record rides the wire (checklist + verdict)', () => {
   function reviewJsonWire(report: Record<string, unknown>): string {
     return ['```json', JSON.stringify({
       version: 1, archetype: 'reviewer', summary: 'review', dimensions: [], issues: [], constraintFindings: [],

@@ -277,7 +277,7 @@ describe('conversation gate at the surface spawn boundary', () => {
     expect(harness.notices.some((notice) => notice.text.startsWith('Skipped:'))).toBe(true);
   });
 
-  test('an expired proposal is not answerable — a late "yes" starts nothing', async () => {
+  test('an expired proposal is not answerable: a late "yes" starts nothing', async () => {
     const clock = { now: 1_000_000 };
     const harness = buildHarness({ 'conversationGate.proposalTtlMs': 60_000 }, clock);
     await harness.send('fix the login bug');
@@ -291,7 +291,7 @@ describe('conversation gate at the surface spawn boundary', () => {
     expect(harness.proposals.listPending()).toHaveLength(0);
   });
 
-  test('pre-authorized work bypasses the gate — the raw spawn path is never gated', () => {
+  test('pre-authorized work bypasses the gate: the raw spawn path is never gated', () => {
     const harness = buildHarness();
     // Schedules, triggers, on-exit chains, and the retry control command all
     // spawn through the raw path, not the surface adapter context.

@@ -34,7 +34,7 @@ function makeFailureReport(overrides: Partial<FailureReport> = {}): FailureRepor
   };
 }
 
-describe('diagnostics panels — degraded collection metadata', () => {
+describe('diagnostics panels: degraded collection metadata', () => {
   test('state inspector returns partial domains with panel issues when a domain fails', () => {
     const panel = new StateInspectorPanel([
       {

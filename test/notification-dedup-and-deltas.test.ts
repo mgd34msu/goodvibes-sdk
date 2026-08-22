@@ -234,7 +234,7 @@ describe('resolveReachableBaseUrl', () => {
     expect(resolveReachableBaseUrl(reader, 'off-host', NO_LAN)).toBe('https://gv.example.com');
   });
 
-  test('returns undefined when nothing configured is reachable — callers omit the link', () => {
+  test('returns undefined when nothing configured is reachable: callers omit the link', () => {
     const reader = {
       get: (key: string) => wildcardBind(key) ?? (key === 'web.publicBaseUrl' ? 'http://0.0.0.0:3423' : undefined),
     };

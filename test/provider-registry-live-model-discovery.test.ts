@@ -69,7 +69,7 @@ async function withMockedFetch<T>(
   }
 }
 
-describe('ProviderRegistry.refreshLiveModelDiscovery — the picker-open re-check hook', () => {
+describe('ProviderRegistry.refreshLiveModelDiscovery: the picker-open re-check hook', () => {
   // These tests assert on what the anthropic provider does when its live
   // /v1/models call is mocked, a brand-new model appears, a 503 surfaces an
   // honest error. The provider only attempts that call when it is configured

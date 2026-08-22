@@ -92,7 +92,7 @@ function makeSessionHandlers(
 // describe: session routes, happy paths
 // ---------------------------------------------------------------------------
 
-describe('router-e2e session — POST /api/sessions (happy path)', () => {
+describe('router-e2e session: POST /api/sessions (happy path)', () => {
   test('creates a session and returns 200 with session id', async () => {
     const handlers = makeSessionHandlers();
     const req = makeRequest('POST', 'http://localhost/api/sessions', {
@@ -117,7 +117,7 @@ describe('router-e2e session — POST /api/sessions (happy path)', () => {
   });
 });
 
-describe('router-e2e session — messages (happy path)', () => {
+describe('router-e2e session: messages (happy path)', () => {
   test('GET /api/sessions/:id/messages returns message list', async () => {
     const handlers = makeSessionHandlers();
     const req = makeRequest('GET', 'http://localhost/api/sessions/sess-1/messages');
@@ -165,7 +165,7 @@ describe('router-e2e session — messages (happy path)', () => {
 // describe: session routes, failure paths
 // ---------------------------------------------------------------------------
 
-describe('router-e2e session — failure paths', () => {
+describe('router-e2e session: failure paths', () => {
   test('returns null for unmatched path', async () => {
     const handlers = makeSessionHandlers();
     const req = makeRequest('GET', 'http://localhost/api/no-such-session-route');

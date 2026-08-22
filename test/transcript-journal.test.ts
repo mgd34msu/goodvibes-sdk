@@ -195,8 +195,8 @@ describe('transcript-journal', () => {
     const journal = openTranscriptJournal(journalPath, 'kill');
     const msgs = makeMessages(2) as never;
 
-    journal.appendRecord('user_message', msgs); // record 0 — complete
-    journal.appendRecord('assistant_turn', msgs); // record 1 — complete
+    journal.appendRecord('user_message', msgs); // record 0, complete
+    journal.appendRecord('assistant_turn', msgs); // record 1, complete
 
     // Simulate SIGKILL mid-append: append a partial (truncated) JSON line
     // to simulate the killed write.

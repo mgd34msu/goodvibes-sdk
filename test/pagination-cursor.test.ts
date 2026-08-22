@@ -107,7 +107,7 @@ const makeItems = (count: number) =>
   Array.from({ length: count }, (_, i) => ({ id: `item-${i + 1}`, createdAt: (i + 1) * 1000 }));
 
 describe('paginateItems', () => {
-  test('first page — hasMore false when items fit within limit', () => {
+  test('first page: hasMore false when items fit within limit', () => {
     const items = makeItems(3);
     const result = paginateItems(items, 5, null, (x) => x.id);
     if ('error' in result) throw new Error(result.error);
@@ -116,7 +116,7 @@ describe('paginateItems', () => {
     expect(result.nextCursor).toBeUndefined();
   });
 
-  test('first page — hasMore true and nextCursor set when more remain', () => {
+  test('first page: hasMore true and nextCursor set when more remain', () => {
     const items = makeItems(10);
     const result = paginateItems(items, 3, null, (x) => x.id);
     if ('error' in result) throw new Error(result.error);
@@ -405,7 +405,7 @@ describe('getAutomationRuns', () => {
     expect(body.hasMore).toBe(true);
   });
 
-  test('mid-walk deletion: descending order — no duplicate, no skip', async () => {
+  test('mid-walk deletion: descending order: no duplicate, no skip', async () => {
     // Runs sorted descending by queuedAt (newest-first), matching sortRuns production behavior.
     // queuedAt: 50, 40, 30, 20, 10
     const descRuns = [
@@ -611,7 +611,7 @@ function makeKnowledgeContext(
   } as unknown as DaemonKnowledgeRouteContext;
 }
 
-describe('knowledge sources — getKnowledgeSources', () => {
+describe('knowledge sources: getKnowledgeSources', () => {
   test('backward-compat: no params returns {sources} array', async () => {
     const sources = makeKnowledgeItems(3);
     const handlers = createDaemonKnowledgeRouteHandlers(makeKnowledgeContext(sources));
@@ -660,7 +660,7 @@ describe('knowledge sources — getKnowledgeSources', () => {
   });
 });
 
-describe('knowledge sources — mid-walk deletion recovery', () => {
+describe('knowledge sources: mid-walk deletion recovery', () => {
   test('deleted cursor item: recovery resumes from insertion point via updatedAt, no duplicates (descending order)', async () => {
     // 8 items sorted descending by updatedAt: k1=8000, k2=7000, ..., k8=1000.
     // createdAt is in ASCENDING order (100, 200, ...), opposite of updatedAt, so this
@@ -728,7 +728,7 @@ describe('knowledge sources — mid-walk deletion recovery', () => {
   });
 });
 
-describe('knowledge nodes — getKnowledgeNodes', () => {
+describe('knowledge nodes: getKnowledgeNodes', () => {
   test('backward-compat: no params returns {nodes} array', async () => {
     const nodes = makeKnowledgeItems(3);
     const handlers = createDaemonKnowledgeRouteHandlers(makeKnowledgeContext([], nodes));
@@ -777,7 +777,7 @@ describe('knowledge nodes — getKnowledgeNodes', () => {
   });
 });
 
-describe('knowledge nodes — mid-walk deletion recovery', () => {
+describe('knowledge nodes: mid-walk deletion recovery', () => {
   test('deleted cursor item: recovery resumes from insertion point via updatedAt, no duplicates (descending order)', async () => {
     // 8 items sorted descending by updatedAt: k1=8000, k2=7000, ..., k8=1000.
     // createdAt is ASCENDING (100, 200, ...), opposite of updatedAt, decisive test:
@@ -837,7 +837,7 @@ describe('knowledge nodes — mid-walk deletion recovery', () => {
   });
 });
 
-describe('getAutomationRuns — mid-walk deletion recovery', () => {
+describe('getAutomationRuns: mid-walk deletion recovery', () => {
   test('deleted cursor run: recovery resumes from insertion point via queuedAt, no duplicates', async () => {
     // 8 runs sorted DESCENDING by queuedAt (newest-first): r8=8000, r7=7000, ..., r1=1000.
     // This matches production sortRuns behavior.

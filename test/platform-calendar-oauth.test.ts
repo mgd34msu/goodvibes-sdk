@@ -360,7 +360,7 @@ describe('client-config resolution', () => {
     }
   });
 
-  test('a configured client id is trimmed — a pasted id with stray whitespace still works', () => {
+  test('a configured client id is trimmed: a pasted id with stray whitespace still works', () => {
     const config = resolveClientConfig(providerProfile('microsoft'), { clientId: '  pasted-id\n' });
     expect(config.isConfigured).toBe(true);
     expect(config.clientId).toBe('pasted-id');

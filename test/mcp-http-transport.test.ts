@@ -52,7 +52,7 @@ function captureHeaders(req: Request): Record<string, string> {
   return headers;
 }
 
-describe('MCP Streamable HTTP transport — stateless revision', () => {
+describe('MCP Streamable HTTP transport: stateless revision', () => {
   test('negotiates via server/discover, mirrors headers, and round-trips a tool call over an SSE response stream', async () => {
     const seen: SeenRequest[] = [];
     const toolSchema = {

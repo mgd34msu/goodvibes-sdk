@@ -51,8 +51,8 @@ const ITINERARY_CONTINUATION_TASK = [
   'Recent transcript:',
   'Avery: I\'m traveling from Dallas to Picayune MS on Thursday to see my parents.',
   '',
-  'Assistant: I don’t see the itinerary screenshots attached here. Please upload or resend '
-    + 'them, and I’ll review the route, timing, stops, and any potential travel issues for Thursday.',
+  'Assistant: I don\'t see the itinerary screenshots attached here. Please upload or resend '
+    + 'them, and I\'ll review the route, timing, stops, and any potential travel issues for Thursday.',
   '',
   'Avery: Confirmation #: B79YKY. Departing Thu, Aug 06 2026, 07:55 AM DAL, arrives 09:20 AM MSY.',
 ].join('\n');
@@ -332,7 +332,7 @@ describe('an agent contributes one message to the transcript, not two', () => {
       appendSharedSessionMessage(store, input, 100);
     };
 
-    append({ sessionId: 'session-2', role: 'user', body: 'How’s the weather', displayName: 'Avery' });
+    append({ sessionId: 'session-2', role: 'user', body: 'How\'s the weather', displayName: 'Avery' });
     // The runtime event bus reports the finished agent...
     append({ sessionId: 'session-2', role: 'assistant', body: 'Sunny and 74.', agentId: 'agent-w', metadata: { status: 'completed' } });
     // ...and the pending-surface-reply poller reports the same one.

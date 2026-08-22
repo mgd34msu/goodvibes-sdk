@@ -160,7 +160,7 @@ describe('pre-flight: leeway triggers refresh when token is near expiry', () => 
 // ---------------------------------------------------------------------------
 
 describe('in-flight queuing: concurrent refreshes collapse to one', () => {
-  it('queues concurrent requests — single refresh call when token near expiry', async () => {
+  it('queues concurrent requests: single refresh call when token near expiry', async () => {
     // Token expires in 10s, well within leeway.
     // No refresh endpoint, but we track coordinator behaviour via promise ordering.
 

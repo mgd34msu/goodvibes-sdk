@@ -208,7 +208,7 @@ function buildService(port: number): {
 }
 
 for (const shape of FETCH_WIRE_SHAPES) {
-describe(`EmailService.listInbox — ${shape.name}`, () => {
+describe(`EmailService.listInbox: ${shape.name}`, () => {
   beforeEach(() => { activeShape = shape; });
   let fake: FakeServer | null = null;
   afterEach(() => { fake?.close(); fake = null; });

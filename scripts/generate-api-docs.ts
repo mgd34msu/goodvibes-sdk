@@ -265,7 +265,7 @@ function renderRuntimeEventReference(): string {
   // WRFC controller and must be documented alongside the generated domain schemas.
   lines.push('## Named WRFC workflow events');
   lines.push('');
-  lines.push('The following named events are emitted on the `workflows` domain by the WRFC controller. They are not currently in the operator contract artifact — they are documented here as the authoritative reference.');
+  lines.push('The following named events are emitted on the `workflows` domain by the WRFC controller. They are not currently in the operator contract artifact. They are documented here as the authoritative reference.');
   lines.push('');
   lines.push('---');
   lines.push('');
@@ -289,9 +289,9 @@ function renderRuntimeEventReference(): string {
   lines.push('}');
   lines.push('```');
   lines.push('');
-  lines.push('**Trigger:** `WrfcController.handleEngineerCompletion` — fires when `!chain.constraintsEnumerated` (guards against duplicate emission on fixer re-runs).');
+  lines.push('**Trigger:** `WrfcController.handleEngineerCompletion`. Fires when `!chain.constraintsEnumerated` (guards against duplicate emission on fixer re-runs).');
   lines.push('');
-  lines.push('**Semantics:** Signals the authoritative constraint list for the chain. An empty `constraints` array signals the zero-constraint (unconstrained) path — no constraint enforcement follows.');
+  lines.push('**Semantics:** Signals the authoritative constraint list for the chain. An empty `constraints` array signals the zero-constraint (unconstrained) path. No constraint enforcement follows.');
   lines.push('');
   lines.push('---');
   lines.push('');

@@ -246,7 +246,7 @@ describe('watcher store: quarantine-don\'t-crash load', () => {
     expect(whyFiles.length).toBe(remaining.length);
   });
 
-  test('the reap never orphans a receipt when every mtime ties — the coarse-mtime filesystem probe', () => {
+  test('the reap never orphans a receipt when every mtime ties: the coarse-mtime filesystem probe', () => {
     // A CI matrix runner's filesystem rounded mtimes coarsely enough that a
     // tight corrupt-load loop produced all-equal mtimes; the old mtime-only
     // sort could then pick the JUST-quarantined file as the "oldest" victim,

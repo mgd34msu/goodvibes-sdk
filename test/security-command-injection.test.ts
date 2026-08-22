@@ -31,7 +31,7 @@ function makeSegment(partial: Partial<CommandSegment> & { command: string }): Co
 // ---------------------------------------------------------------------------
 
 describe('security: command injection', () => {
-  describe('classifySegment — destructive base commands', () => {
+  describe('classifySegment: destructive base commands', () => {
     test('rm classifies as destructive', () => {
       expect(classifySegment(makeSegment({ command: 'rm', args: ['/tmp/file'] }))).toBe('destructive');
     });
@@ -53,7 +53,7 @@ describe('security: command injection', () => {
     });
   });
 
-  describe('classifySegment — sudo wrapping elevates classification', () => {
+  describe('classifySegment: sudo wrapping elevates classification', () => {
     test('sudo ls is at least escalation', () => {
       const seg = makeSegment({ command: 'sudo', args: ['ls'], raw: 'sudo ls' });
       const cls = classifySegment(seg);
@@ -73,7 +73,7 @@ describe('security: command injection', () => {
     });
   });
 
-  describe('classifyCommand — compound command injection', () => {
+  describe('classifyCommand: compound command injection', () => {
     test('ls && rm: highest classification is destructive', () => {
       const segments: CommandSegment[] = [
         makeSegment({ command: 'ls', args: ['/tmp'], raw: 'ls /tmp' }),
@@ -118,7 +118,7 @@ describe('security: command injection', () => {
     });
   });
 
-  describe('classifyCommand — dangerous pattern flags', () => {
+  describe('classifyCommand: dangerous pattern flags', () => {
     test('rm -rf flags dangerous pattern', () => {
       const seg = makeSegment({ command: 'rm', flags: ['-r', '-f'], args: ['/home/user'], raw: 'rm -r -f /home/user' });
       const result = classifyCommand('rm -r -f /home/user', [seg]);
@@ -144,7 +144,7 @@ describe('security: command injection', () => {
     });
   });
 
-  describe('canonicalize — command token normalization', () => {
+  describe('canonicalize: command token normalization', () => {
     test('strips surrounding double quotes from command token', () => {
       // canonicalize takes a single command token (e.g. the command name)
       expect(canonicalize('"rm"')).toBe('rm');
@@ -175,7 +175,7 @@ describe('security: command injection', () => {
     });
   });
 
-  describe('higherPriority — classification precedence', () => {
+  describe('higherPriority: classification precedence', () => {
     test('destructive beats escalation', () => {
       expect(higherPriority('destructive', 'escalation')).toBe('destructive');
     });

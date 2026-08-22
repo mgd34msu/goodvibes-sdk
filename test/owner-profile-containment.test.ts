@@ -138,7 +138,7 @@ async function installedStore(text: string = FIXTURE): Promise<OwnerProfileStore
   return store;
 }
 
-describe('§11.3 — closed-tier values are redacted wherever redaction runs', () => {
+describe('§11.3: closed-tier values are redacted wherever redaction runs', () => {
   test('with nothing registered, redaction behaves exactly as it did before', () => {
     expect(redactSensitiveData('ship to 200 Office Way, Lansing, MI 48933, US'))
       .toBe('ship to 200 Office Way, Lansing, MI 48933, US');
@@ -155,7 +155,7 @@ describe('§11.3 — closed-tier values are redacted wherever redaction runs', (
     }
   });
 
-  test('open-tier values are NOT redacted — they are already in context by design', async () => {
+  test('open-tier values are NOT redacted: they are already in context by design', async () => {
     await installedStore();
     expect(redactSensitiveData('timezone America/Detroit')).toContain('America/Detroit');
     expect(redactSensitiveData('he goes by Avery')).toContain('Avery');
@@ -234,7 +234,7 @@ describe('the footgun: a short or common value must never become a pattern', () 
   });
 });
 
-describe('§14 #10 — a session export redacts profile values', () => {
+describe('§14 #10: a session export redacts profile values', () => {
   const messages = [
     {
       role: 'user' as const,
@@ -259,7 +259,7 @@ describe('§14 #10 — a session export redacts profile values', () => {
   });
 });
 
-describe('§14 #9 — the at-rest journal and error display carry no profile value', () => {
+describe('§14 #9: the at-rest journal and error display carry no profile value', () => {
   test('an at-rest line with a profile value is masked at write time', async () => {
     await installedStore();
     const line = JSON.stringify({
@@ -281,7 +281,7 @@ describe('§14 #9 — the at-rest journal and error display carry no profile val
   });
 });
 
-describe('§11.2 / §14 #12 — the open tier is injected, the closed tier never is', () => {
+describe('§11.2 / §14 #12: the open tier is injected, the closed tier never is', () => {
   test('the rendered block carries the open tier and not one closed-tier value', async () => {
     const store = await installedStore();
     const block = renderOpenTierBlock(store);
@@ -343,7 +343,7 @@ describe('§11.2 / §14 #12 — the open tier is injected, the closed tier never
   });
 });
 
-describe('§10 / §14 #19 — third-party personal data', () => {
+describe('§10 / §14 #19: third-party personal data', () => {
   test('People content is absent from context and from exports, and reachable only by name', async () => {
     const store = await installedStore();
 
@@ -390,7 +390,7 @@ describe('closed-tier prose is redacted from EVERY closed section, not four of t
     expect(exported).not.toContain('blue house');
   });
 
-  test('Style prose stays in the clear — it is the one open section', async () => {
+  test('Style prose stays in the clear: it is the one open section', async () => {
     await installedStore();
     expect(redactSensitiveData('Keep replies short unless I ask for detail'))
       .toContain('Keep replies short unless I ask for detail');

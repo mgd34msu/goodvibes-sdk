@@ -292,7 +292,7 @@ describe('a card number on a remote channel is refused', () => {
     expect(decision.reason).toContain('card-shapes-refused');
   });
 
-  test('the refused digits reach no durable tier — each asserted by name', async () => {
+  test('the refused digits reach no durable tier: each asserted by name', async () => {
     const harness = buildHarness({ pendingApproval: true, pendingProposal: true });
     await harness.ingress(`no, charge my card ${CARD} cvv 123 expiry 07/29 instead`);
 
@@ -401,7 +401,7 @@ describe('a veto carrying a card is refused, and he is told', () => {
     expectTierClean('the approval store', harness.tiers.approvalStore());
   });
 
-  test('an approve or veto WITHOUT digits still resolves — the authority is untouched', async () => {
+  test('an approve or veto WITHOUT digits still resolves: the authority is untouched', async () => {
     // §11.0's distinction, asserted rather than trusted: remote surfaces keep
     // authority to say yes or no about a purchase. Only the instrument has no
     // path in.

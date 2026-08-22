@@ -27,8 +27,8 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-describe('exec tool — AbortSignal reaches the spawned child process', () => {
-  test('aborting mid-run kills the process well before its own duration or the default timeout elapse — proves no orphan', async () => {
+describe('exec tool: AbortSignal reaches the spawned child process', () => {
+  test('aborting mid-run kills the process well before its own duration or the default timeout elapse: proves no orphan', async () => {
     const root = tempRoot('gv-exec-cancel-live-');
     const tool = createExecTool(new ProcessManager(), { overflowHandler: new OverflowHandler({ baseDir: root }) });
     const controller = new AbortController();
@@ -78,7 +78,7 @@ describe('exec tool — AbortSignal reaches the spawned child process', () => {
     expect(output.cancelled).toBe(true);
   }, 10_000);
 
-  test('cancellation is never retried — a cancelled command with retry configured does not respawn', async () => {
+  test('cancellation is never retried: a cancelled command with retry configured does not respawn', async () => {
     const root = tempRoot('gv-exec-cancel-noretry-');
     const tool = createExecTool(new ProcessManager(), { overflowHandler: new OverflowHandler({ baseDir: root }) });
     const controller = new AbortController();
@@ -93,14 +93,14 @@ describe('exec tool — AbortSignal reaches the spawned child process', () => {
     expect(output.retries ?? 0).toBe(0);
   }, 10_000);
 
-  test('a tool call with no opts (the pre-existing call shape) behaves exactly as before — additive, not breaking', async () => {
+  test('a tool call with no opts (the pre-existing call shape) behaves exactly as before: additive, not breaking', async () => {
     const root = tempRoot('gv-exec-no-opts-');
     const tool = createExecTool(new ProcessManager(), { overflowHandler: new OverflowHandler({ baseDir: root }) });
     const result = await tool.execute({ working_dir: root, commands: [{ cmd: 'echo hi' }] });
     expect(result.success).toBe(true);
   });
 
-  test('the progress-streamed path (timeout_ms above the 30s auto-threshold — the exec tool\'s own 120s DEFAULT) also honors the signal', async () => {
+  test('the progress-streamed path (timeout_ms above the 30s auto-threshold: the exec tool\'s own 120s DEFAULT) also honors the signal', async () => {
     const root = tempRoot('gv-exec-cancel-progress-');
     const tool = createExecTool(new ProcessManager(), { overflowHandler: new OverflowHandler({ baseDir: root }) });
     const controller = new AbortController();
@@ -127,7 +127,7 @@ describe('exec tool — AbortSignal reaches the spawned child process', () => {
   }, 10_000);
 });
 
-describe('fetch tool — AbortSignal reaches the in-flight request', () => {
+describe('fetch tool: AbortSignal reaches the in-flight request', () => {
   test('aborting mid-request cuts off a slow server response instead of waiting it out', async () => {
     const server = Bun.serve({
       port: 0,
@@ -159,7 +159,7 @@ describe('fetch tool — AbortSignal reaches the in-flight request', () => {
     }
   }, 10_000);
 
-  test('a tool call with no opts (the pre-existing call shape) behaves exactly as before — additive, not breaking', async () => {
+  test('a tool call with no opts (the pre-existing call shape) behaves exactly as before: additive, not breaking', async () => {
     const server = Bun.serve({ port: 0, fetch: () => new Response('ok') });
     try {
       const tool = createFetchTool({});

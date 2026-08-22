@@ -60,7 +60,7 @@ async function captureTurnCompleted(run: (bus: RuntimeEventBus) => void): Promis
 
 const CTX = { sessionId: 's-1', source: 'test', traceId: 'trace-1' };
 
-describe('emitTurnCompleted — metadata.memory.recordIds stamping', () => {
+describe('emitTurnCompleted: metadata.memory.recordIds stamping', () => {
   test('a turn with memory injections serves the ids on the wire payload', async () => {
     const payload = await captureTurnCompleted((bus) => {
       emitTurnCompleted(bus, CTX, {
@@ -116,7 +116,7 @@ describe('memory-source filtering (the loop stamps only source \'memory\')', () 
   });
 });
 
-describe('handleFinalResponseOutcome — the real turn-completion emit site', () => {
+describe('handleFinalResponseOutcome: the real turn-completion emit site', () => {
   function runOutcome(memoryRecordIds: readonly string[] | undefined): Promise<TurnCompleted> {
     return captureTurnCompleted((bus) => {
       const conversationCalls: string[] = [];

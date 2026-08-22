@@ -27,7 +27,7 @@ function evaluate(command: string) {
   return evaluateCommandAST(command, parseCommandAST(command), ALLOW_SAFE);
 }
 
-describe('denial explanation — first line survives a multi-line command', () => {
+describe('denial explanation: first line survives a multi-line command', () => {
   test('the header is a single line for a heredoc command', () => {
     const explanation = buildDenialExplanation(HEREDOC, evaluate(HEREDOC).segments);
     const firstLine = explanation.split('\n')[0] ?? '';
@@ -66,7 +66,7 @@ describe('denial explanation — first line survives a multi-line command', () =
   });
 });
 
-describe('tokenizer — heredoc bodies are data, not shell source', () => {
+describe('tokenizer: heredoc bodies are data, not shell source', () => {
   test("<<'DELIM' lexes as one redirect operator, not two bare < tokens", () => {
     const tokens = tokenize(HEREDOC);
     expect(tokens.filter((token) => token.value === '<').length).toBe(0);

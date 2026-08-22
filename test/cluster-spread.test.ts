@@ -46,7 +46,7 @@ function expectExactlyOneReaderEach(world: World, names: readonly string[]): voi
   }
 }
 
-describe('cluster spread — the yield rule', () => {
+describe('cluster spread: the yield rule', () => {
   test('a holder yields only at a gap of two or more', () => {
     // One ahead is already as balanced as an odd split can be. Yielding there
     // would put the other node one ahead instead, and the pair would trade the
@@ -75,7 +75,7 @@ describe('cluster spread — the yield rule', () => {
   });
 });
 
-describe('cluster spread — holdings are observed, never announced', () => {
+describe('cluster spread: holdings are observed, never announced', () => {
   test('a node counts what its peers hold from the traffic it hears', () => {
     const ledger = new ClusterHoldingsLedger({ holderTtlMs: 1_000, candidateTtlMs: 3_000 });
     ledger.noteHolder('surface-a', 'node-peer', 0);
@@ -93,7 +93,7 @@ describe('cluster spread — holdings are observed, never announced', () => {
     expect(ledger.holdingsOf('node-peer', 2_000)).toBe(0);
   });
 
-  test('a resigning node stays a candidate — it can still serve what it gave up', () => {
+  test('a resigning node stays a candidate: it can still serve what it gave up', () => {
     const ledger = new ClusterHoldingsLedger({ holderTtlMs: 1_000, candidateTtlMs: 3_000 });
     ledger.noteHolder('surface-a', 'node-peer', 0);
     ledger.noteReleased('surface-a', 'node-peer');
@@ -111,7 +111,7 @@ describe('cluster spread — holdings are observed, never announced', () => {
   });
 });
 
-describe('cluster spread — three surfaces across two machines', () => {
+describe('cluster spread: three surfaces across two machines', () => {
   async function twoNodesThreeSurfaces(world: World): Promise<[TestNode, TestNode]> {
     const first = addNode(world, { id: 'node-a', surfaces: [...THREE] });
     const second = addNode(world, { id: 'node-b', surfaces: [...THREE] });
@@ -123,7 +123,7 @@ describe('cluster spread — three surfaces across two machines', () => {
     return [first, second];
   }
 
-  test('the work divides — neither machine ends up holding all three', async () => {
+  test('the work divides: neither machine ends up holding all three', async () => {
     const world = createWorld();
     const [first, second] = await twoNodesThreeSurfaces(world);
 
@@ -135,7 +135,7 @@ describe('cluster spread — three surfaces across two machines', () => {
     expect(Math.max(heldCount(first), heldCount(second))).toBe(2);
   });
 
-  test('once divided it STAYS divided — no churn across many further rounds', async () => {
+  test('once divided it STAYS divided: no churn across many further rounds', async () => {
     const world = createWorld();
     const [first, second] = await twoNodesThreeSurfaces(world);
 
@@ -182,7 +182,7 @@ describe('cluster spread — three surfaces across two machines', () => {
     expect(THREE.map((name) => holders(world, name)[0]?.id)).toEqual(settled);
   });
 
-  test('a yield hands over through the ordered path — stop strictly before start', async () => {
+  test('a yield hands over through the ordered path: stop strictly before start', async () => {
     const world = createWorld();
     const first = addNode(world, { id: 'node-a', surfaces: [...THREE] });
     await startNode(world, first);
@@ -302,7 +302,7 @@ describe('cluster spread — three surfaces across two machines', () => {
   });
 });
 
-describe('cluster spread — partial overlap still spreads', () => {
+describe('cluster spread: partial overlap still spreads', () => {
   test('a shared surface goes to the machine carrying less, not to the busier one', async () => {
     const world = createWorld();
     // The laptop already reads Telegram and one topic; the desktop reads

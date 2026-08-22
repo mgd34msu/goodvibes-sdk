@@ -67,7 +67,7 @@ function makeMatrixContext(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-describe('matrix adapter — contract surface', () => {
+describe('matrix adapter: contract surface', () => {
   test('rejects requests with a mismatched matrix token', async () => {
     const { context } = makeMatrixContext();
     const res = await handleMatrixSurfaceWebhook(new Request('http://localhost/matrix', {

@@ -103,7 +103,7 @@ export function addConflictSerializationEdges(
   for (const other of workstream.items) {
     if (other.id === conflicted.id) continue;
     if (other.state === 'passed' || other.state === 'failed') continue;
-    if (other.state === 'in-phase') continue; // already running — the lane will serialize its merge anyway
+    if (other.state === 'in-phase') continue; // already running, the lane will serialize its merge anyway
     const otherFiles = [...(other.files ?? []), ...other.touchedPaths];
     if (!otherFiles.some((file) => fileSet.has(file))) continue;
     const result = addDependencyEdge(
@@ -133,7 +133,7 @@ export function remainingDepths(workstream: Workstream): Map<string, number> {
   const depthOf = (id: string): number => {
     const memo = depths.get(id);
     if (memo !== undefined) return memo;
-    if (visiting.has(id)) return 0; // cycle guard — cycles surface elsewhere
+    if (visiting.has(id)) return 0; // cycle guard, cycles surface elsewhere
     visiting.add(id);
     const below = (dependents.get(id) ?? []).map((childId) => 1 + depthOf(childId));
     visiting.delete(id);

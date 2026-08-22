@@ -86,7 +86,7 @@ function emitAgentCancelled(bus: RuntimeEventBus, agentId: string, reason: strin
   bus.emit('agents', createEventEnvelope('AGENT_CANCELLED', { type: 'AGENT_CANCELLED', agentId, reason }, { sessionId: 'test', traceId: 'test', source: 'test' }));
 }
 
-describe('operator cancel — cancelled, not failed', () => {
+describe('operator cancel: cancelled, not failed', () => {
   test('cancelling a running leaf cancels the chain: cancelled at chain + owner, narration counts landed files, event carries failureKind=cancelled', async () => {
     const h = createHarness();
     const owner = h.addAgent('owner-1', 'implement the feature');

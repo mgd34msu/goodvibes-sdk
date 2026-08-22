@@ -24,8 +24,8 @@ import { captureConsole } from './_helpers/test-timeout.js';
 // createConsoleObserver, debug level exercises all callbacks
 // ---------------------------------------------------------------------------
 
-describe('createConsoleObserver — debug level', () => {
-  test('onTransportActivity at debug level logs to console.debug (send — no status/dur)', () => {
+describe('createConsoleObserver: debug level', () => {
+  test('onTransportActivity at debug level logs to console.debug (send: no status/dur)', () => {
     const obs = createConsoleObserver({ level: 'debug' });
     const capture = captureConsole('debug', /transport send/);
     try {
@@ -150,7 +150,7 @@ function makeMockOtel(): {
   return { tracer, meter, spans, counters, histRecords };
 }
 
-describe('createOpenTelemetryObserver — onError', () => {
+describe('createOpenTelemetryObserver: onError', () => {
   test('onError increments error counter and ends span with ERROR status', () => {
     const { tracer, meter, spans, counters } = makeMockOtel();
     const obs = createOpenTelemetryObserver(tracer, meter);
@@ -168,7 +168,7 @@ describe('createOpenTelemetryObserver — onError', () => {
   });
 });
 
-describe('createOpenTelemetryObserver — onTransportActivity', () => {
+describe('createOpenTelemetryObserver: onTransportActivity', () => {
   test('recv with durationMs records histogram entry', () => {
     const { tracer, meter, histRecords } = makeMockOtel();
     const obs = createOpenTelemetryObserver(tracer, meter);
@@ -223,7 +223,7 @@ describe('createOpenTelemetryObserver — onTransportActivity', () => {
   });
 });
 
-describe('createOpenTelemetryObserver — onEvent', () => {
+describe('createOpenTelemetryObserver: onEvent', () => {
   test('onEvent is a no-op (does not throw, makes no span)', () => {
     const { tracer, meter, spans } = makeMockOtel();
     const obs = createOpenTelemetryObserver(tracer, meter);
@@ -234,7 +234,7 @@ describe('createOpenTelemetryObserver — onEvent', () => {
   });
 });
 
-describe('createOpenTelemetryObserver — onAuthTransition', () => {
+describe('createOpenTelemetryObserver: onAuthTransition', () => {
   test('fires auth counter and span on transition', () => {
     const { tracer, meter, spans, counters } = makeMockOtel();
     const obs = createOpenTelemetryObserver(tracer, meter);

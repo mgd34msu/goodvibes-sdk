@@ -181,7 +181,7 @@ export function createWorkstreamDraftStore(
       entries = readdirSync(dir);
     } catch {
       lastReclaim = null;
-      return []; // directory not created yet, or unreadable — nothing to resume
+      return []; // directory not created yet, or unreadable, nothing to resume
     }
     const now = clock();
     lastSweepAt = now;

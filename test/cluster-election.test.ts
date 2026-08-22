@@ -28,7 +28,7 @@ import {
   type World,
 } from './cluster-harness.js';
 
-describe('cluster election — taking a surface', () => {
+describe('cluster election: taking a surface', () => {
   test('a node that boots alone takes its surfaces and starts consuming', async () => {
     const world = createWorld();
     const alone = addNode(world, { id: 'node-a', surfaces: ['ntfy-main'] });
@@ -96,7 +96,7 @@ describe('cluster election — taking a surface', () => {
   });
 });
 
-describe('cluster election — partial overlap between machines', () => {
+describe('cluster election: partial overlap between machines', () => {
   /**
    * The case the whole-node design could not express, and the reason this is
    * per surface: node A serves Telegram and ntfy, node B serves ntfy alone.
@@ -171,7 +171,7 @@ describe('cluster election — partial overlap between machines', () => {
   });
 });
 
-describe('cluster election — ranking decides, not scheduling', () => {
+describe('cluster election: ranking decides, not scheduling', () => {
   test('compareVersions orders releases, prereleases and ragged lengths', () => {
     expect(compareVersions('1.20.0', '1.3.0')).toBeGreaterThan(0);
     expect(compareVersions('1.2', '1.2.0')).toBe(0);
@@ -258,7 +258,7 @@ describe('cluster election — ranking decides, not scheduling', () => {
   });
 });
 
-describe('cluster election — crash takeover', () => {
+describe('cluster election: crash takeover', () => {
   test('a standby takes over after the timeout and replays from the last heartbeat', async () => {
     const world = createWorld();
     const holder = addNode(world, { id: 'node-a', surfaces: ['ntfy-main'] });
@@ -301,7 +301,7 @@ describe('cluster election — crash takeover', () => {
   });
 });
 
-describe('cluster election — suspend and wake', () => {
+describe('cluster election: suspend and wake', () => {
   test('a woken holder stops consuming and re-probes before it resumes, per surface', async () => {
     const world = createWorld();
     const laptop = addNode(world, { id: 'node-a', surfaces: ['ntfy-main', 'telegram-bot'] });
@@ -362,7 +362,7 @@ describe('cluster election — suspend and wake', () => {
   });
 });
 
-describe('cluster election — configuration', () => {
+describe('cluster election: configuration', () => {
   test('disabling the election is not a way to make two nodes consume silently', () => {
     // resolveClusterSettings must preserve an explicit false rather than
     // defaulting it back on.

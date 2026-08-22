@@ -148,7 +148,7 @@ describe('notifyCompletion suppression', () => {
     expect(spawnSpy).not.toHaveBeenCalled();
   });
 
-  test('force:true opts back in under NODE_ENV=test — shell-out layer itself is reachable', () => {
+  test('force:true opts back in under NODE_ENV=test: shell-out layer itself is reachable', () => {
     process.env['NODE_ENV'] = 'test';
     notifyCompletion('GoodVibes', 'shell-out layer test', 65_000, { force: true });
     if (process.platform === 'linux' || process.platform === 'darwin') {

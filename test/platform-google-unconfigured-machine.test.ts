@@ -61,7 +61,7 @@ describe('the read guard', () => {
     expect(safeConfigString(throwingConfig, 'email.username')).toBeNull();
   });
 
-  test('a present-but-blank value is also unset — a whitespace host is not a host', () => {
+  test('a present-but-blank value is also unset: a whitespace host is not a host', () => {
     const blank: GoogleConfigPort = { get: () => '   ', set: () => undefined };
     expect(safeConfigString(blank, 'email.imapHost')).toBeNull();
   });

@@ -15,7 +15,7 @@
  * - `accept-edits`        , File write/edit auto-approved; exec/network/escalation still gated.
  * - `allow-all`           , All tools auto-approved (⚠ use with caution).
  * - `custom`              , Per-rule policy applies exclusively.
- * - `background-restricted`— Agent/delegate tools blocked; exec restricted.
+ * - `background-restricted`: Agent/delegate tools blocked; exec restricted.
  * - `remote-restricted`   , Network tools blocked; local reads/writes allowed.
  */
 export type PermissionMode =
@@ -52,7 +52,7 @@ export type CommandClassification =
  *   PROMPT_, user was prompted and responded
  *   SAFETY_, bypass-immune safety guardrail fired
  *   MODE_  , active permission mode determined the outcome
- *   DEFAULT_— default policy
+ *   DEFAULT_, default policy
  */
 export type DecisionReason =
   // Policy layer, user-defined allow rules
@@ -198,7 +198,7 @@ export type SimulationMode =
  *
  * - `allow-vs-deny` , Actual allowed; simulated denied.
  * - `deny-vs-allow` , Actual denied; simulated allowed.
- * - `reason-mismatch`— Both produced the same allow/deny but with different
+ * - `reason-mismatch`: Both produced the same allow/deny but with different
  *                      reason codes or source layers.
  */
 export type DivergenceType =

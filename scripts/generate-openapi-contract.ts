@@ -108,7 +108,7 @@ function buildOperation(method: OperatorMethodContract, untyped: Set<string>): O
   const notes: string[] = [method.description];
   if (isUntyped) {
     notes.push(
-      'NOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).',
+      'NOTE: this method has no typed SDK client IO. Request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).',
     );
   }
   const op: OpenApiOperation = {
@@ -170,13 +170,13 @@ function buildInvokeOperation(invokeOnly: readonly OperatorMethodContract[]): Op
       required: false,
       content: {
         'application/json': {
-          schema: { type: 'object', description: 'The method-specific input (see the method’s inputSchema).' },
+          schema: { type: 'object', description: 'The method-specific input (see the method\'s inputSchema).' },
         },
       },
     },
     responses: {
       '200': {
-        description: 'Method-specific response (see the method’s outputSchema).',
+        description: 'Method-specific response (see the method\'s outputSchema).',
         content: { 'application/json': { schema: {} } },
       },
       default: { $ref: '#/components/responses/Error' },
@@ -222,7 +222,7 @@ function buildDocument(contract: OperatorContractManifest, untyped: Set<string>)
         `${methods.length} cataloged methods: ${withHttp.length} with dedicated REST bindings, ` +
         `${invokeOnly.length} reachable only through the generic invoke endpoint. ` +
         `${untyped.size} methods lack typed SDK client IO and are marked with ` +
-        '`x-typed-client-io: false` — they are represented honestly, never omitted. ' +
+        '`x-typed-client-io: false`. They are represented honestly, never omitted. ' +
         'Regenerate with `bun run openapi:generate`; drift fails `contracts:check`.',
     },
     servers: [{ url: 'http://127.0.0.1:{port}', variables: { port: { default: '4483' } }, description: 'Local daemon' }],

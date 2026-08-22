@@ -40,7 +40,7 @@ interface DistributedFileShape extends Record<string, unknown> {
   readonly pairRequests: readonly { readonly id: string; readonly status: string }[];
 }
 
-describe('distributed runtime store — a rejected pair request does not read back pending', () => {
+describe('distributed runtime store: a rejected pair request does not read back pending', () => {
   test("the pairing request's own slower write cannot undo the rejection", async () => {
     const { store, path, cleanup } = makeControllableStore<DistributedFileShape>('distributed-order', 'distributed.json');
     try {
@@ -88,7 +88,7 @@ function receipt(id: string, outcome: CheckinReceipt['outcome']): CheckinReceipt
   };
 }
 
-describe('CheckinReceiptStore — a delivered check-in leaves a receipt', () => {
+describe('CheckinReceiptStore: a delivered check-in leaves a receipt', () => {
   test('an earlier slower append cannot drop the receipt written after it', async () => {
     const { store, path, cleanup } = makeControllableStore<ReceiptsFileShape>('checkin-order', 'checkin-receipts.json');
     try {
@@ -147,7 +147,7 @@ class SlowJsonFileStore extends JsonFileStore<Record<string, unknown>> {
   }
 }
 
-describe('KVState — a cleared key does not come back', () => {
+describe('KVState: a cleared key does not come back', () => {
   test('a debounced write already in flight cannot restore a key cleared after it', async () => {
     const dir = tempDir('kv-order');
     const path = join(dir, 'session_abcdef12.json');
@@ -204,7 +204,7 @@ function fakeSweepers(): {
   };
 }
 
-describe('InboundMailHousekeeper — no sweep goes undisclosed', () => {
+describe('InboundMailHousekeeper: no sweep goes undisclosed', () => {
   test('two overlapping sweeps both appear in the log', async () => {
     const { store, path, cleanup } = makeControllableStore<DisclosureFileShape>('housekeeping-order', 'inbound-housekeeping.json');
     try {

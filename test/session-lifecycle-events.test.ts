@@ -129,7 +129,7 @@ const isSessionUpdate = (lifecycle: string) => (frame: ParsedFrame): boolean =>
 // Contract declaration
 // ---------------------------------------------------------------------------
 
-describe('S2c — the session-update channel is contract-declared', () => {
+describe('S2c: the session-update channel is contract-declared', () => {
   test('control.session_update is present with wireEvents and a discriminated event enum', () => {
     const contract = buildOperatorContract(new GatewayMethodCatalog());
     const descriptor = contract.operator.events.find((e) => e.id === 'control.session_update');
@@ -176,7 +176,7 @@ describe('S2c — the session-update channel is contract-declared', () => {
 // advertises the channel it produces, and every advertised event id resolves.
 // ---------------------------------------------------------------------------
 
-describe('S2c re-point — session mutators advertise control.session_update', () => {
+describe('S2c re-point: session mutators advertise control.session_update', () => {
   test('every method.events id resolves to a declared event descriptor (referential integrity)', () => {
     const contract = buildOperatorContract(new GatewayMethodCatalog());
     const declared = new Set(contract.operator.events.map((e) => e.id));
@@ -295,7 +295,7 @@ describe('S2c re-point — session mutators advertise control.session_update', (
 // End-to-end broadcast through the real broker
 // ---------------------------------------------------------------------------
 
-describe('S2c — SSE client sees each lifecycle event end-to-end', () => {
+describe('S2c: SSE client sees each lifecycle event end-to-end', () => {
   test('created + closed reach an authenticated SSE client via the real broker', async () => {
     const gateway = makeGateway(true);
     const broker = makeBroker();
@@ -375,7 +375,7 @@ describe('S2c — SSE client sees each lifecycle event end-to-end', () => {
 // Un-domained broadcast + honest drop when OFF
 // ---------------------------------------------------------------------------
 
-describe('S2c — broadcast reach and honest failure modes', () => {
+describe('S2c: broadcast reach and honest failure modes', () => {
   test('a client subscribed to ZERO domains still receives session-update', async () => {
     const gateway = makeGateway(true);
     const stream = gateway.createEventStream(new Request('http://localhost/stream'), {
@@ -406,7 +406,7 @@ describe('S2c — broadcast reach and honest failure modes', () => {
 // Mapping guard, a broker rename must fail loudly
 // ---------------------------------------------------------------------------
 
-describe('S2c — intent→event mapping stays contract-aligned', () => {
+describe('S2c: intent→event mapping stays contract-aligned', () => {
   test('every mapped invalidation event is a declared wire discriminant', () => {
     for (const [intent, events] of Object.entries(SESSION_UPDATE_INTENT_MAP)) {
       expect(events.length).toBeGreaterThan(0);

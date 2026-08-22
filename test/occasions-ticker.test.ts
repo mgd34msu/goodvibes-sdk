@@ -112,7 +112,7 @@ describe('the sweep ticker', () => {
     ticker.stop();
   });
 
-  test('passes are serial — nothing is armed while one is in flight', async () => {
+  test('passes are serial: nothing is armed while one is in flight', async () => {
     const clock = fakeClock();
     let started = 0;
     let release: (() => void) | null = null;

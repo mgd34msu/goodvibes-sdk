@@ -82,7 +82,7 @@ describe('the thresholds, pinned', () => {
   });
 });
 
-describe('recipient redirection — the field where length is the wrong test', () => {
+describe('recipient redirection: the field where length is the wrong test', () => {
   const VENDOR = 'accounts-payable@vendor.example';
 
   test('a redirected recipient IS caught, though it is under both length thresholds', () => {
@@ -109,7 +109,7 @@ describe('recipient redirection — the field where length is the wrong test', (
     expect(findings).toHaveLength(0);
   });
 
-  test('the exemption is per-address — a DIFFERENT address in the body is still refused', () => {
+  test('the exemption is per-address: a DIFFERENT address in the body is still refused', () => {
     // The exemption must not become "any address mentioned anywhere".
     const findings = findContentTaint(
       { to: 'attacker@evil.example', body: 'ok' },

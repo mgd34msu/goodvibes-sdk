@@ -7,7 +7,7 @@
 import { describe, expect, test } from 'bun:test';
 import { inferFallbackContextWindow } from '../packages/sdk/src/platform/providers/context-window-fallback.js';
 
-describe('inferFallbackContextWindow — current-generation families', () => {
+describe('inferFallbackContextWindow: current-generation families', () => {
   test('Claude 5 family (Fable, Sonnet, Opus 4.8) sizes as the Anthropic 200k family, not the flat fallback', () => {
     expect(inferFallbackContextWindow('anthropic', 'claude-fable-5')).toBe(200_000);
     expect(inferFallbackContextWindow('anthropic', 'claude-sonnet-5')).toBe(200_000);

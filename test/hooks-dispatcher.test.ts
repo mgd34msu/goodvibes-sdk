@@ -64,14 +64,14 @@ describe('HookDispatcher', () => {
     });
   });
 
-  describe('fire() — no hooks', () => {
+  describe('fire(): no hooks', () => {
     test('returns ok:true when no hooks match', async () => {
       const result = await dispatcher.fire(makeEvent());
       expect(result.ok).toBe(true);
     });
   });
 
-  describe('fire() — command hooks', () => {
+  describe('fire(): command hooks', () => {
     test('runs matching hook and returns ok', async () => {
       dispatcher.register('Pre:tool:*', {
         match: 'Pre:tool:*',

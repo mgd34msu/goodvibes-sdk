@@ -14,7 +14,7 @@
  *
  *   - `tools`       , gateway/agent tool ids the bundle registers
  *   - `hooks`       , runtime hook/event names the bundle subscribes to
- *   - `configDomains`— config domains the bundle reads
+ *   - `configDomains`: config domains the bundle reads
  *   - `channels`    , channel surfaces the bundle touches
  *
  * The enforcement contract (`createBundleCapabilityGuard`) is the load-bearing

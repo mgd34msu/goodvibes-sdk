@@ -7,7 +7,7 @@
 import { describe, expect, test } from 'bun:test';
 import { evaluateOrchestrationSpawn } from '../packages/sdk/src/platform/runtime/orchestration/spawn-policy.js';
 
-describe('platform/runtime/orchestration — spawn-policy smoke', () => {
+describe('platform/runtime/orchestration: spawn-policy smoke', () => {
 
   test('evaluateOrchestrationSpawn denies plan-auto when recursion is disabled', () => {
     const configManager = {

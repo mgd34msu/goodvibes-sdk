@@ -100,7 +100,7 @@ afterEach(async () => {
   }
 });
 
-describe('KVState session-file retention — the reap that now actually runs', () => {
+describe('KVState session-file retention: the reap that now actually runs', () => {
   test('files past the age bound are reclaimed at recovery, and the current session survives its own', async () => {
     const stateDir = tempDir('age');
     // The current session was last written a MONTH ago, a long-dormant session
@@ -197,7 +197,7 @@ describe('KVState session-file retention — the reap that now actually runs', (
     expect(JSON.stringify(disclosures[0]?.data)).not.toContain('filler');
   });
 
-  test('a pass that reclaims nothing logs nothing — silence means nothing was deleted', async () => {
+  test('a pass that reclaims nothing logs nothing: silence means nothing was deleted', async () => {
     const stateDir = tempDir('quiet');
     writeSessionFile(stateDir, '00000001', DAY_MS);
     writeSessionFile(stateDir, '00000002', 2 * DAY_MS);
@@ -210,7 +210,7 @@ describe('KVState session-file retention — the reap that now actually runs', (
     expect(sessionFilesIn(stateDir)).toEqual(['session_00000001.json', 'session_00000002.json']);
   });
 
-  test('reaping twice is a no-op the second time — idempotent, and safe to race', async () => {
+  test('reaping twice is a no-op the second time: idempotent, and safe to race', async () => {
     const stateDir = tempDir('idempotent');
     writeSessionFile(stateDir, '00000001', 60 * DAY_MS);
     writeSessionFile(stateDir, '00000002', 60 * DAY_MS);
@@ -256,7 +256,7 @@ describe('KVState session-file retention — the reap that now actually runs', (
     expect(captured.filter((e) => e.message.includes('reclaimed'))).toHaveLength(0);
   });
 
-  test('the legacy unscoped dir gets the AGE bound only — a shared directory must not be count-capped', async () => {
+  test('the legacy unscoped dir gets the AGE bound only: a shared directory must not be count-capped', async () => {
     const stateDir = tempDir('legacy-scoped');
     const legacyStateDir = tempDir('legacy-unscoped');
     // Copy-forward never deletes the source, so legacy files strand there
@@ -303,7 +303,7 @@ describe('KVState session-file retention — the reap that now actually runs', (
   });
 });
 
-describe('KVState session-file reads — validated by content, not existence', () => {
+describe('KVState session-file reads: validated by content, not existence', () => {
   test('a torn (truncated) session file is rejected, not served as state', async () => {
     const stateDir = tempDir('torn');
     writeFileSync(join(stateDir, 'session_1234abcd.json'), '{"id":"1234abcd","star', 'utf-8');

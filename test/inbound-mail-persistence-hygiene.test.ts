@@ -261,7 +261,7 @@ describe('the housekeeping disclosure log discloses removals, not survivors', ()
     expect(logged.reports.at(-1)?.expectations.retained).toBe(1);
   });
 
-  test('a REMOVED expectation is still named — removal is what the log is for', async () => {
+  test('a REMOVED expectation is still named: removal is what the log is for', async () => {
     const disclosurePath = join(dir, 'email-inbound-housekeeping.json');
     writeFileSync(join(dir, 'expectations.json'), `${JSON.stringify({
       version: 1,
@@ -475,7 +475,7 @@ describe('PersistentStore writes owner-only, durably, and leaves no litter', () 
     expect(existsSync(path)).toBe(true);
   });
 
-  test("a FRESH temp file is left alone — it may be another writer's, mid-flight", async () => {
+  test("a FRESH temp file is left alone: it may be another writer's, mid-flight", async () => {
     const path = join(dir, 'inflight.json');
     const inFlight = `${path}.tmp.12345.right-now`;
     writeFileSync(inFlight, 'someone is writing this', 'utf-8');
@@ -597,7 +597,7 @@ describe('two independent writers over one record file lose nothing', () => {
 // ---------------------------------------------------------------------------
 
 describe('no field on a persisted record is unbounded', () => {
-  test('noticeFailureReason — the one field a remote server writes — is clamped at write', async () => {
+  test('noticeFailureReason, the one field a remote server writes, is clamped at write', async () => {
     const store = new InboundMailStore(storePath, { now: () => NOW });
     await store.record(input({ uid: 800, noticeStatus: 'delivery-failed', noticeFailureReason: 'x'.repeat(1_000_000) }));
 

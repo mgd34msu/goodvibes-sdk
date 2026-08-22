@@ -53,7 +53,7 @@ describe('what an amount setting accepts', () => {
     expect(parseMoneyAmount(0)).toEqual({ ok: true, value: 0 });
   });
 
-  test('a decimal is kept exactly as written — nothing is padded to two places', () => {
+  test('a decimal is kept exactly as written: nothing is padded to two places', () => {
     expect(parseMoneyAmount('19.99')).toEqual({ ok: true, value: 19.99 });
     expect(parseMoneyAmount('100.5')).toEqual({ ok: true, value: 100.5 });
     expect(parseMoneyAmount(0.29)).toEqual({ ok: true, value: 0.29 });
@@ -129,7 +129,7 @@ describe('the schema is what a consumer keys off', () => {
 // ─── Setting one ───────────────────────────────────────────────────────────
 
 describe('setting an amount', () => {
-  test('a plain number is stored as given — a whole number stays whole', () => {
+  test('a plain number is stored as given: a whole number stays whole', () => {
     const { manager, daemonTierPath } = makeManager();
     manager.set('payments.budget.perPurchaseCeiling', 100);
 
@@ -208,7 +208,7 @@ describe('an existing file is carried across', () => {
     for (const [from] of PAYMENTS_BUDGET_RENAMES) expect(from in budget).toBe(false);
   });
 
-  test('the migration is idempotent — a file already migrated is untouched', () => {
+  test('the migration is idempotent: a file already migrated is untouched', () => {
     const already = { payments: { budget: { dailyItem: 100 } } };
     const result = migratePaymentsBudgetAmounts(already);
     expect(result.migrated).toBe(false);

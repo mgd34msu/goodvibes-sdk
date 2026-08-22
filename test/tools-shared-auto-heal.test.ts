@@ -39,7 +39,7 @@ function disableWhich(): () => void {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('AutoHealer — config gate', () => {
+describe('AutoHealer: config gate', () => {
   test('returns healed=false when tools.autoHeal is false', async () => {
     const healer = makeHealer(false);
     const result = await healer.heal('test.ts', VALID_TS, ['some error']);
@@ -56,7 +56,7 @@ describe('AutoHealer — config gate', () => {
   });
 });
 
-describe('AutoHealer — no errors passthrough', () => {
+describe('AutoHealer: no errors passthrough', () => {
   test('returns healed=false when errors array is empty', async () => {
     const healer = makeHealer(true);
     const result = await healer.heal('test.ts', VALID_TS, []);
@@ -65,7 +65,7 @@ describe('AutoHealer — no errors passthrough', () => {
   });
 });
 
-describe('AutoHealer — LLM stage (no formatter/linter)', () => {
+describe('AutoHealer: LLM stage (no formatter/linter)', () => {
   let restore: () => void;
 
   beforeEach(() => {
@@ -102,7 +102,7 @@ describe('AutoHealer — LLM stage (no formatter/linter)', () => {
   });
 });
 
-describe('AutoHealer — never throws', () => {
+describe('AutoHealer: never throws', () => {
   let restore: () => void;
 
   beforeEach(() => {
@@ -130,7 +130,7 @@ describe('AutoHealer — never throws', () => {
   });
 });
 
-describe('AutoHealer — HealResult shape', () => {
+describe('AutoHealer: HealResult shape', () => {
   test('result always has healed (boolean) and content (string)', async () => {
     const healer = makeHealer(true);
     const result = await healer.heal('test.ts', VALID_TS, ['some error']);

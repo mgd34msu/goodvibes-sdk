@@ -34,7 +34,7 @@ describe('daemon adopt-vs-dial setting split', () => {
     expect(resolveConnectedHostDialEnabled(readerFor({}))).toBe(true);
   });
 
-  test("the owner's configuration — daemon.enabled false, connected host live — still dials", () => {
+  test("the owner's configuration, daemon.enabled false, connected host live, still dials", () => {
     // The exact shape that produced the defect: adoption declined, nothing said
     // about dialing. Both resolvers must now answer their OWN question.
     const config = readerFor({ 'daemon.enabled': false });
@@ -72,7 +72,7 @@ describe('daemon connected-host split migration', () => {
     expect(daemon.timezone).toBe('UTC');
   });
 
-  test('is idempotent — a second load changes nothing', () => {
+  test('is idempotent: a second load changes nothing', () => {
     const once = migrateDaemonConnectedHostSplit({ daemon: { enabled: false } });
     const twice = migrateDaemonConnectedHostSplit(once.config);
     expect(twice.migrated).toBe(false);

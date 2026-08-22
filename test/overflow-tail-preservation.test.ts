@@ -17,7 +17,7 @@ function makeHandler(): OverflowHandler {
   return new OverflowHandler({ baseDir: mkdtempSync(join(tmpdir(), 'gv-overflow-tail-')) });
 }
 
-describe('OverflowHandler.handle — tail preservation', () => {
+describe('OverflowHandler.handle: tail preservation', () => {
   test('a unique marker near the end of long content survives truncation', () => {
     const handler = makeHandler();
     const maxChars = 1000;

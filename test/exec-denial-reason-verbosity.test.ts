@@ -37,7 +37,7 @@ async function denialAt(verbosity: string): Promise<DenialOutput> {
   return JSON.parse(result.output ?? '{}') as DenialOutput;
 }
 
-describe('exec — a denial keeps its reason at every verbosity', () => {
+describe('exec: a denial keeps its reason at every verbosity', () => {
   for (const verbosity of ['count_only', 'minimal', 'standard', 'verbose']) {
     test(`${verbosity} names the denial and why`, async () => {
       const output = await denialAt(verbosity);
@@ -64,7 +64,7 @@ describe('exec — a denial keeps its reason at every verbosity', () => {
   });
 });
 
-describe('exec — a denied multi-line command still explains itself', () => {
+describe('exec: a denied multi-line command still explains itself', () => {
   test("a heredoc-bearing denial names the command on one readable line", async () => {
     const { root, tool } = makeTool();
     const cmd = "cat <<'EOF'\nplaceholder\nEOF\n; rm -rf /";

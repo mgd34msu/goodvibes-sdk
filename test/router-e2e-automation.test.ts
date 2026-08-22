@@ -77,7 +77,7 @@ function makeAutomationHandlers(
 // describe: automation routes, happy paths
 // ---------------------------------------------------------------------------
 
-describe('router-e2e automation — GET /api/automation/jobs (happy path)', () => {
+describe('router-e2e automation: GET /api/automation/jobs (happy path)', () => {
   test('returns 200 with jobs array', async () => {
     const handlers = makeAutomationHandlers();
     const req = makeRequest('GET', 'http://localhost/api/automation/jobs');
@@ -104,7 +104,7 @@ describe('router-e2e automation — GET /api/automation/jobs (happy path)', () =
   });
 });
 
-describe('router-e2e automation — runs (happy path)', () => {
+describe('router-e2e automation: runs (happy path)', () => {
   test('GET /api/automation/runs returns run list', async () => {
     const handlers = makeAutomationHandlers();
     const req = makeRequest('GET', 'http://localhost/api/automation/runs');
@@ -147,7 +147,7 @@ describe('router-e2e automation — runs (happy path)', () => {
 // describe: automation routes, failure paths
 // ---------------------------------------------------------------------------
 
-describe('router-e2e automation — failure paths', () => {
+describe('router-e2e automation: failure paths', () => {
   test('GET /api/automation/runs/:id returns 404 for unknown run', async () => {
     const handlers = makeAutomationHandlers();
     const req = makeRequest('GET', 'http://localhost/api/automation/runs/nonexistent-run');

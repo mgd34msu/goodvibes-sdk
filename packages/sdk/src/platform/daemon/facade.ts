@@ -158,7 +158,7 @@ export class DaemonServer {
   private _restartingPromise: Promise<void> | null = null;
   /** True if a config change arrived while _restarting was set; triggers a second cycle. */
   private _restartDirty = false;
-  private tornDown = false; // True once stop() tore this daemon down; cleared by a successful bind. Teardown was gated on `server === null`, which conflated "never bound a socket" with "has nothing to release" — the CONSTRUCTOR starts the companion-chat GC sweep and the batch tick, so enable() plus a failed or never-called start() left both running with no reachable stop. What must not run twice is the teardown, so that is what this guards.
+  private tornDown = false; // True once stop() tore this daemon down; cleared by a successful bind. Teardown was gated on `server === null`, which conflated "never bound a socket" with "has nothing to release". The CONSTRUCTOR starts the companion-chat GC sweep and the batch tick, so enable() plus a failed or never-called start() left both running with no reachable stop. What must not run twice is the teardown, so that is what this guards.
 
   constructor(private config: DaemonConfig = {}) {
     const resolved = resolveDaemonFacadeRuntime(config);

@@ -137,7 +137,7 @@ describe('diffSnapshots', () => {
     ],
   };
 
-  test('an unchanged surface produces no findings — the gate can answer NO', () => {
+  test('an unchanged surface produces no findings: the gate can answer NO', () => {
     expect(diffSnapshots(base, structuredClone(base))).toEqual([]);
   });
 
@@ -231,7 +231,7 @@ describe('class members', () => {
     expect(withMembers.length).toBeGreaterThan(classes.length * 0.9);
     const emailService = (committed['./platform/email'] ?? []).find((entry) => entry.name === 'EmailService');
     expect(emailService?.publicMembers).toContain('listInbox');
-    expect(emailService?.publicMembers).not.toContain('recordIngest'); // private — not surface
+    expect(emailService?.publicMembers).not.toContain('recordIngest'); // private, not surface
   });
 });
 
@@ -288,7 +288,7 @@ describe('the committed report', () => {
     expect(reader?.text).toContain('permissions');
   });
 
-  test('those same names are absent from the api-extractor rollups — the rollups are not this gate', () => {
+  test('those same names are absent from the api-extractor rollups: the rollups are not this gate', () => {
     const rollup = readFileSync(join(SDK_ROOT, 'etc', 'goodvibes-sdk.api.md'), 'utf8')
       + readFileSync(join(SDK_ROOT, 'etc', 'goodvibes-sdk-embed.api.md'), 'utf8');
     // If this ever fails it is good news, it means `packages/sdk/src/index.ts`

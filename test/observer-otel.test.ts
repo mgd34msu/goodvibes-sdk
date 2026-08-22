@@ -106,7 +106,7 @@ function makeCollector(): Collector {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('createOpenTelemetryObserver — onAuthTransition', () => {
+describe('createOpenTelemetryObserver: onAuthTransition', () => {
   test('emits sdk.auth.transitions counter with correct attributes', () => {
     const col = makeCollector();
     const obs = createOpenTelemetryObserver(col.tracer, col.meter);
@@ -147,7 +147,7 @@ describe('createOpenTelemetryObserver — onAuthTransition', () => {
   });
 });
 
-describe('createOpenTelemetryObserver — onError', () => {
+describe('createOpenTelemetryObserver: onError', () => {
   function makeSdkError(kind = 'network', category = 'transport'): Parameters<NonNullable<SDKObserver['onError']>>[0] {
     const err = Object.assign(new Error('sdk test error'), {
       kind,
@@ -186,7 +186,7 @@ describe('createOpenTelemetryObserver — onError', () => {
   });
 });
 
-describe('createOpenTelemetryObserver — onTransportActivity', () => {
+describe('createOpenTelemetryObserver: onTransportActivity', () => {
   test('records sdk.transport.duration_ms histogram for recv with durationMs', () => {
     const col = makeCollector();
     const obs = createOpenTelemetryObserver(col.tracer, col.meter);
@@ -230,8 +230,8 @@ describe('createOpenTelemetryObserver — onTransportActivity', () => {
   });
 });
 
-describe('createOpenTelemetryObserver — onEvent', () => {
-  test('onEvent is a no-op — emits no counters or spans', () => {
+describe('createOpenTelemetryObserver: onEvent', () => {
+  test('onEvent is a no-op: emits no counters or spans', () => {
     const col = makeCollector();
     const obs = createOpenTelemetryObserver(col.tracer, col.meter);
 

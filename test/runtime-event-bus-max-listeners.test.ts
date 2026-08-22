@@ -81,7 +81,7 @@ describe('below-cap registration (production mode)', () => {
   });
 });
 
-describe('overflow in production mode — warn, allow', () => {
+describe('overflow in production mode: warn, allow', () => {
   let warnSpy: Mock<typeof logger.warn>;
   let origEnv: string | undefined;
 
@@ -132,7 +132,7 @@ describe('overflow in production mode — warn, allow', () => {
   });
 });
 
-describe('overflow in development mode — throw RangeError', () => {
+describe('overflow in development mode: throw RangeError', () => {
   let origEnv: string | undefined;
 
   beforeEach(() => {
@@ -212,7 +212,7 @@ describe('config override via maxListeners constructor option', () => {
     warnSpy.mockRestore();
   });
 
-  test('higher cap via option is respected — no warn below new cap', () => {
+  test('higher cap via option is respected: no warn below new cap', () => {
     process.env['NODE_ENV'] = 'production';
     const customCap = 200;
     const bus = new RuntimeEventBus({ maxListeners: customCap });
@@ -224,7 +224,7 @@ describe('config override via maxListeners constructor option', () => {
     expect(leakWarns.length).toBe(0);
   });
 
-  test('higher cap via option — overflow at new boundary warns in production', () => {
+  test('higher cap via option: overflow at new boundary warns in production', () => {
     process.env['NODE_ENV'] = 'production';
     const customCap = 150;
     const bus = new RuntimeEventBus({ maxListeners: customCap });
@@ -240,7 +240,7 @@ describe('config override via maxListeners constructor option', () => {
     expect(leakWarns.length).toBeGreaterThanOrEqual(1);
   });
 
-  test('lower cap via option is respected — throws in dev mode at new boundary', () => {
+  test('lower cap via option is respected: throws in dev mode at new boundary', () => {
     process.env['NODE_ENV'] = 'development';
     const smallCap = 5;
     const bus = new RuntimeEventBus({ maxListeners: smallCap });

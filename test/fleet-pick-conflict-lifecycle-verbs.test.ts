@@ -48,7 +48,7 @@ function makeItem(spec: WorkItemSpec): WorkItem {
   };
 }
 
-describe('fleet.attempts.pick — one act: choice → confirm → applied', () => {
+describe('fleet.attempts.pick: one act: choice → confirm → applied', () => {
   function pickHarness(): { catalog: GatewayMethodCatalog; ws: Workstream; enqueued: string[]; cleaned: string[] } {
     const enqueued: string[] = [];
     const cleaned: string[] = [];
@@ -98,7 +98,7 @@ describe('fleet.attempts.pick — one act: choice → confirm → applied', () =
     expect(h.cleaned).toHaveLength(0);
   });
 
-  test('with confirm: applied — winner merged through the lane, losers cleaned', async () => {
+  test('with confirm: applied: winner merged through the lane, losers cleaned', async () => {
     const h = pickHarness();
     const groupId = h.ws.items[0]!.attemptGroupId!;
     const winner = h.ws.items[0]!.id;
@@ -119,7 +119,7 @@ describe('fleet.attempts.pick — one act: choice → confirm → applied', () =
   });
 });
 
-describe('fleet.conflicts.* — the conflict row acts on data, never transcription', () => {
+describe('fleet.conflicts.*: the conflict row acts on data, never transcription', () => {
   function conflictHarness(): {
     catalog: GatewayMethodCatalog; stamped: Array<[string, string]>; seeds: unknown[];
   } {
@@ -175,7 +175,7 @@ describe('fleet.conflicts.* — the conflict row acts on data, never transcripti
   });
 });
 
-describe('worktrees.discard — discard performs its meaning', () => {
+describe('worktrees.discard: discard performs its meaning', () => {
   function runGit(cwd: string, args: string[]): string {
     const result = Bun.spawnSync(['git', ...args], { cwd });
     if (result.exitCode !== 0) throw new Error(Buffer.from(result.stderr).toString('utf8'));
@@ -240,7 +240,7 @@ describe('worktrees.discard — discard performs its meaning', () => {
   }, 20_000);
 });
 
-describe('approveAndLaunchProposal — one confirmed act', () => {
+describe('approveAndLaunchProposal: one confirmed act', () => {
   const proposal: PlanProposal = {
     id: 'prop-1', task: 'ship the thing', strategy: 'single', rationale: 'one item',
     phases: [{ id: 'ph-1', title: 'Execute', order: 0 }],

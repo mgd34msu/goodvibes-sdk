@@ -25,7 +25,7 @@ function tempWorkspace(prefix: string): string {
   return mkdtempSync(join(tmpdir(), prefix));
 }
 
-describe('WorkspaceCheckpointManager — broad-root guard', () => {
+describe('WorkspaceCheckpointManager: broad-root guard', () => {
   test('refuses a home-directory root: create() throws an honest, override-naming message', async () => {
     const root = tempWorkspace('wcp-home-');
     // Treat the workspace root AS the home directory via the homeDir override.
@@ -80,7 +80,7 @@ describe('WorkspaceCheckpointManager — broad-root guard', () => {
   });
 });
 
-describe('WorkspaceCheckpointManager — first-snapshot size guard', () => {
+describe('WorkspaceCheckpointManager: first-snapshot size guard', () => {
   test('refuses a first snapshot whose sweep exceeds the file-count ceiling, stating count and override', async () => {
     const root = tempWorkspace('wcp-bigfirst-');
     for (let i = 0; i < 5; i++) {
@@ -117,7 +117,7 @@ describe('WorkspaceCheckpointManager — first-snapshot size guard', () => {
   });
 });
 
-describe('WorkspaceCheckpointManager — automatic retention wiring', () => {
+describe('WorkspaceCheckpointManager: automatic retention wiring', () => {
   test('gc() runs automatically after a create() crosses the retention threshold', async () => {
     const root = tempWorkspace('wcp-autoretain-');
     const manager = new WorkspaceCheckpointManager({

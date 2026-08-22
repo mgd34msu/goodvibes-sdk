@@ -106,7 +106,7 @@ const PAIRS: Array<[string, string, string]> = [
   ],
 ];
 
-describe('obfuscation classifier — benign diagnostics pass', () => {
+describe('obfuscation classifier: benign diagnostics pass', () => {
   for (const [label, benign] of PAIRS) {
     test(`${label} is not obfuscation`, () => {
       const v = verdict(benign);
@@ -123,7 +123,7 @@ describe('obfuscation classifier — benign diagnostics pass', () => {
   });
 });
 
-describe('obfuscation classifier — the malicious neighbour is still denied', () => {
+describe('obfuscation classifier: the malicious neighbour is still denied', () => {
   for (const [label, , malicious] of PAIRS) {
     test(`the attacking counterpart of "${label}" stays denied`, () => {
       const v = verdict(malicious);
@@ -227,7 +227,7 @@ describe('backtick command-name assembly reaches the classifier', () => {
   });
 });
 
-describe('obfuscation classifier — the frozen catastrophic block is unchanged', () => {
+describe('obfuscation classifier: the frozen catastrophic block is unchanged', () => {
   test('rm -rf / is denied regardless of the narrowing above', () => {
     expect(verdict('rm -rf /').allowed).toBe(false);
   });

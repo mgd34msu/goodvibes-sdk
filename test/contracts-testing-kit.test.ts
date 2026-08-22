@@ -61,7 +61,7 @@ function isSchemaValid(schema: unknown, value: unknown): boolean {
   }
 }
 
-describe('contracts testing kit — conformance gate', () => {
+describe('contracts testing kit: conformance gate', () => {
   const fakeCatalog = (entries: ReadonlyArray<{ id: string; handled: boolean }>) => {
     const handled = new Set(entries.filter((e) => e.handled).map((e) => e.id));
     return { list: () => entries.map((e) => ({ id: e.id })), hasHandler: (id: string) => handled.has(id) };
@@ -80,7 +80,7 @@ describe('contracts testing kit — conformance gate', () => {
   });
 });
 
-describe('contracts testing kit — mock-daemon generator', () => {
+describe('contracts testing kit: mock-daemon generator', () => {
   test('sampleFromSchema handles the emitted JSON Schema subset', () => {
     expect(sampleFromSchema({ type: 'string' })).toBe('sample');
     expect(sampleFromSchema({ type: 'number' })).toBe(0);
@@ -121,7 +121,7 @@ describe('contracts testing kit — mock-daemon generator', () => {
   });
 });
 
-describe('contracts testing kit — generated fixtures', () => {
+describe('contracts testing kit: generated fixtures', () => {
   test('MOCK_DAEMON_FIXTURES covers every operator method id', () => {
     const covered = Object.keys(MOCK_DAEMON_FIXTURES).sort();
     expect(covered).toEqual([...OPERATOR_METHOD_IDS].sort());

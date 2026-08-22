@@ -21,7 +21,7 @@ function makeTmpDir(): string {
   return dir;
 }
 
-describe('platform/plugins — smoke', () => {
+describe('platform/plugins: smoke', () => {
   test('discoverPlugins returns an array for a non-existent directory', async () => {
     const { discoverPlugins } = await import('../packages/sdk/src/platform/plugins/index.js');
     const dir = makeTmpDir();

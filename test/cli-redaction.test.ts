@@ -163,7 +163,7 @@ describe('redactConfig', () => {
     ].sort());
   });
 
-  test('a goodvibes:// secret reference is left readable — it is a pointer, not a value', () => {
+  test('a goodvibes:// secret reference is left readable: it is a pointer, not a value', () => {
     const result = redactConfig(nest(
       'surfaces.email.password',
       'goodvibes://secrets/goodvibes/GOODVIBES_SURFACES_EMAIL_PASSWORD',

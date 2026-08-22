@@ -573,7 +573,7 @@ describe('PATCH /api/models/current', () => {
 // PATCH /api/models/current, discovered/anonymous provider
 // ---------------------------------------------------------------------------
 
-describe('PATCH /api/models/current — discovered anonymous provider', () => {
+describe('PATCH /api/models/current: discovered anonymous provider', () => {
   test('succeeds for a discovered provider not in BUILTIN_PROVIDER_ENV_KEYS when registry reports it configured', async () => {
     // Simulate an LM Studio server discovered at 192.168.0.85.
     // Its provider name won't be in BUILTIN_PROVIDER_ENV_KEYS (no env var).

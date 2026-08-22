@@ -255,7 +255,7 @@ const MODEL_WARNING: ModelContextWarning = {
   providerStopReason: 'model_context_window_exceeded',
 };
 
-describe('model-issued compaction warning — preflight', () => {
+describe('model-issued compaction warning: preflight', () => {
   test('low estimated usage with a pending model warning compacts immediately and clears the warning', async () => {
     const stub = makeConversationStub();
     const model = makeModel();
@@ -310,7 +310,7 @@ describe('model-issued compaction warning — preflight', () => {
   });
 });
 
-describe('model-issued compaction warning — post-turn maintenance', () => {
+describe('model-issued compaction warning: post-turn maintenance', () => {
   function makePostTurnDeps(
     stub: ConversationStub,
     model: ModelDefinition,
@@ -389,7 +389,7 @@ import { writeFileSync } from 'node:fs';
 import { isContextSizeExceededError } from '../packages/sdk/src/platform/types/errors.js';
 import { loadContextWindowOverrides } from '../packages/sdk/src/platform/providers/context-window-overrides.js';
 
-describe('isContextSizeExceededError — real provider messages', () => {
+describe('isContextSizeExceededError: real provider messages', () => {
   test('matches the exact openai-codex rejection from the bench incident', () => {
     const err = new Error(
       'OpenAI Codex API error: context_length_exceeded: Your input exceeds the context window of this model. Please adjust your input and try again. (phase=stream)',
@@ -430,9 +430,9 @@ describe('observed context ceilings', () => {
       const registry = makeRegistry(root);
       registry.registerDiscoveredProviders([DISCOVERED_SERVER]);
       registry.recordContextWindowRejection('ollama:qwen3-local', 5000);
-      registry.recordContextWindowRejection('ollama:qwen3-local', 6000); // larger — ignored
+      registry.recordContextWindowRejection('ollama:qwen3-local', 6000); // larger, ignored
       expect(registry.getObservedContextWindow('ollama:qwen3-local')).toBe(5000);
-      registry.recordContextWindowRejection('ollama:qwen3-local', 3000); // smaller — learned
+      registry.recordContextWindowRejection('ollama:qwen3-local', 3000); // smaller, learned
       expect(registry.getObservedContextWindow('ollama:qwen3-local')).toBe(3000);
     });
   });

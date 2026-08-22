@@ -99,7 +99,7 @@ describe('isNetworkFacing', () => {
     expect(isNetworkFacing(null, wideOpen)).toBe(false);
   });
 
-  test('only a literal true counts as enabled — truthy values do not', () => {
+  test('only a literal true counts as enabled: truthy values do not', () => {
     const wideOpen = { hostMode: 'network', host: '0.0.0.0' } as const;
     expect(isNetworkFacing(true, wideOpen)).toBe(true);
     expect(isNetworkFacing(1, wideOpen)).toBe(false);

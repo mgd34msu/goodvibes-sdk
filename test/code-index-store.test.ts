@@ -75,7 +75,7 @@ export class Bar {
 export const baz = 42;
 `;
 
-describe('CodeIndexStore — chunking determinism', () => {
+describe('CodeIndexStore: chunking determinism', () => {
   test('chunk count matches top-level tree-sitter symbol count', async () => {
     const root = makeRoot();
     writeFileSync(join(root, 'a.ts'), TS_FIXTURE);
@@ -110,7 +110,7 @@ describe('CodeIndexStore — chunking determinism', () => {
   });
 });
 
-describe('CodeIndexStore — incremental reindex', () => {
+describe('CodeIndexStore: incremental reindex', () => {
   test('re-indexing an unchanged file does not re-embed', async () => {
     const root = makeRoot();
     writeFileSync(join(root, 'a.ts'), TS_FIXTURE);
@@ -188,7 +188,7 @@ describe('CodeIndexStore — incremental reindex', () => {
   });
 });
 
-describe('CodeIndexStore — never silently drops a non-empty file', () => {
+describe('CodeIndexStore: never silently drops a non-empty file', () => {
   test('an unsupported language falls back to windowed chunks, not zero chunks', async () => {
     const root = makeRoot();
     const longRustFile = Array.from({ length: 80 }, (_, i) => `fn f${i}() {}`).join('\n');
@@ -225,7 +225,7 @@ describe('CodeIndexStore — never silently drops a non-empty file', () => {
   });
 });
 
-describe('CodeIndexStore — chunk shape', () => {
+describe('CodeIndexStore: chunk shape', () => {
   test('chunk_id is a deterministic function of path + lines + content hash', async () => {
     const root = makeRoot();
     writeFileSync(join(root, 'a.ts'), TS_FIXTURE);

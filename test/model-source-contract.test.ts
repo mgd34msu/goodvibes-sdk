@@ -120,7 +120,7 @@ describe('verifyProviderModelSource', () => {
   });
 });
 
-describe('ProviderRegistry.register — fail-closed on a dead model source (red test)', () => {
+describe('ProviderRegistry.register: fail-closed on a dead model source (red test)', () => {
   test('a seeded provider with an empty models array and no modelSource is REJECTED at registration', () => {
     const registry = makeRegistry();
     const badProvider = makeChatlessProvider({ models: [] });

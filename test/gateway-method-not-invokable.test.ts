@@ -57,7 +57,7 @@ describe('GatewayMethodCatalog.invoke() and invokable:false', () => {
     }
   });
 
-  test('(c) invokable:false with a REGISTERED handler still runs it — the flag does not block a real handler', async () => {
+  test('(c) invokable:false with a REGISTERED handler still runs it: the flag does not block a real handler', async () => {
     const catalog = new GatewayMethodCatalog({ includeBuiltins: false });
     let called = false;
     catalog.register(blockedDescriptor('test.blocked.with-handler'), async (input) => {
@@ -96,7 +96,7 @@ describe('GatewayMethodCatalog.invoke() and invokable:false', () => {
   });
 });
 
-describe('DaemonControlPlaneHelper.validateGatewayInvocation / invokeGatewayMethodCall — (b) machine-readable NOT_INVOKABLE', () => {
+describe('DaemonControlPlaneHelper.validateGatewayInvocation / invokeGatewayMethodCall: (b) machine-readable NOT_INVOKABLE', () => {
   function helperWithCatalog(catalog: GatewayMethodCatalog): DaemonControlPlaneHelper {
     // validateGatewayInvocation's invokable:false branch (and invokeGatewayMethodCall's
     // early `denied` return before it) never touches any other context field, so a

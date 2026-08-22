@@ -30,7 +30,7 @@ import {
   isTransportFailureMessage,
 } from '../packages/sdk/src/platform/types/errors.js';
 
-describe('createNetworkTransportError (transport-http) — classification transport-http already gets right', () => {
+describe('createNetworkTransportError (transport-http): classification transport-http already gets right', () => {
   it('marks recoverable=true and category=network for a synthetic UND_ERR_SOCKET error', () => {
     const raw = Object.assign(new Error('other side closed'), { code: 'UND_ERR_SOCKET' });
     const err = createNetworkTransportError(raw, 'https://example.test/v1/chat', 'POST');
@@ -47,7 +47,7 @@ describe('createNetworkTransportError (transport-http) — classification transp
   });
 });
 
-describe('isNetworkTransportError — trusts structured classification over message text', () => {
+describe('isNetworkTransportError: trusts structured classification over message text', () => {
   it('returns true for "unexpected socket connection closure" wording once it carries the structured HttpStatusError shape', () => {
     // This is the exact reported wording. The OLD isNetworkError() in
     // orchestrator-runner.ts (message-substring-only) did NOT match this text
@@ -85,7 +85,7 @@ describe('isNetworkTransportError — trusts structured classification over mess
   });
 });
 
-describe('isTransportFailureMessage — message-only fallback used by WrfcController', () => {
+describe('isTransportFailureMessage: message-only fallback used by WrfcController', () => {
   it('recognizes the newly added "closed unexpectedly" wording', () => {
     expect(isTransportFailureMessage('The socket connection was closed unexpectedly')).toBe(true);
   });

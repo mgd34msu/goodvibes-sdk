@@ -96,7 +96,7 @@ describe('classifyInputSchema', () => {
   });
 });
 
-describe('validateInvocationInput — typed schemas', () => {
+describe('validateInvocationInput: typed schemas', () => {
   const schema = objectSchema({
     username: STRING_SCHEMA,
     count: NUMBER_SCHEMA,
@@ -140,7 +140,7 @@ describe('validateInvocationInput — typed schemas', () => {
   });
 });
 
-describe('validateInvocationInput — pass-through schemas', () => {
+describe('validateInvocationInput: pass-through schemas', () => {
   test('generic object schema is never rejected, even with extra fields', () => {
     expect(validateInvocationInput(verb(JSON_OBJECT_SCHEMA), { anything: 1, more: 'x' })).toBeNull();
   });

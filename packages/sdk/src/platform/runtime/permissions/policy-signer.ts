@@ -41,7 +41,7 @@ export type SignatureStatus = 'valid' | 'invalid' | 'missing' | 'unsigned' | 'sk
  * - `local-file` , Loaded from a local filesystem path.
  * - `remote-url` , Fetched from a remote URL (managed infra).
  * - `inline`     , Embedded directly in runtime configuration.
- * - `test-fixture`— Created by test infrastructure; never production.
+ * - `test-fixture`: Created by test infrastructure; never production.
  */
 export type ProvenanceSource = 'local-file' | 'remote-url' | 'inline' | 'test-fixture';
 

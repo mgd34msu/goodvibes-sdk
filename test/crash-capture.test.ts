@@ -72,7 +72,7 @@ describe('crash record', () => {
   });
 });
 
-describe('crash log — bounded, validated, disclosed', () => {
+describe('crash log: bounded, validated, disclosed', () => {
   test('a record written by one process is readable afterwards', () => {
     const path = join(tempDir(), CRASH_LOG_FILENAME);
     expect(appendCrashRecord(path, buildCrashRecord('uncaughtException', new Error('boom'), CONTEXT))).toBe(true);
@@ -142,7 +142,7 @@ describe('crash log — bounded, validated, disclosed', () => {
   });
 });
 
-describe('crash log — retention ownership', () => {
+describe('crash log: retention ownership', () => {
   test('the store is registered, so the existing janitor bounds it by age and size too', () => {
     // An append-only path nobody registered would grow unowned; the registry
     // fails closed on unregistered ids precisely to prevent that.

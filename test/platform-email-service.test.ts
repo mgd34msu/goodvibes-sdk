@@ -279,7 +279,7 @@ describe('EmailService.checkInbox', () => {
 // smtpSecurity field wiring
 // ---------------------------------------------------------------------------
 
-describe('readEmailConfig — smtpSecurity field', () => {
+describe('readEmailConfig: smtpSecurity field', () => {
   test('defaults to "auto" when not set', () => {
     const config = readEmailConfig((k) => makeConfig()[k]);
     expect(config.smtpSecurity).toBe('auto');
@@ -301,7 +301,7 @@ describe('readEmailConfig — smtpSecurity field', () => {
   });
 });
 
-describe('EmailService smtpSecurity — socket factory selection', () => {
+describe('EmailService smtpSecurity: socket factory selection', () => {
   test('smtpSecurity=tls on port 587 calls smtpSocketFactory (forced TLS)', async () => {
     // When smtpSecurity='tls', even port 587 should use the TLS (not STARTTLS) factory.
     // Since we inject our own smtpSocketFactory, we just verify it gets called.
@@ -339,13 +339,13 @@ describe('EmailService smtpSecurity — socket factory selection', () => {
       transport: throwingEmailTransport,
       describeSenderClaim: testDescribeSenderClaim,
       // No smtpSocketFactory, use the default factory selection
-      // This will fail to connect to smtp.example.test but that’s expected in tests
+      // This will fail to connect to smtp.example.test but that's expected in tests
       smtpSocketFactory: async () => stubSocket,
     });
     await expect(
       service.sendMail({ to: 'a@b.test', subject: 'Hi', body: 'Body', confirm: true }),
     ).rejects.toThrow();
-    // If we reach here, the factory selection itself didn’t throw, wiring is correct
+    // If we reach here, the factory selection itself didn't throw, wiring is correct
   });
 
   // With the transports behind a port, the selection rule itself is now
@@ -392,7 +392,7 @@ describe('EmailService smtpSecurity — socket factory selection', () => {
 // unconditionally. These pin BOTH positions of the key, the default TLS path
 // byte-for-byte as before, and the plaintext path the schema describes.
 
-describe('readEmailConfig — imapSecurity field', () => {
+describe('readEmailConfig: imapSecurity field', () => {
   test('defaults to "tls" when not set', () => {
     const config = readEmailConfig((k) => makeConfig()[k]);
     expect(config.imapSecurity).toBe('tls');
@@ -409,7 +409,7 @@ describe('readEmailConfig — imapSecurity field', () => {
   });
 });
 
-describe('EmailService imapSecurity — socket factory selection', () => {
+describe('EmailService imapSecurity: socket factory selection', () => {
   const imapCases: ReadonlyArray<{ readonly security: string | undefined; readonly expected: string }> = [
     { security: undefined, expected: 'connectImapTls' },
     { security: 'tls', expected: 'connectImapTls' },
@@ -544,7 +544,7 @@ describe('EmailService.testConnection', () => {
     return { host: '127.0.0.1', port: server.address.port };
   }
 
-  test('returns ok:true when both IMAP and SMTP verify — real success path, no send/fetch side effects', async () => {
+  test('returns ok:true when both IMAP and SMTP verify: real success path, no send/fetch side effects', async () => {
     const imap = await connectFake(fakeImapSuccessScript);
     const smtp = await connectFake(fakeSmtpSuccessScript);
 
@@ -566,7 +566,7 @@ describe('EmailService.testConnection', () => {
     expect(result).toEqual({ ok: true });
   });
 
-  test('returns ok:false stage:config when config is invalid — no connection attempted', async () => {
+  test('returns ok:false stage:config when config is invalid: no connection attempted', async () => {
     const service = new EmailService({
       getConfig: (k) => makeConfig({ 'email.imapHost': '' })[k],
       secretsManager: makeSecretsManager({}),
@@ -700,7 +700,7 @@ describe('EmailService.sendMail', () => {
 
     await expect(
       service.sendMail({ to: 'a@b.test', subject: 'Hi', body: 'Body', confirm: true }),
-    ).rejects.toThrow(); // SmtpClient will fail on the stub socket — expected
+    ).rejects.toThrow(); // SmtpClient will fail on the stub socket, expected
 
     expect(calls).toHaveLength(1);
     expect(calls[0]?.host).toBe('smtp.example.test');

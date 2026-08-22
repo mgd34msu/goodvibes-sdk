@@ -221,7 +221,7 @@ function sessionsClientMethodNames(): ReadonlySet<string> {
 // 1. Transport-declaration honesty
 // ---------------------------------------------------------------------------
 
-describe('S2b parity gate — transport-declaration honesty', () => {
+describe('S2b parity gate: transport-declaration honesty', () => {
   test('no contract method advertises a transport it is not reachable on', () => {
     const contract = buildOperatorContract(new GatewayMethodCatalog());
     const violations = findTransportHonestyViolations(contract.operator.methods);
@@ -257,7 +257,7 @@ describe('S2b parity gate — transport-declaration honesty', () => {
 // 2. DirectTransport coverage (the real hole)
 // ---------------------------------------------------------------------------
 
-describe('S2b parity gate — DirectTransport coverage', () => {
+describe('S2b parity gate: DirectTransport coverage', () => {
   test('every in-process namespace method is mapped or explicitly http-only', () => {
     const contract = buildOperatorContract(new GatewayMethodCatalog());
     const ids = contract.operator.methods.map((m) => m.id);
@@ -302,7 +302,7 @@ describe('S2b parity gate — DirectTransport coverage', () => {
 //     (name-existence alone cannot catch a mis-wire like list→getSession).
 // ---------------------------------------------------------------------------
 
-describe('S2b parity gate — DirectTransport routing (effect-based)', () => {
+describe('S2b parity gate: DirectTransport routing (effect-based)', () => {
   // wire id → { the args to call the mapped client method with, the underlying
   // services effect it MUST produce }. Covers all non-http-only manifest mappings.
   const ROUTING: Record<string, { args: readonly unknown[]; effect: string }> = {
@@ -381,7 +381,7 @@ describe('S2b parity gate — DirectTransport routing (effect-based)', () => {
 // 3. Cataloged-but-not-invokable is an honest failure, never a silent 200
 // ---------------------------------------------------------------------------
 
-describe('S2b parity gate — cataloged-but-not-invokable is honest', () => {
+describe('S2b parity gate: cataloged-but-not-invokable is honest', () => {
   test('a method with no http binding is not HTTP-invokable via the contract-driven client', () => {
     const transport = createHttpTransport({ baseUrl: 'http://127.0.0.1:3210', fetch: stubFetch(async () => new Response('{}')) });
     const contract = {

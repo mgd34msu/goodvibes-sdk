@@ -49,7 +49,7 @@ async function drain(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-describe('AudioSink contract — readiness / head survival', () => {
+describe('AudioSink contract: readiness / head survival', () => {
   test('a sink that delays its internal readiness still plays every byte in order (no head loss)', async () => {
     const received: number[] = [];
     let readinessOpened = false;
@@ -91,7 +91,7 @@ describe('AudioSink contract — readiness / head survival', () => {
   });
 });
 
-describe('AudioSink contract — abort cuts immediately', () => {
+describe('AudioSink contract: abort cuts immediately', () => {
   test('a deliberate stop cuts the currently-playing sink mid-stream before the bytes finish', async () => {
     // The chunk that is actively playing has already been removed from the
     // controller's abort set (its signal is released before playback begins),
@@ -146,7 +146,7 @@ describe('AudioSink contract — abort cuts immediately', () => {
   });
 });
 
-describe('AudioSink contract — bounded waitForDrain on exit', () => {
+describe('AudioSink contract: bounded waitForDrain on exit', () => {
   test('stopForExit resolves within the drain window even when the sink never finishes naturally', async () => {
     let waitForDrainMs: number | null = null;
 

@@ -224,7 +224,7 @@ describe('TR3: tool execution error published as isError=true', () => {
 // TR4: No registry, tool_call event published, registry not invoked
 // ---------------------------------------------------------------------------
 
-describe('TR4: no toolRegistry — tool_call event published, graceful degradation', () => {
+describe('TR4: no toolRegistry: tool_call event published, graceful degradation', () => {
   test('turn.tool_call event emitted even without toolRegistry', async () => {
     const { publisher, events } = makeRecordingPublisher();
 

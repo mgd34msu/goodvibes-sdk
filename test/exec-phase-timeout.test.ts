@@ -55,7 +55,7 @@ function runtimeContext(): ToolRuntimeContext {
   } as unknown as ToolRuntimeContext;
 }
 
-describe('executePhase — exec timeout_ms honored', () => {
+describe('executePhase: exec timeout_ms honored', () => {
   test('a large exec input.timeout_ms is honored even when it exceeds the configured phase timeout', async () => {
     const executor = createPhasedExecutor({
       enableHooks: false,
@@ -75,7 +75,7 @@ describe('executePhase — exec timeout_ms honored', () => {
     expect(result.output).toBe('done');
   });
 
-  test('a non-exec tool is unaffected — the small configured phase timeout still applies', async () => {
+  test('a non-exec tool is unaffected: the small configured phase timeout still applies', async () => {
     const executor = createPhasedExecutor({
       enableHooks: false,
       enablePermissions: false,

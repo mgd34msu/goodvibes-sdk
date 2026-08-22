@@ -69,7 +69,7 @@ describe('a corrupt records.json is discarded and disclosed, never thrown', () =
     expect(await store.list()).toEqual([]);
   });
 
-  test('the unreadable file is REPORTED — discarded is not the same as absent', async () => {
+  test('the unreadable file is REPORTED: discarded is not the same as absent', async () => {
     writeFileSync(paths().records, 'not json at all', 'utf-8');
     const store = new InboundMailStore(paths().records, { now: () => NOW.getTime() });
 
@@ -291,7 +291,7 @@ describe('a local failure is classified by errno, and the set is not editable in
     expect(verdict.reason).toBe('local-store-unwritable');
   });
 
-  test('every permanent errno is also a storage errno — the sets cannot drift apart', () => {
+  test('every permanent errno is also a storage errno: the sets cannot drift apart', () => {
     // `STORAGE_ERRNOS` is built by spreading `PERMANENT_STORE_ERRNOS`, so a
     // permanent errno that did not name `local-store-unwritable` would mean
     // the two had been split by hand.

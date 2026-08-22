@@ -249,7 +249,7 @@ describe('full-detach catalog over the wire (list / semantic / update / links / 
   });
 });
 
-describe('version-skew wire honesty — the two 404s carry distinguishable codes on a REAL daemon', () => {
+describe('version-skew wire honesty: the two 404s carry distinguishable codes on a REAL daemon', () => {
   // Grounds the memory-spine wire discriminator against the actual daemon wire: a
   // record-scoped extended verb against a MISSING record and an UNKNOWN route (the
   // shape an older daemon that never registered the route produces) are BOTH HTTP

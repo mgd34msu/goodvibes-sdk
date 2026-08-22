@@ -66,7 +66,7 @@ describe('the header a transport uses to claim a live human action', () => {
 });
 
 describe('what the handler does with the claim', () => {
-  test('a supplied false is refused — a caller that says "not a user request" is believed', () => {
+  test('a supplied false is refused: a caller that says "not a user request" is believed', () => {
     expect(() => refuseNonUserRequest(invocation({ explicitUserRequest: false }), 'email.send'))
       .toThrow(GatewayVerbError);
   });

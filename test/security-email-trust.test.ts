@@ -61,7 +61,7 @@ describe('surfaces are inherently unequal, and authentication never changes that
     expect(surfaceHasCommandAuthority('email')).toBe(false);
   });
 
-  test('there is no middle tier — the API cannot express one', () => {
+  test('there is no middle tier: the API cannot express one', () => {
     // A middle tier is where "this one is probably fine" lives, and the whole
     // class of attack is content that looks fine.
     const tiers = new Set((['owner-direct', 'email', 'web-page', 'channel-message', 'document'] as const)
@@ -96,7 +96,7 @@ describe('an outward action whose content derives from untrusted input is refuse
     expect(decision.reason).toContain('derives from content read from');
   });
 
-  test('a redirected RECIPIENT is caught too — not just the body', () => {
+  test('a redirected RECIPIENT is caught too: not just the body', () => {
     const attacker = 'attacker-with-a-long-address@totally-not-evil.example';
     const decision = evaluateOutwardEffect({
       request: { toolName: 'email', action: 'email.send', description: 'sending mail' },

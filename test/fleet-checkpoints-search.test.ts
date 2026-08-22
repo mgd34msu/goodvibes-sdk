@@ -193,7 +193,7 @@ afterAll(async () => {
   rmSync(work, { recursive: true, force: true });
 });
 
-describe('fleet/checkpoints/search — fleet.snapshot / fleet.list', () => {
+describe('fleet/checkpoints/search: fleet.snapshot / fleet.list', () => {
   test('fleet.snapshot returns a well-shaped, empty-or-sparse fleet before any process exists', async () => {
     const { status, json } = await invokeVerb<FleetSnapshotResponse>('fleet.snapshot');
     expect(status).toBe(200);
@@ -240,7 +240,7 @@ describe('fleet/checkpoints/search — fleet.snapshot / fleet.list', () => {
   });
 });
 
-describe('fleet/checkpoints/search — checkpoints.list / create / diff / restore', () => {
+describe('fleet/checkpoints/search: checkpoints.list / create / diff / restore', () => {
   // A fresh bootDaemon `work` tmpdir is EMPTY, whose git tree hash equals the
   // canonical empty-tree constant WorkspaceCheckpointManager also uses as the
   // "no parent yet" sentinel (manager.ts:349-357), so the very first
@@ -462,7 +462,7 @@ describe('fleet/checkpoints/search — checkpoints.list / create / diff / restor
   });
 });
 
-describe('fleet/checkpoints/search — sessions.search', () => {
+describe('fleet/checkpoints/search: sessions.search', () => {
   const searchProject = `fleet-search-search-project-${Date.now()}`;
 
   beforeAll(async () => {
@@ -559,7 +559,7 @@ describe('fleet/checkpoints/search — sessions.search', () => {
   });
 });
 
-describe('fleet/checkpoints/search — access gates', () => {
+describe('fleet/checkpoints/search: access gates', () => {
   test('the generic invoke endpoint requires auth like every other route', async () => {
     const res = await fetch(`${daemon.url}/api/control-plane/methods/fleet.snapshot/invoke`, {
       method: 'POST',
@@ -575,7 +575,7 @@ describe('fleet/checkpoints/search — access gates', () => {
   });
 });
 
-describe('fleet/checkpoints/search — event-emission honesty (verified-not-applicable for EVENT_DOMAIN)', () => {
+describe('fleet/checkpoints/search: event-emission honesty (verified-not-applicable for EVENT_DOMAIN)', () => {
   // The landed scope for this verb set is read/lifecycle verbs with NO broadcast events:
   // the handlers call the managers and return; ProcessRegistry.subscribe() is
   // an in-registry callback (explicitly not a runtime-bus event contract) and

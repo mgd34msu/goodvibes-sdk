@@ -28,7 +28,7 @@ export type { IsoDate, OccasionDate, OccasionRecurrence } from './dates.js';
  * label, so there is no heuristic.
  *
  *  - `gift-giving` , raise it, and a yes opens the gift interview.
- *  - `remember-only`— raise it, and never mention a gift.
+ *  - `remember-only`: raise it, and never mention a gift.
  *  - `neither`     , never raise it. It is recorded so the date can be
  *                     answered when the owner asks, and for nothing else.
  */

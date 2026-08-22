@@ -56,7 +56,7 @@ describe('findNearestAgentsFile', () => {
   });
 });
 
-describe('loadSystemPromptWithSources — AGENTS.md', () => {
+describe('loadSystemPromptWithSources: AGENTS.md', () => {
   it('loads the nearest AGENTS.md and lists it in the source provenance', () => {
     const home = emptyHome();
     const work = makeTempRoot();

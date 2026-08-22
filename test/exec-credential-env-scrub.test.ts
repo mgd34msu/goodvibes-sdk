@@ -67,7 +67,7 @@ describe('scrubCredentialEnv', () => {
   });
 });
 
-describe('exec tool — env scrub end to end', () => {
+describe('exec tool: env scrub end to end', () => {
   const root = mkdtempSync(join(tmpdir(), 'gv-exec-scrub-'));
 
   test('a credential var in this process env is absent from the child and reported as withheld', async () => {

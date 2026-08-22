@@ -205,7 +205,7 @@ export function render(contract: OperatorContractManifest): string {
   const consumedTuple = sortedIds.map((id) => `    ${JSON.stringify(id)},`);
 
   return [
-    '"""GENERATED — do not edit. Regenerate with `bun run refresh:contracts`.',
+    '"""GENERATED. Do not edit. Regenerate with `bun run refresh:contracts`.',
     '',
     'Mechanical transport layer for the GoodVibes Home Assistant integration,',
     'emitted from the operator contract by scripts/generate-homeassistant-client.ts.',

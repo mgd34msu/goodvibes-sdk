@@ -390,7 +390,7 @@ export const surfaceConfigSettings: ConfigSettingDefinition[] = [
     type: 'string',
     default: '',
     description: 'Bot id the cached botUsername was discovered for. Managed automatically so a rotated bot token '
-      + 're-resolves its identity instead of running under the previous bot’s handle.',
+      + 're-resolves its identity instead of running under the previous bot\'s handle.',
   },
   {
     key: 'surfaces.telegram.mode',

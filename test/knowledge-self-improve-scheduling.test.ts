@@ -98,7 +98,7 @@ function harness(opts: {
   return { svc, runs, timers, advance, state: () => internal.backgroundScheduler.state };
 }
 
-describe('production defaults (no overrides — the values that guard the daemon)', () => {
+describe('production defaults (no overrides: the values that guard the daemon)', () => {
   test('the floor is exactly 5000ms and the zero-gap backoff exactly 3600000ms', async () => {
     const h = harness({ candidateGaps: 0 }); // NO floor/backoff overrides
     h.svc.queueBackgroundSelfImprove({ reason: 'reindex', knowledgeSpaceId: 'space-prod' }, 0);
@@ -139,7 +139,7 @@ describe('coalescing and cardinality', () => {
     expect(h.runs.some((r) => !r.knowledgeSpaceId && !r.sourceIds?.length && !r.gapIds?.length)).toBe(true);
   });
 
-  test('settled state entries are evicted — no monotonic key leak', async () => {
+  test('settled state entries are evicted: no monotonic key leak', async () => {
     const h = harness({ minDelayMs: 10, zeroGapBackoffMs: 50, candidateGaps: 0 });
     for (let i = 0; i < 8; i++) {
       h.svc.queueBackgroundSelfImprove({ reason: 'ingest', sourceIds: [`s-${i}`] }, 0);
@@ -160,7 +160,7 @@ describe('zero-gap backoff with gap evidence', () => {
     expect(h.runs.length).toBe(1);
     h.svc.queueBackgroundSelfImprove({ reason: 'reindex', knowledgeSpaceId: 'space-z' }, 0);
     await h.advance(20);
-    expect(h.runs.length).toBe(1); // suppressed — backed off
+    expect(h.runs.length).toBe(1); // suppressed, backed off
   });
 
   test('a trigger carrying concrete gapIds CLEARS the backoff instead of being dropped', async () => {
@@ -222,7 +222,7 @@ describe('governor pause + admission at fire time', () => {
 });
 
 describe('fix-round 2: in-flight gap evidence and sweep backoff', () => {
-  test('gapIds arriving while a run is IN FLIGHT are re-queued by the completion, not wiped — and a zero-gap result does not park them', async () => {
+  test('gapIds arriving while a run is IN FLIGHT are re-queued by the completion, not wiped: and a zero-gap result does not park them', async () => {
     const { store } = createStores();
     let clock = 0;
     const timers: ScheduledTimer[] = [];

@@ -109,7 +109,7 @@ describe('adopting credentials from an existing gmail-mcp install', () => {
     ).toBeNull();
   });
 
-  test('adoption never writes — the file port it is given exposes no write method', () => {
+  test('adoption never writes: the file port it is given exposes no write method', () => {
     // Enforced by construction: GoogleFilePort has only exists() and
     // readText(). The credentials belong to a tool that is still using them,
     // so rewriting or rotating them would break it.

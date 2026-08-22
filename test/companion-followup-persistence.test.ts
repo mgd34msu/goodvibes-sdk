@@ -387,7 +387,7 @@ describe('companion-followup-persistence: kind=message persists before emitting'
     expect(call.input.messageId).toBe(followupEvent.envelope.messageId);
   });
 
-  test('returns 404 for unknown session — no persistence attempted', async () => {
+  test('returns 404 for unknown session: no persistence attempted', async () => {
     const ctx = makeContext({ sessions, appendCalls, followupEvents, persistedMessages });
     const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
     const unknownId = randomUUID();
@@ -401,7 +401,7 @@ describe('companion-followup-persistence: kind=message persists before emitting'
     expect(followupEvents).toHaveLength(0);
   });
 
-  test('returns 409 for closed session — no persistence attempted', async () => {
+  test('returns 409 for closed session: no persistence attempted', async () => {
     sessions.set(sessionId, { id: sessionId, status: 'closed', messageCount: 0 });
     const ctx = makeContext({ sessions, appendCalls, followupEvents, persistedMessages });
     const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);

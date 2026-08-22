@@ -19,7 +19,7 @@ describe('foldedToolResult', () => {
     expect(foldedToolResult({ contentLength: 1, hasSummary: false, storedCollapsed: true })).toBe(false);
   });
 
-  test('a summarizable result folds even when short — the summary is the better row', () => {
+  test('a summarizable result folds even when short: the summary is the better row', () => {
     expect(foldedToolResult({ contentLength: 10, hasSummary: true, storedCollapsed: undefined })).toBe(true);
   });
 
@@ -31,7 +31,7 @@ describe('foldedToolResult', () => {
 });
 
 describe('trailingBlankAfterRow', () => {
-  test('branch rows sit tight under their parent — never a blank', () => {
+  test('branch rows sit tight under their parent: never a blank', () => {
     expect(trailingBlankAfterRow({ nextIsBranchRow: true, nextIsToolMachinery: true, rowRendersFolded: true })).toBe(false);
     expect(trailingBlankAfterRow({ nextIsBranchRow: true, nextIsToolMachinery: false, rowRendersFolded: false })).toBe(false);
   });
@@ -40,7 +40,7 @@ describe('trailingBlankAfterRow', () => {
     expect(trailingBlankAfterRow({ nextIsBranchRow: false, nextIsToolMachinery: true, rowRendersFolded: true })).toBe(false);
   });
 
-  test('a folded row followed by prose keeps its blank — the run separates from the answer', () => {
+  test('a folded row followed by prose keeps its blank: the run separates from the answer', () => {
     expect(trailingBlankAfterRow({ nextIsBranchRow: false, nextIsToolMachinery: false, rowRendersFolded: true })).toBe(true);
   });
 

@@ -31,7 +31,7 @@ function makeRegistry(root: string): MemoryEmbeddingProviderRegistry {
   return new MemoryEmbeddingProviderRegistry({ configManager });
 }
 
-describe('CodeIndexStore — bounds honesty', () => {
+describe('CodeIndexStore: bounds honesty', () => {
   test('gitignored paths are never indexed', async () => {
     const root = makeRoot();
     writeFileSync(join(root, '.gitignore'), 'ignored.ts\n');

@@ -14,7 +14,7 @@ const MOCK_PROVIDER = {
   capabilities: ['stt' as const],
 };
 
-describe('platform/voice — behavior smoke', () => {
+describe('platform/voice: behavior smoke', () => {
   test('register + get returns the registered provider', () => {
     const registry = new VoiceProviderRegistry();
     registry.register(MOCK_PROVIDER);

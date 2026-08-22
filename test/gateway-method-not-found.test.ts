@@ -33,7 +33,7 @@ import { SDKErrorCodes } from '../packages/errors/src/index.ts';
 
 const UNKNOWN_ID = 'w6-c4.definitely-not-a-real-method';
 
-describe('(a) GatewayMethodCatalog.invoke() — uncataloged id throws a coded GatewayVerbError', () => {
+describe('(a) GatewayMethodCatalog.invoke(): uncataloged id throws a coded GatewayVerbError', () => {
   test('throws METHOD_NOT_FOUND (404), not a plain Error', async () => {
     const catalog = new GatewayMethodCatalog({ includeBuiltins: false });
 
@@ -53,7 +53,7 @@ describe('(a) GatewayMethodCatalog.invoke() — uncataloged id throws a coded Ga
   });
 });
 
-describe('(b) DaemonControlPlaneHelper.invokeGatewayMethodCall — uncataloged id 404s with code METHOD_NOT_FOUND', () => {
+describe('(b) DaemonControlPlaneHelper.invokeGatewayMethodCall: uncataloged id 404s with code METHOD_NOT_FOUND', () => {
   function helperWithCatalog(catalog: GatewayMethodCatalog): DaemonControlPlaneHelper {
     const context = { gatewayMethods: catalog } as unknown as DaemonControlPlaneContext;
     return new DaemonControlPlaneHelper(context);
@@ -71,7 +71,7 @@ describe('(b) DaemonControlPlaneHelper.invokeGatewayMethodCall — uncataloged i
   });
 });
 
-describe('(c) real bootDaemon HTTP proof — the wire shape webui/TUI actually consume', () => {
+describe('(c) real bootDaemon HTTP proof: the wire shape webui/TUI actually consume', () => {
   const TOKEN = 'w6-c4-test-token';
   let home: string;
   let work: string;
@@ -100,7 +100,7 @@ describe('(c) real bootDaemon HTTP proof — the wire shape webui/TUI actually c
     rmSync(work, { recursive: true, force: true });
   });
 
-  test('GET /api/control-plane/methods/{unknownId} — 404 with code METHOD_NOT_FOUND', async () => {
+  test('GET /api/control-plane/methods/{unknownId}: 404 with code METHOD_NOT_FOUND', async () => {
     const res = await fetch(`${daemon.url}/api/control-plane/methods/${UNKNOWN_ID}`, { headers: auth() });
     expect(res.status).toBe(404);
     const body = await res.json() as { error?: string; code?: string };
@@ -108,7 +108,7 @@ describe('(c) real bootDaemon HTTP proof — the wire shape webui/TUI actually c
     expect(body.error ?? '').toContain('Unknown gateway method');
   });
 
-  test('POST /api/control-plane/methods/{unknownId}/invoke — 404 with code METHOD_NOT_FOUND', async () => {
+  test('POST /api/control-plane/methods/{unknownId}/invoke: 404 with code METHOD_NOT_FOUND', async () => {
     const res = await fetch(`${daemon.url}/api/control-plane/methods/${UNKNOWN_ID}/invoke`, {
       method: 'POST',
       headers: auth(),
@@ -119,7 +119,7 @@ describe('(c) real bootDaemon HTTP proof — the wire shape webui/TUI actually c
     expect(body.code).toBe(SDKErrorCodes.METHOD_NOT_FOUND);
   });
 
-  test('(d) regression: a real cataloged method (control.methods.list) is unaffected — no code on a 200', async () => {
+  test('(d) regression: a real cataloged method (control.methods.list) is unaffected: no code on a 200', async () => {
     const res = await fetch(`${daemon.url}/api/control-plane/methods`, { headers: auth() });
     expect(res.status).toBe(200);
     const body = await res.json() as { methods?: unknown[] };

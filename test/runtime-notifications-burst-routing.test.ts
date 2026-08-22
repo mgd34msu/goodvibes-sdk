@@ -223,7 +223,7 @@ describe('applyModeContextPolicy', () => {
 
 // ── NotificationRouter integration tests ──────────────────────────────────────
 
-describe('NotificationRouter — adaptive suppression', () => {
+describe('NotificationRouter: adaptive suppression', () => {
   let router: NotificationRouter;
   const BASE_TS = 2_000_000;
 
@@ -447,7 +447,7 @@ describe('NotificationRouter — adaptive suppression', () => {
     });
   });
 
-  describe('high-signal acceptance — conversation noise reduction', () => {
+  describe('high-signal acceptance: conversation noise reduction', () => {
     test('100-event burst in quiet mode: only critical events reach conversation', () => {
       // In minimal verbosity:
       // - critical → conversation (always)

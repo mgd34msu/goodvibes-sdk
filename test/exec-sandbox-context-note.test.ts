@@ -64,7 +64,7 @@ function resultOf(over: Partial<ExecCommandResult> = {}): ExecCommandResult {
   } as ExecCommandResult;
 }
 
-describe('buildSandboxNote — names the isolation that actually applies', () => {
+describe('buildSandboxNote: names the isolation that actually applies', () => {
   test('a network-isolated run says host localhost services are unreachable', () => {
     const note = buildSandboxNote(isolatedPlan());
 
@@ -172,7 +172,7 @@ describe('the note reaches the caller at every verbosity', () => {
     });
   }
 
-  test('an unsandboxed run stays quiet — no note, no fields', () => {
+  test('an unsandboxed run stays quiet: no note, no fields', () => {
     const shaped = formatResult(resultOf(), 'standard') as Record<string, unknown>;
 
     expect(shaped.sandboxed).toBeUndefined();

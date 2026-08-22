@@ -126,7 +126,7 @@ describe('what reaches disk', () => {
     expect(readFileSync(storePath, 'utf-8')).not.toContain(PAN);
   });
 
-  test('ordinary values are untouched — this redacts card shapes, not digits', async () => {
+  test('ordinary values are untouched: this redacts card shapes, not digits', async () => {
     const store = new InboundMailStore(storePath);
     await store.record({
       ...baseInput(),
@@ -139,7 +139,7 @@ describe('what reaches disk', () => {
   });
 });
 
-describe('the record still survives its own validator — §11.0\'s re-clamp rule', () => {
+describe('the record still survives its own validator: §11.0\'s re-clamp rule', () => {
   test('a redacted record round-trips, rather than being discarded on the next load', async () => {
     const store = new InboundMailStore(storePath);
     await store.record({
@@ -249,7 +249,7 @@ describe('what reaches the owner', () => {
     expect(renderNoticeForSurface(notice, 'telegram')).not.toContain('1111 1111');
   });
 
-  test('an ordinary notice is unchanged — the sender and alias still read normally', () => {
+  test('an ordinary notice is unchanged: the sender and alias still read normally', () => {
     const notice = renderInboundMailNotice({
       senderDisplay: '"GitHub" <noreply@github.com>',
       subject: 'Verify your email',

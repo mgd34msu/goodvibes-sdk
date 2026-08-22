@@ -122,7 +122,7 @@ afterAll(async () => {
   }
 });
 
-describe('capabilities OFF — byte-parity with today', () => {
+describe('capabilities OFF: byte-parity with today', () => {
   test('GET / without a token is 401 (unchanged) and emits no allow-origin', async () => {
     const res = await fetch(`${servingOff.url}/`);
     expect(res.status).toBe(401);
@@ -147,7 +147,7 @@ describe('capabilities OFF — byte-parity with today', () => {
   });
 });
 
-describe('bundle serving ON — same-origin, public, SPA fallback', () => {
+describe('bundle serving ON: same-origin, public, SPA fallback', () => {
   test('GET / serves index.html without a token', async () => {
     const res = await fetch(`${servingOn.url}/`);
     expect(res.status).toBe(200);

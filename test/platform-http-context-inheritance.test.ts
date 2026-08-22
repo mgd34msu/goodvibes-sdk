@@ -148,7 +148,7 @@ describe('platform-HTTP DaemonRuntimeRouteContext inherits canonical shapes', ()
     const ctx = buildMinimalContext();
     const inherited = assertPlatformInheritsAgentManager(ctx);
     expect(inherited.getStatus('stub-session')).toBeNull();
-    inherited.cancel('stub-session'); // stub is a no-op — just verify it does not throw
+    inherited.cancel('stub-session'); // stub is a no-op, just verify it does not throw
   });
 
   test('DaemonRuntimeRouteHandlerMap is imported from canonical, not Pick<>-duplicated', async () => {

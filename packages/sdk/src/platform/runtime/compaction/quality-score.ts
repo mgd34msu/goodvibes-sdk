@@ -270,7 +270,7 @@ export function escalateStrategy(current: CompactionStrategy): CompactionStrateg
     case 'microcompact': return 'autocompact';
     case 'autocompact':  return 'collapse';
     case 'collapse':     return 'collapse'; // already most aggressive
-    case 'reactive':     return 'reactive'; // emergency — cannot escalate further
+    case 'reactive':     return 'reactive'; // emergency, cannot escalate further
     default: {
       const _exhaustive: never = current;
       throw new Error(`Unknown compaction strategy: ${_exhaustive}`);

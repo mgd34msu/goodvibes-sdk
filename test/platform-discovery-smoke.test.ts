@@ -19,7 +19,7 @@ import {
   scanMcpServers,
 } from '../packages/sdk/src/platform/discovery/mcp-scanner.js';
 
-describe('platform/discovery — behavior smoke', () => {
+describe('platform/discovery: behavior smoke', () => {
   test('loadPersistedProviders returns empty array for non-existent persist path', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'gv-discovery-test-'));
     try {

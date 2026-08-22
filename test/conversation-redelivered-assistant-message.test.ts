@@ -13,7 +13,7 @@ function assistantMessages(manager: ConversationManager): Array<{ content: strin
   return manager.getMessageSnapshot().filter((message) => message.role === 'assistant') as Array<{ content: string }>;
 }
 
-describe('assistant message store boundary — re-delivery', () => {
+describe('assistant message store boundary: re-delivery', () => {
   test('the same message replayed with the same usage lands exactly once', () => {
     const manager = new ConversationManager();
     manager.addUserMessage('what time should i leave for my trip?');

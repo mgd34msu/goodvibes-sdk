@@ -212,7 +212,7 @@ describe('I2(c): recentEvents ring buffer ordering', () => {
     }
   }
 
-  test('count < cap (3 events in 500-slot ring) — newest-first ordering', () => {
+  test('count < cap (3 events in 500-slot ring): newest-first ordering', () => {
     const gw = new ControlPlaneGateway({});
     driveEvents(gw, 3);
 
@@ -224,7 +224,7 @@ describe('I2(c): recentEvents ring buffer ordering', () => {
     expect(events[2]!.event).toBe('test-event-0');
   });
 
-  test('count >= cap (600 events in 500-slot ring) — newest-first, length capped at 500', () => {
+  test('count >= cap (600 events in 500-slot ring): newest-first, length capped at 500', () => {
     const gw = new ControlPlaneGateway({});
     driveEvents(gw, 600);
 

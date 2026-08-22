@@ -97,7 +97,7 @@ describe('owner-profile composition honours an injected home', () => {
     }
   });
 
-  test('no injected home still resolves — the login home remains the last resort', () => {
+  test('no injected home still resolves: the login home remains the last resort', () => {
     const composed = composeOwnerProfile(new GatewayMethodCatalog(), { configManager: configFor() });
     try {
       expect(composed.store.path.length).toBeGreaterThan(0);

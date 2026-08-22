@@ -108,7 +108,7 @@ describe('behavior.budgetAlertUsd persistence across a ConfigManager restart', (
     expect(readBudgetAlertUsd((k) => second.get(k as ConfigKey))).toBe(12.5);
   });
 
-  test('clearing to 0 survives a restart — a later instance does not resurrect the old nonzero value', () => {
+  test('clearing to 0 survives a restart: a later instance does not resurrect the old nonzero value', () => {
     const first = makeConfigManager();
     first.set(BUDGET_ALERT_USD_CONFIG_KEY as ConfigKey, 12.5 as never);
     first.set(BUDGET_ALERT_USD_CONFIG_KEY as ConfigKey, 0 as never);

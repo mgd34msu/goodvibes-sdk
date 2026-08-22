@@ -80,7 +80,7 @@ function baseInput(over: Partial<Parameters<typeof buildPerTurnKnowledgeInjectio
   };
 }
 
-describe('code injection — honest source labeling within the shared budget', () => {
+describe('code injection: honest source labeling within the shared budget', () => {
   test('a code hit above the floor is injected, labeled source=code-index, ingestMode=its match label', () => {
     // similarity 0.8 → score 160, above the default floor 95
     const code = fakeCodeIndex([makeCodeHit('src/auth.ts', 0.8, { label: 'semantic', symbol: 'verify' })]);
@@ -114,7 +114,7 @@ describe('code injection — honest source labeling within the shared budget', (
   });
 });
 
-describe('code injection — similarity → floor projection (scale 200)', () => {
+describe('code injection: similarity → floor projection (scale 200)', () => {
   test('boundary: score exactly at the floor is admitted, just under is rejected', () => {
     const floor = 100;
     const atFloor = 0.5; // 0.5 * 200 = 100 === floor
@@ -144,7 +144,7 @@ describe('code injection — similarity → floor projection (scale 200)', () =>
   });
 });
 
-describe('code injection — never injects from an unhealthy index (stats gates)', () => {
+describe('code injection: never injects from an unhealthy index (stats gates)', () => {
   test('empty index (indexedChunks 0) => skipped "code index empty", no search, no injection', () => {
     let searched = false;
     const code: TurnCodeIndexSource = {
@@ -158,7 +158,7 @@ describe('code injection — never injects from an unhealthy index (stats gates)
     expect(result.record.codeCandidatesConsidered).toBe(0);
   });
 
-  test('provider-space mismatch => skipped with the store’s own message, never injects', () => {
+  test('provider-space mismatch => skipped with the store\'s own message, never injects', () => {
     const code = fakeCodeIndex([makeCodeHit('src/x.ts', 0.9)], { embeddingProviderMismatch: 'embeddings built with X, current provider Y, rebuild to re-embed' });
     const result = buildPerTurnKnowledgeInjection(baseInput({ codeIndex: code, codeInjectionEnabled: true }));
     expect(result.block).toBeNull();
@@ -180,7 +180,7 @@ describe('code injection — never injects from an unhealthy index (stats gates)
   });
 });
 
-describe('code injection — flag/gate off is a hard no-op', () => {
+describe('code injection: flag/gate off is a hard no-op', () => {
   test('codeInjectionEnabled false: index never queried, no code fields set', () => {
     let searched = false;
     const code: TurnCodeIndexSource = {
@@ -203,7 +203,7 @@ describe('code injection — flag/gate off is a hard no-op', () => {
   });
 });
 
-describe('code injection — budget competition and dedupe', () => {
+describe('code injection: budget competition and dedupe', () => {
   test('a lower-scored code hit is dropped for budget before a higher-scored memory record', () => {
     const memory = fakeMemory([makeRecord({ id: 'mem_hi', summary: 'auth module JWT rotation reviewed and trusted', tags: ['auth'], reviewState: 'reviewed', confidence: 95 })]);
     const code = fakeCodeIndex([makeCodeHit('src/auth.ts', 0.5)]); // score 100, lower than the memory record

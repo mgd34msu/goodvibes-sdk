@@ -71,7 +71,7 @@ describe('probeTermCaps', () => {
     });
   });
 
-  test('NO_COLOR="" (empty) is ignored — color not suppressed', () => {
+  test('NO_COLOR="" (empty) is ignored: color not suppressed', () => {
     withEnv({ NO_COLOR: '', TERM: 'xterm-256color' }, () => {
       const caps = probeTermCaps(mockStream(24));
       expect(caps.capability).toBe('truecolor');
@@ -285,7 +285,7 @@ describe('downsampleColor', () => {
       expect(downsampleColor('#ffffff', basic16Caps, 'bg')).toBe('107');
     });
 
-    test('palette index in basic16 returns null (cannot map — no RGB available)', () => {
+    test('palette index in basic16 returns null (cannot map: no RGB available)', () => {
       // VERIFIED CONTRACT: bare 256-palette indices (e.g. '42', '196') cannot be
       // reliably mapped to ANSI-16 without an RGB lookup table. downsampleColor
       // returns null so the caller emits NO color sequence, and the character

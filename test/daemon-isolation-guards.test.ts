@@ -310,7 +310,7 @@ describe('the compiled daemon says why it will not start', () => {
   // file-level cleanup removes them along with every throwaway home. One
   // registry rather than two removal paths is what stopped the homes leaking.
 
-  test('the shape that shipped writes NOTHING to either stream — the baseline', () => {
+  test('the shape that shipped writes NOTHING to either stream: the baseline', () => {
     // Not an assumption about how a compiled binary flushes: a fatal handler
     // that only calls logger.error has no descriptor to flush. This is what an
     // operator saw for 77 crash-loops, held still so nobody restores it.
@@ -353,7 +353,7 @@ describe('the compiled daemon says why it will not start', () => {
     expect(run.stderr).toContain('older than the floor (99.0.0), update it');
   });
 
-  test('a settings file it CAN read still boots — the disclosure is not a new failure', () => {
+  test('a settings file it CAN read still boots: the disclosure is not a new failure', () => {
     const home = homeWithDaemonSettings({ controlPlane: { port: 31111 } }, 'ok-home');
     const run = runDaemon(fixed.binary, home);
     expect(run.status).toBe(0);

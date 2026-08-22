@@ -163,7 +163,7 @@ describe('decideOwnerTerminalAccess', () => {
       expect(judge(`tmux resize-pane -t ${PLATFORM_TMUX_SESSION_PREFIX}build -D 10`).allowed).toBe(true);
     });
 
-    test('MALICIOUS: `-a` inverts the target — an owned name does not make it safe', () => {
+    test('MALICIOUS: `-a` inverts the target: an owned name does not make it safe', () => {
       // `kill-session -a -t goodvibes-build` kills every OTHER session on the
       // server. It reads as a command about the platform's own session.
       const decision = judge(`tmux kill-session -a -t ${PLATFORM_TMUX_SESSION_PREFIX}build`);
@@ -188,7 +188,7 @@ describe('decideOwnerTerminalAccess', () => {
       expect(judge('tmux new-session -d').allowed).toBe(true);
     });
 
-    test('BENIGN: -s on a plain create is the NEW name, not a target — any name is fine', () => {
+    test('BENIGN: -s on a plain create is the NEW name, not a target: any name is fine', () => {
       // Refusing this would refuse a command that touches nothing: without -A,
       // an already-taken name is a tmux error, not an attach.
       expect(judge('tmux new-session -d -s build bun test').allowed).toBe(true);
@@ -310,7 +310,7 @@ describe('exec tool under a hosted conversational posture', () => {
     expect(String(output['stderr'])).toContain('owner\'s terminal is untouchable');
   });
 
-  test('a backgrounded tmux send-keys is refused too — the guard runs before the detach', async () => {
+  test('a backgrounded tmux send-keys is refused too: the guard runs before the detach', async () => {
     const { result, output } = await run(
       makeTool({ ownerTerminal: ENFORCED }),
       'tmux send-keys -t main "ls" Enter',
@@ -377,7 +377,7 @@ describe('the frozen catastrophic block reaches every path', () => {
     expect(outcome.stderr).toContain('safety block');
   });
 
-  test('BACKGROUND: the same command is denied too — the detach is not a way round', async () => {
+  test('BACKGROUND: the same command is denied too: the detach is not a way round', async () => {
     const outcome = await denial('rm -rf /', { background: true });
     expect(outcome.success).toBe(false);
     expect(outcome.stderr).toContain('safety block');
@@ -391,7 +391,7 @@ describe('the frozen catastrophic block reaches every path', () => {
     }
   });
 
-  test('an ordinary background command still detaches — the block is catastrophic-only', async () => {
+  test('an ordinary background command still detaches: the block is catastrophic-only', async () => {
     const result = await tool().execute({ commands: [{ cmd: 'sleep 0.1', background: true }] });
     expect(result.success).toBe(true);
   });

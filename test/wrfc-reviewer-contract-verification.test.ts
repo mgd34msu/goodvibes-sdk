@@ -32,7 +32,7 @@ const report: ReviewableCompletionReport = {
   uncertainties: [],
 } as unknown as ReviewableCompletionReport;
 
-describe('reviewer task policy — verifies the contract, not the activity', () => {
+describe('reviewer task policy: verifies the contract, not the activity', () => {
   const task = buildReviewTask('chain-1', 'Build a CLI that takes --input and --output named flags and writes 2 rows.', report, 8);
 
   test('1. derives an explicit acceptance checklist from the original task', () => {
@@ -67,7 +67,7 @@ describe('reviewer task policy — verifies the contract, not the activity', () 
     expect(task).toContain('not just the fixed slice');
   });
 
-  test('6. scores against the checklist — correct-but-not-asked cannot pass', () => {
+  test('6. scores against the checklist: correct-but-not-asked cannot pass', () => {
     expect(task).toContain('SCORE AGAINST THE CHECKLIST');
     expect(task).toContain('correct but is NOT what was asked cannot pass');
   });

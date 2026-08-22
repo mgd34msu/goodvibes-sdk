@@ -56,7 +56,7 @@ function record(id: string): MemoryRecord {
   };
 }
 
-describe('createMemorySpineRestTransport — CORE verbs', () => {
+describe('createMemorySpineRestTransport: CORE verbs', () => {
   test('add POSTs to /api/memory/records with a Bearer token', async () => {
     installFetch(() => new Response(JSON.stringify({ record: record('m1') }), { status: 200 }));
     const transport = createMemorySpineRestTransport({ baseUrl: 'http://127.0.0.1:3421', authToken: 'tok' });
@@ -92,7 +92,7 @@ describe('createMemorySpineRestTransport — CORE verbs', () => {
   });
 });
 
-describe('createMemorySpineRestTransport — EXTENDED verbs (1.2.0 full-detach catalog)', () => {
+describe('createMemorySpineRestTransport: EXTENDED verbs (1.2.0 full-detach catalog)', () => {
   test('list POSTs to /api/memory/records/list', async () => {
     installFetch(() => new Response(JSON.stringify({ records: [record('m1'), record('m2')] }), { status: 200 }));
     const transport = createMemorySpineRestTransport({ baseUrl: 'http://127.0.0.1:3421', authToken: 'tok' });
@@ -150,7 +150,7 @@ describe('createMemorySpineRestTransport — EXTENDED verbs (1.2.0 full-detach c
   });
 });
 
-describe('createMemorySpineRestTransport — auth', () => {
+describe('createMemorySpineRestTransport: auth', () => {
   test('carries the Bearer token on every request', async () => {
     let capturedAuth: string | undefined;
     globalThis.fetch = (async (_input: unknown, init?: RequestInit) => {

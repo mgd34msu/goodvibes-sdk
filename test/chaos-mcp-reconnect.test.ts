@@ -62,7 +62,7 @@ describe('chaos: MCP reconnect flapping', () => {
     });
   });
 
-  describe('flapping — rapid connect/disconnect cycles', () => {
+  describe('flapping: rapid connect/disconnect cycles', () => {
     test('single flap cycle: configured -> connecting -> connected -> reconnecting', () => {
       let state: McpServerState = 'configured';
 
@@ -148,7 +148,7 @@ describe('chaos: MCP reconnect flapping', () => {
     });
   });
 
-  describe('reachableFrom — state graph integrity', () => {
+  describe('reachableFrom: state graph integrity', () => {
     test('configured has reachable states', () => {
       const reachable = reachableFrom('configured');
       expect(reachable.size).toBeGreaterThan(0);
@@ -167,7 +167,7 @@ describe('chaos: MCP reconnect flapping', () => {
     });
   });
 
-  describe('MCP permission manager — trust enforcement during flap', () => {
+  describe('MCP permission manager: trust enforcement during flap', () => {
     test('unregistered server denies all tool calls', () => {
       const mgr = new McpPermissionManager();
       const result = mgr.isToolAllowed('ghost-server', 'dangerous-tool');

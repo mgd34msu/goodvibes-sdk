@@ -45,7 +45,7 @@ function makeFixtureEngines() {
 }
 
 describe('honest not-configured, and the managed runtime is what fills it in', () => {
-  test('a machine without engines reports unconfigured — never an error', async () => {
+  test('a machine without engines reports unconfigured: never an error', async () => {
     const provider = createLocalVoiceProvider({ readConfig: configReader({}) });
     const status = await provider.status!();
     expect(status.state).toBe('unconfigured');
@@ -175,7 +175,7 @@ describe('live host engines (when installed)', () => {
   }, 60_000);
 });
 
-describe('voice cost honesty — metered vs local', () => {
+describe('voice cost honesty: metered vs local', () => {
   function meteredProvider(id: string): VoiceProvider {
     return {
       id,
@@ -224,7 +224,7 @@ describe('voice cost honesty — metered vs local', () => {
     expect(JSON.stringify(byProvider.costSource)).toContain('user');
   });
 
-  test('local records nothing at all — no billing dimension, never $0.00', async () => {
+  test('local records nothing at all: no billing dimension, never $0.00', async () => {
     const { tts, model } = makeFixtureEngines();
     const registry = new VoiceProviderRegistry();
     registry.register(createLocalVoiceProvider({

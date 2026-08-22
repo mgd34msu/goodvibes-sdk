@@ -78,7 +78,7 @@ function makeContext(steerMessage: (input: unknown) => Promise<unknown>): Daemon
   } as unknown as DaemonRuntimeRouteContext;
 }
 
-describe('POST /api/sessions/:id/steer — closed-session guard (D-1)', () => {
+describe('POST /api/sessions/:id/steer: closed-session guard (D-1)', () => {
   test('returns 409 { code: SESSION_CLOSED } when the broker rejects a closed session', async () => {
     const ctx = makeContext(async () => {
       throw Object.assign(new Error('Session is closed: s-1'), { code: 'SESSION_CLOSED', status: 409 });

@@ -29,7 +29,7 @@ describe('resolveTurnBudget', () => {
     expect(resolveTurnBudget({ configDefault: 50, spawnOverride: 10, policyCap: 200 })).toEqual({ limit: 10, source: 'spawn-override' });
   });
 
-  test('an override above the cap is clamped to the cap, source "policy-bound" — the cap wins', () => {
+  test('an override above the cap is clamped to the cap, source "policy-bound": the cap wins', () => {
     expect(resolveTurnBudget({ configDefault: 50, spawnOverride: 5_000, policyCap: 200 })).toEqual({ limit: 200, source: 'policy-bound' });
   });
 

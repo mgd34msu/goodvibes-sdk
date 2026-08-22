@@ -92,7 +92,7 @@ const cfg = (over: Partial<ResolvedMemoryConsolidationConfig> = {}): ResolvedMem
   ...over,
 });
 
-describe('runMemoryConsolidation — merges', () => {
+describe('runMemoryConsolidation: merges', () => {
   test('exact-duplicate summary merges losers to stale, unions tags, never deletes', () => {
     const survivor = rec({ id: 'survivor', reviewState: 'reviewed', confidence: 80, updatedAt: NOW, summary: 'CI deploy note', tags: ['ci'] });
     const dup = rec({ id: 'dup', reviewState: 'fresh', confidence: 60, updatedAt: NOW - 1000, summary: 'CI deploy note', tags: ['deploy'] });
@@ -122,7 +122,7 @@ describe('runMemoryConsolidation — merges', () => {
   });
 });
 
-describe('runMemoryConsolidation — proposals reach the review machinery', () => {
+describe('runMemoryConsolidation: proposals reach the review machinery', () => {
   test('a contradiction proposal marks BOTH disagreeing records contradicted (review-queue entry + injection exclusion)', () => {
     // Same summary, different detail, and the survivor is NOT clearly newer-verified.
     const a = rec({ id: 'a', reviewState: 'fresh', confidence: 60, updatedAt: NOW, summary: 'the port', detail: 'port is 8080' });
@@ -156,7 +156,7 @@ describe('runMemoryConsolidation — proposals reach the review machinery', () =
   });
 });
 
-describe('runMemoryConsolidation — decay', () => {
+describe('runMemoryConsolidation: decay', () => {
   test('aged never-referenced record decays by step; usage signal availability reported', () => {
     const aged = rec({ id: 'aged', confidence: 60, updatedAt: NOW - 100 * DAY_MS });
     const reg = new FakeRegistry([aged]);
@@ -200,7 +200,7 @@ describe('runMemoryConsolidation — decay', () => {
   });
 });
 
-describe('runMemoryConsolidation — stale-delete proposals', () => {
+describe('runMemoryConsolidation: stale-delete proposals', () => {
   test('long-stale record is proposed for deletion but not touched', () => {
     const stale = rec({ id: 'old', reviewState: 'stale', updatedAt: NOW - 200 * DAY_MS });
     const reg = new FakeRegistry([stale]);

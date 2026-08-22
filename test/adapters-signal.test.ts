@@ -67,7 +67,7 @@ function makeSignalContext(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-describe('signal adapter — contract surface', () => {
+describe('signal adapter: contract surface', () => {
   test('rejects requests with a mismatched Signal token', async () => {
     const { context } = makeSignalContext();
     const res = await handleSignalSurfaceWebhook(new Request('http://localhost/signal', {

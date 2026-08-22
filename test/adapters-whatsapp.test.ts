@@ -68,7 +68,7 @@ function makeWhatsAppContext(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-describe('whatsapp adapter — contract surface', () => {
+describe('whatsapp adapter: contract surface', () => {
   test('returns the configured Meta verification challenge', async () => {
     const { context } = makeWhatsAppContext();
     const res = await handleWhatsAppSurfaceWebhook(new Request('http://localhost/whatsapp?hub.mode=subscribe&hub.verify_token=verify-token&hub.challenge=challenge-1'), context);

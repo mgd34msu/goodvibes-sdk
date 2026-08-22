@@ -57,7 +57,7 @@ function invocation(params: Record<string, unknown>): GatewayMethodInvocation {
   };
 }
 
-describe('approvals.raise — creating an ask from a surface', () => {
+describe('approvals.raise: creating an ask from a surface', () => {
   test('returns the pending record immediately and does not wait for a decision', async () => {
     const { broker, cleanup } = makeBroker();
     try {
@@ -108,7 +108,7 @@ describe('approvals.raise — creating an ask from a surface', () => {
     }
   });
 
-  test('an identical in-flight ask coalesces onto the first record — one prompt', async () => {
+  test('an identical in-flight ask coalesces onto the first record: one prompt', async () => {
     const { broker, cleanup } = makeBroker();
     try {
       const handler = createApprovalRaiseHandler(broker);
@@ -177,7 +177,7 @@ describe('approvals.raise — creating an ask from a surface', () => {
   });
 });
 
-describe('approval-update — the push that replaces polling', () => {
+describe('approval-update: the push that replaces polling', () => {
   interface Frame { readonly event: string; readonly payload: unknown }
 
   /** A WS client, with the handshake noise dropped. Captures event AND payload. */

@@ -96,7 +96,7 @@ describe('repriceWrfcOwnerNode + chain model descriptor (unit)', () => {
   });
 });
 
-describe('registry integration — owner priced, chain model, no double-count', () => {
+describe('registry integration: owner priced, chain model, no double-count', () => {
   test('owner unpriced-by-model is repriced to the chain total; leaf-sum still excludes the owner', () => {
     const chain = makeChain({ id: 'ch', ownerAgentId: 'owner-1', allAgentIds: ['owner-1', 'eng', 'rev'] });
     const agents = [

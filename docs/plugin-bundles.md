@@ -46,8 +46,8 @@ before honoring a bundle's request; anything the manifest did not declare throws
 
 ```ts
 const guard = createBundleCapabilityGuard(manifest);
-enforceBundleCapability(guard, 'tool', 'my.tool');   // ok — declared
-enforceBundleCapability(guard, 'channel', 'slack');  // throws — not declared
+enforceBundleCapability(guard, 'tool', 'my.tool');   // ok, declared
+enforceBundleCapability(guard, 'channel', 'slack');  // throws, not declared
 ```
 
 ## Quarantine on install

@@ -123,7 +123,7 @@ async function idleReached(harness: Harness, n = 1): Promise<void> {
 
 // ---------------------------------------------------------------------------
 
-describe('inbound watcher — IDLE', () => {
+describe('inbound watcher: IDLE', () => {
   test('a drop mid-IDLE reconnects and delivers mail that arrived while down', async () => {
     const harness = await build({
       server: { initial: [message(101, 'already here')] },
@@ -304,7 +304,7 @@ describe('inbound watcher — IDLE', () => {
 
 // ---------------------------------------------------------------------------
 
-describe('inbound watcher — choosing push or poll', () => {
+describe('inbound watcher: choosing push or poll', () => {
   test('a server that advertises no IDLE polls instead', async () => {
     const harness = await build({
       server: { idle: 'absent', initial: [message(101, 'a')] },
@@ -380,7 +380,7 @@ describe('inbound watcher — choosing push or poll', () => {
 
 // ---------------------------------------------------------------------------
 
-describe('inbound watcher — capability sufficiency', () => {
+describe('inbound watcher: capability sufficiency', () => {
   test('a refused credential is retried once, then stops and is surfaced', async () => {
     const harness = await build({ server: { login: 'refused' } });
     harness.watcher.start();
@@ -459,7 +459,7 @@ describe('inbound watcher — capability sufficiency', () => {
     expect(harness.observer.terminals).toEqual([]);
   });
 
-  test('a simultaneous-connection refusal is degraded in the provider’s words', async () => {
+  test('a simultaneous-connection refusal is degraded in the provider\'s words', async () => {
     // Gmail answers this at the LOGIN step, which the email layer used to call
     // a rejected credential, terminal, stopping the watcher permanently on a
     // condition that clears in seconds. It now reads the [LIMIT] response code
@@ -581,7 +581,7 @@ describe('inbound watcher — capability sufficiency', () => {
 // opened, instead of finding out reactively, on the first real fetch, which
 // for a signup workstream is the verification mail itself.
 
-describe('inbound watcher — connect-time body probe', () => {
+describe('inbound watcher: connect-time body probe', () => {
   test('a server that refuses UID-ADDRESSED fetches is caught at connect, before any search', async () => {
     // `fetch: 'refused'` refuses `UID FETCH`, and only `UID FETCH`. That is
     // the form the real drain uses, and it is why the probe's body fetch is
@@ -663,7 +663,7 @@ describe('inbound watcher — connect-time body probe', () => {
  * behaves that way on the wire; that a given real provider behaves that way is
  * a claim nothing here supports.
  */
-describe('inbound watcher — can it read message content at all', () => {
+describe('inbound watcher: can it read message content at all', () => {
   test('a refused body fetch is insufficient at connect time, with a remedy', async () => {
     const harness = await build({
       server: { bodyProbe: 'refused', initial: [message(101, 'a')] },
@@ -711,7 +711,7 @@ describe('inbound watcher — can it read message content at all', () => {
     expect(harness.sink.delivered).toEqual([]);
   });
 
-  test('an empty mailbox is unproven and degraded — the watcher still runs', async () => {
+  test('an empty mailbox is unproven and degraded: the watcher still runs', async () => {
     // A freshly created signup alias is empty by definition, so refusing here
     // would break the exact journey this capability exists to serve. Claiming
     // `healthy` would assert a capability nobody has demonstrated. It runs, and
@@ -820,7 +820,7 @@ describe('inbound watcher — can it read message content at all', () => {
 
 // ---------------------------------------------------------------------------
 
-describe('inbound watcher — the cursor', () => {
+describe('inbound watcher: the cursor', () => {
   test('the cursor advances only after a message is fully processed', async () => {
     const harness = await build({ server: { initial: [message(101, 'a')] } });
     harness.sink.refuseOnce.add(102);
@@ -958,7 +958,7 @@ describe('inbound watcher — the cursor', () => {
 // in three clauses at once ("Listening from UID 0 onwards", "n message(s) …
 // were not read", "starts listening now rather than backfilling").
 
-describe('inbound watcher — a server that does not report UIDNEXT', () => {
+describe('inbound watcher: a server that does not report UIDNEXT', () => {
   const OLD = [message(101, 'a year old'), message(102, 'also old'), message(103, 'old too')];
 
   test('the whole mailbox is not replayed as new mail', async () => {

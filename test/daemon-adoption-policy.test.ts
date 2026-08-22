@@ -104,7 +104,7 @@ const runtimeBus = {} as never;
 const hookDispatcher = {} as never;
 const runtimeServices = { localUserAuthManager: {}, configManager: {} } as never;
 
-describe('startHostServices — adopt-only policy', () => {
+describe('startHostServices: adopt-only policy', () => {
   test('port free + adoptOnly: never spawns, reports unavailable', async () => {
     let spawnCalled = false;
     const handle = await startHostServices(baseConfig(), runtimeBus, hookDispatcher, runtimeServices, {

@@ -23,7 +23,7 @@ import {
 
 const TARGET = 'google.com';
 
-describe('registrable domain — the comparison every naive check gets wrong', () => {
+describe('registrable domain: the comparison every naive check gets wrong', () => {
   test.each([
     ['google.com', 'google.com'],
     ['accounts.google.com', 'google.com'],
@@ -49,7 +49,7 @@ describe('registrable domain — the comparison every naive check gets wrong', (
   });
 });
 
-describe('refusals — each defeats a check somebody would otherwise have written', () => {
+describe('refusals: each defeats a check somebody would otherwise have written', () => {
   test('userinfo: reads as Google, opens evil.example', () => {
     const result = validateLinkTarget('https://accounts.google.com@evil.example/verify', TARGET);
     expect(result.ok).toBe(false);
@@ -122,7 +122,7 @@ describe('refusals — each defeats a check somebody would otherwise have writte
   });
 });
 
-describe('the positive case — a genuine link is opened', () => {
+describe('the positive case: a genuine link is opened', () => {
   test('the real link on the exact registrable domain passes', () => {
     const result = validateLinkTarget('https://accounts.google.com/verify?token=abc', TARGET);
     expect(result.ok).toBe(true);
@@ -135,7 +135,7 @@ describe('the positive case — a genuine link is opened', () => {
   });
 });
 
-describe('redirect chains — the same attack one hop later', () => {
+describe('redirect chains: the same attack one hop later', () => {
   function probeFrom(map: Readonly<Record<string, { status: number; location: string | null }>>) {
     return async (url: string) => map[url] ?? { status: 200, location: null };
   }
@@ -190,7 +190,7 @@ describe('redirect chains — the same attack one hop later', () => {
     expect(result.chain.length).toBeLessThanOrEqual(MAX_REDIRECT_HOPS + 1);
   });
 
-  test('the entry point is gated too — a caller cannot skip validation by starting here', async () => {
+  test('the entry point is gated too: a caller cannot skip validation by starting here', async () => {
     const result = await followValidatedRedirects(
       'https://evil.example/verify',
       TARGET,

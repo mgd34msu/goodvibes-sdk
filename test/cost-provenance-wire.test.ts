@@ -75,7 +75,7 @@ describe('cost attribution provenance', () => {
     expect(catalogRow.pricingAsOf).toBe('2026-07-01');
   });
 
-  test('an unpriced row reports null provenance — never fabricated', () => {
+  test('an unpriced row reports null provenance: never fabricated', () => {
     const result = serviceWith(record('mystery-model', 'u1')).attribution('24h', 'agent');
     const row = result.rows.find((r) => r.key === 'u1')!;
     expect(row.costState).toBe('unpriced');

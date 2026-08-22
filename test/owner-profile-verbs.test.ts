@@ -115,7 +115,7 @@ const ALL_OFF: OwnerProfilePolicy = {
 
 const ctx = { context: { admin: true } } as const;
 
-describe('profile.* verbs — catalog surface', () => {
+describe('profile.* verbs: catalog surface', () => {
   test('all nine are cataloged with handlers and the documented scopes', async () => {
     const { catalog } = await harness();
     const expectedScope: Record<string, string> = {
@@ -196,7 +196,7 @@ describe('profile.* verbs — catalog surface', () => {
   });
 });
 
-describe('profile.status — §14 #11: counts, names and reasons, never a value', () => {
+describe('profile.status: §14 #11: counts, names and reasons, never a value', () => {
   test('reports the invalid field with its reason and leaks no value anywhere', async () => {
     const { catalog } = await harness();
     const status = await catalog.invoke('profile.status', { ...ctx, body: {} }) as Record<string, unknown>;
@@ -230,7 +230,7 @@ describe('profile.status — §14 #11: counts, names and reasons, never a value'
   });
 });
 
-describe('profile.set / append — §14 #6: an autonomous write discloses what it recorded', () => {
+describe('profile.set / append: §14 #6: an autonomous write discloses what it recorded', () => {
   test('a successful set returns a one-line receipt naming the field, not the value', async () => {
     const { catalog } = await harness();
     const result = await catalog.invoke('profile.set', {
@@ -268,7 +268,7 @@ describe('profile.set / append — §14 #6: an autonomous write discloses what i
   });
 });
 
-describe('profile.* write verbs — the gates, at the verb layer', () => {
+describe('profile.* write verbs: the gates, at the verb layer', () => {
   test.each(UNTRUSTED)('set from %s authority is refused and the file is byte-identical', async (authority) => {
     const { catalog, path } = await harness();
     const before = readFileSync(path);
@@ -428,7 +428,7 @@ describe('profile.* write verbs — the gates, at the verb layer', () => {
     },
   );
 
-  test('an absent explicitUserRequest claim proceeds — silence is not a refusal', async () => {
+  test('an absent explicitUserRequest claim proceeds: silence is not a refusal', async () => {
     const { catalog } = await harness();
     const result = await catalog.invoke('profile.set', {
       context: { admin: true },
@@ -450,7 +450,7 @@ describe('profile.* write verbs — the gates, at the verb layer', () => {
   });
 });
 
-describe('profile.get / provenance — honest answers about one field', () => {
+describe('profile.get / provenance: honest answers about one field', () => {
   test('an invalid value is returned verbatim with its reason, not hidden', async () => {
     const { catalog } = await harness();
     const answer = await catalog.invoke('profile.get', { ...ctx, body: { fieldId: 'location.timezone' } }) as {
@@ -505,7 +505,7 @@ describe('profile.get / provenance — honest answers about one field', () => {
   });
 });
 
-describe('profile.* verbs — a disabled or unreadable profile is a stated state', () => {
+describe('profile.* verbs: a disabled or unreadable profile is a stated state', () => {
   test('disabled answers with the reason, not an empty profile', async () => {
     const dir = mkTemp();
     const path = join(dir, 'owner-profile.md');
@@ -535,7 +535,7 @@ describe('profile.* verbs — a disabled or unreadable profile is a stated state
   });
 });
 
-describe('§12 — the three owner switches actually govern the runtime', () => {
+describe('§12: the three owner switches actually govern the runtime', () => {
   test('profile.autonomousWrites off refuses a learned fact, and the file is byte-identical', async () => {
     const { catalog, path } = await harness(FIXTURE, ALL_OFF);
     const before = readFileSync(path);
@@ -570,7 +570,7 @@ describe('§12 — the three owner switches actually govern the runtime', () => 
     expect(readFileSync(path).equals(before)).toBe(true);
   });
 
-  test('autonomousWrites off still lets HIM edit — the honest "I curate this myself" mode', async () => {
+  test('autonomousWrites off still lets HIM edit: the honest "I curate this myself" mode', async () => {
     const { catalog, path } = await harness(FIXTURE, ALL_OFF);
     const result = await catalog.invoke('profile.set', {
       ...ctx,

@@ -168,7 +168,7 @@ describe('project-as-data', () => {
 // sessions.register
 // ---------------------------------------------------------------------------
 
-describe('sessions.register — idempotency + heartbeat + honest closed semantics', () => {
+describe('sessions.register: idempotency + heartbeat + honest closed semantics', () => {
   test('registering the same id twice yields one record with an advanced lastSeenAt', async () => {
     await withTempStore(async (storePath) => {
       const broker = makeBroker(storePath);
@@ -203,7 +203,7 @@ describe('sessions.register — idempotency + heartbeat + honest closed semantic
     });
   });
 
-  test('register on a CLOSED id does NOT reopen — heartbeat recorded, honest conflict returned', async () => {
+  test('register on a CLOSED id does NOT reopen: heartbeat recorded, honest conflict returned', async () => {
     await withTempStore(async (storePath) => {
       const broker = makeBroker(storePath);
       await broker.createSession({ id: 'reg-3', kind: 'tui', project: '/p' });

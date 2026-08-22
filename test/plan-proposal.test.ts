@@ -44,7 +44,7 @@ describe('singleItemProposal', () => {
   });
 });
 
-describe('assemblePlanProposal — happy path', () => {
+describe('assemblePlanProposal: happy path', () => {
   function fixture(): RawDecomposition {
     return {
       phases: [
@@ -102,7 +102,7 @@ describe('assemblePlanProposal — happy path', () => {
   });
 });
 
-describe('assemblePlanProposal — dependency resolution parity with ExecutionPlanManager.replaceItems', () => {
+describe('assemblePlanProposal: dependency resolution parity with ExecutionPlanManager.replaceItems', () => {
   // Same three resolution rules, exercised against structurally equivalent
   // fixtures: UUID passthrough, case-insensitive title/description lookup,
   // drop-unresolved. Never throws either way.
@@ -157,7 +157,7 @@ describe('assemblePlanProposal — dependency resolution parity with ExecutionPl
   });
 });
 
-describe('assemblePlanProposal — honest partials', () => {
+describe('assemblePlanProposal: honest partials', () => {
   test('dangling dependency: issue emitted, item still produced, never throws', () => {
     const raw: RawDecomposition = {
       phases: [{ title: 'P1' }],

@@ -134,7 +134,7 @@ describe('parseDaemonVersionOutput', () => {
     expect(parseDaemonVersionOutput('goodvibes-daemon v1.28.0')).toBe('1.28.0');
   });
 
-  test('refuses output with no dotted version — an unidentifiable binary is never a number', () => {
+  test('refuses output with no dotted version: an unidentifiable binary is never a number', () => {
     expect(parseDaemonVersionOutput('unknown flag: --version')).toBeNull();
     expect(parseDaemonVersionOutput('')).toBeNull();
     expect(parseDaemonVersionOutput('goodvibes-daemon')).toBeNull();

@@ -137,7 +137,7 @@ describe('startHostServices daemon lifecycle', () => {
     expect(handle.daemonStatus.reason).toContain('3421');
   });
 
-  test('the port-free race — someone else owns the port by the time the spawn lands — still band-checks before adopting', async () => {
+  test('the port-free race, someone else owns the port by the time the spawn lands, still band-checks before adopting', async () => {
     // The port probe said free, so the host spawned; by the time the identity
     // probe answered, the occupant was an incompatible daemon. It is refused,
     // and with no in-process daemon to fall back to the status is 'unavailable'
@@ -204,7 +204,7 @@ describe('startHostServices daemon lifecycle', () => {
     expect(handle.daemonStatus.reason).toBe('Identity probe returned HTTP 404');
   });
 
-  test('the port-free path spawns the standalone binary — the handle never carries a daemon', async () => {
+  test('the port-free path spawns the standalone binary: the handle never carries a daemon', async () => {
     const handle = await startHostServices(
       baseConfig(),
       runtimeBus,
@@ -469,7 +469,7 @@ describe('startHostServices detached daemon spawn (Layer 2 default)', () => {
     expect(handle.daemonStartHint).toBe(DETACHED_DAEMON_INSTALL_HINT);
   });
 
-  test('reports unavailable honestly when the detached daemon never becomes reachable — there is no in-process fallback', async () => {
+  test('reports unavailable honestly when the detached daemon never becomes reachable: there is no in-process fallback', async () => {
     const captured: CapturedSpawn = { unrefCalled: false };
     const handle = await startHostServices(
       baseConfig(),

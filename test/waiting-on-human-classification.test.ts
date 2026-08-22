@@ -41,7 +41,7 @@ function makeWorkstream(overrides: Partial<Workstream> & { id: string }): Workst
   return { title: 'ws', schemaVersion: 1, phases: [] as Phase[], items: [], createdAt: T0, ...overrides };
 }
 
-describe('snapshot classification — all three reasons are first-class', () => {
+describe('snapshot classification: all three reasons are first-class', () => {
   test('approval: awaiting-approval derives the approval attention (unchanged)', () => {
     expect(deriveNeedsAttention('awaiting-approval')).toEqual({ reason: 'approval' });
   });
@@ -80,14 +80,14 @@ describe('snapshot classification — all three reasons are first-class', () => 
     const node = adaptWorkItem(conflicted, 'ws1', 'workstream:ws1', { steerable: false });
     expect(node.needsAttention).toMatchObject({ reason: 'conflict' });
     expect(node.needsAttention?.detail).toContain('src/a.ts');
-    expect(node.state).toBe('stalled'); // NOT 'done' — the work has not landed.
+    expect(node.state).toBe('stalled'); // NOT 'done', the work has not landed.
 
     const ws = makeWorkstream({ id: 'ws3', items: [conflicted] });
     expect(adaptWorkstream(ws, T0).state).toBe('stalled');
   });
 });
 
-describe('wire events — all three reasons emit FLEET_NODE_BLOCKED_ON_USER', () => {
+describe('wire events: all three reasons emit FLEET_NODE_BLOCKED_ON_USER', () => {
   function nodeWith(id: string, reason: 'approval' | 'input' | 'pick' | 'conflict' | undefined, state: ProcessNode['state']): ProcessNode {
     return {
       id, kind: 'work-item', label: id, state, elapsedMs: 0, costState: 'unpriced',
@@ -117,7 +117,7 @@ describe('wire events — all three reasons emit FLEET_NODE_BLOCKED_ON_USER', ()
   });
 });
 
-describe('push — a ready pick and a conflict both push through the needs-input source', () => {
+describe('push: a ready pick and a conflict both push through the needs-input source', () => {
   function makeService(): { service: PushService; delivered: PushMessage[] } {
     const service = new PushService({
       vapid: {} as VapidManager,

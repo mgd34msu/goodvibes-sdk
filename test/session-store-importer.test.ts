@@ -78,7 +78,7 @@ async function buildFixture(): Promise<Fixture> {
   return { root, projectRoot, companionDir, homeStorePath };
 }
 
-describe('migration importer — folds all three legacy stores into one home store', () => {
+describe('migration importer: folds all three legacy stores into one home store', () => {
   test('no session left behind (closed included), correct kinds + projects, then re-run is a no-op', async () => {
     const fx = await buildFixture();
     try {
@@ -205,7 +205,7 @@ function companionSessionWithMessages(id: string, messageCount: number): Persist
   };
 }
 
-describe('MAJOR 1 — per-session message cap: no silent transcript loss on migration', () => {
+describe('MAJOR 1: per-session message cap: no silent transcript loss on migration', () => {
   test('299 closed sessions × 10 messages fold in with ZERO loss and honest counts', async () => {
     const root = mkdtempSync(join(tmpdir(), 'importer-cap-'));
     try {
@@ -237,7 +237,7 @@ describe('MAJOR 1 — per-session message cap: no silent transcript loss on migr
         expect(s.messageCount).toBe(10);
         expect((s as { retainedMessageCount?: number }).retainedMessageCount).toBeUndefined();
       }
-      expect(totalRetained).toBe(N * 10); // 2 990 — zero silent loss
+      expect(totalRetained).toBe(N * 10); // 2 990, zero silent loss
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

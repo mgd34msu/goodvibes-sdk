@@ -224,7 +224,7 @@ describe('Workers wrangler: auth flow', () => {
 });
 
 describe('Workers wrangler: transport-http round-trip', () => {
-  test('success path — mock returns real-shape JSON, result is populated', async () => {
+  test('success path: mock returns real-shape JSON, result is populated', async () => {
     const { status, body } = await get('/transport-success');
     expect(status).toBe(200);
 
@@ -242,7 +242,7 @@ describe('Workers wrangler: transport-http round-trip', () => {
     expect(b.ctor).toBeNull();
   }, 10_000);
 
-  test('error path — mock returns 5xx, errorKind is typed \'service\'', async () => {
+  test('error path: mock returns 5xx, errorKind is typed \'service\'', async () => {
     const { status, body } = await get('/transport-error');
     expect(status).toBe(200);
 

@@ -172,7 +172,7 @@ describe('redundant lifecycle pair retired: automation.jobs.pause/resume gone, e
     expect(enabled.json.enabled).toBe(true);
   });
 
-  test('pause and resume are gone from the wire (404) — callers must use disable/enable', async () => {
+  test('pause and resume are gone from the wire (404): callers must use disable/enable', async () => {
     const pauseResult = await invokeVerb('automation.jobs.pause', { jobId: 'does-not-matter' });
     expect(pauseResult.status).toBe(404);
     const resumeResult = await invokeVerb('automation.jobs.resume', { jobId: 'does-not-matter' });

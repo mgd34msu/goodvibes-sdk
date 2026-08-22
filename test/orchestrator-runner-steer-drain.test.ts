@@ -140,7 +140,7 @@ function userMessageContents(messages: readonly unknown[]): string[] {
     .map((m) => m.content as string);
 }
 
-describe('orchestrator-runner — steer drain', () => {
+describe('orchestrator-runner: steer drain', () => {
   let tmpDir: string | undefined;
 
   afterEach(() => {

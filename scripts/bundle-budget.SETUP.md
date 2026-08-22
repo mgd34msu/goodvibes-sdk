@@ -55,10 +55,10 @@ The file lives at the **repo root**: `bundle-budgets.json`.
 
 ```json
 {
-  "<note-key>": "optional human-readable note — ignored by the script",
+  "<note-key>": "optional human-readable note, ignored by the script",
   "<export-key>": {
     "gzip_bytes": <number>,
-    "rationale": "<string — optional, human-readable explanation>"
+    "rationale": "<string: optional, human-readable explanation>"
   }
 }
 ```

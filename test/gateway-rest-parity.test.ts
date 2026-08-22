@@ -70,7 +70,7 @@ function buildHarness(options?: {
   return { calls, handlers };
 }
 
-describe('gateway REST parity — advertised paths reach the gateway handler', () => {
+describe('gateway REST parity: advertised paths reach the gateway handler', () => {
   test('GET /api/skills routes to skills.list', async () => {
     const { calls, handlers } = buildHarness();
     const res = await dispatchDaemonApiRoutes(makeRequest('GET', 'http://localhost/api/skills'), handlers);

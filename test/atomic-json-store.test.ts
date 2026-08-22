@@ -71,7 +71,7 @@ describe('atomic write', () => {
     expect(siblings(dir, path, 'tmp-')).toEqual([]);
   });
 
-  test('a second write replaces the first whole — no mixture of the two is ever on disk', () => {
+  test('a second write replaces the first whole: no mixture of the two is ever on disk', () => {
     const dir = storeDir();
     const path = join(dir, 'store.json');
 
@@ -196,7 +196,7 @@ describe('quarantine-don\'t-crash load', () => {
     expect(siblings(dir, path, 'corrupt-').length).toBe(1);
   });
 
-  test('the quarantined bytes are preserved exactly — evidence, not a deletion', () => {
+  test('the quarantined bytes are preserved exactly: evidence, not a deletion', () => {
     const dir = storeDir();
     const path = join(dir, 'store.json');
     mkdirSync(dir, { recursive: true });

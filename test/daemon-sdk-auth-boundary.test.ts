@@ -125,7 +125,7 @@ describe('createDaemonSystemRouteHandlers per-request auth', () => {
     } as unknown as DaemonSystemRouteContext;
   }
 
-  test('factory built with no args — installService allows admin, denies non-admin', async () => {
+  test('factory built with no args: installService allows admin, denies non-admin', async () => {
     const handlers = createDaemonSystemRouteHandlers(makeContext());
 
     const allowed = await handlers.installService(adminReq);

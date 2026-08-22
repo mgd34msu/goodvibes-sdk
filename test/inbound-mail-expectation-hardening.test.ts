@@ -202,7 +202,7 @@ describe('fields are bounded, not merely counted', () => {
 });
 
 describe('the full planted-record chain no longer completes', () => {
-  test('plant, hydrate, deliver unsolicited mail — and nothing matches', () => {
+  test('plant, hydrate, deliver unsolicited mail: and nothing matches', () => {
     // The exact chain the review executed: a record with serviceDomain "com"
     // and an expiry in 2999, hydrated from disk, then unsolicited mail from a
     // sender the owner never signed up with.

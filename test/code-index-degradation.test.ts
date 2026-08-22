@@ -41,7 +41,7 @@ afterEach(() => {
   }
 });
 
-describe('CodeIndexStore — no-embedding-provider degradation (Stage A)', () => {
+describe('CodeIndexStore: no-embedding-provider degradation (Stage A)', () => {
   test('with only the hashed provider active, semantic retrieval is unavailable and the reason is stated exactly once', async () => {
     const root = makeRoot();
     writeFileSync(join(root, 'a.ts'), 'export function foo(): number {\n  return 1;\n}\n');

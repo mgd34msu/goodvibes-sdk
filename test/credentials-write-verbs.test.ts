@@ -85,7 +85,7 @@ function allStrings(value: unknown, out: string[] = []): string[] {
   return out;
 }
 
-describe('credentials.set — the value goes to the store, the config gets a reference', () => {
+describe('credentials.set: the value goes to the store, the config gets a reference', () => {
   test('stores the credential and leaves only a reference in config', async () => {
     const h = harness();
     const result = await createCredentialSetHandler(h.deps)(
@@ -112,7 +112,7 @@ describe('credentials.set — the value goes to the store, the config gets a ref
     expect(allStrings(result).some((text) => text.includes(TOKEN))).toBe(false);
   });
 
-  test('the audit entry names the key, the scope and the principal — and no value', async () => {
+  test('the audit entry names the key, the scope and the principal: and no value', async () => {
     const h = harness();
     await createCredentialSetHandler(h.deps)(invocation({ key: SECRET_CONFIG_KEY, value: TOKEN }));
     expect(h.audit).toHaveLength(1);
@@ -130,7 +130,7 @@ describe('credentials.set — the value goes to the store, the config gets a ref
   });
 });
 
-describe('credentials.set — refusals leave the setting exactly as it was', () => {
+describe('credentials.set: refusals leave the setting exactly as it was', () => {
   test('a store that does not read back what was written fails and does NOT rewrite config', async () => {
     const h = harness({ breakReadBack: true });
     h.config.set(SECRET_CONFIG_KEY, 'the-previous-literal');
@@ -218,7 +218,7 @@ describe('credentials.delete', () => {
   });
 });
 
-describe('auth posture — the descriptors put these calls where config.set already is', () => {
+describe('auth posture: the descriptors put these calls where config.set already is', () => {
   const byId = new Map(builtinGatewayAdminMethodDescriptors.map((descriptor) => [descriptor.id, descriptor]));
 
   test('credentials.set and credentials.clear are admin + write:config, like config.set', () => {

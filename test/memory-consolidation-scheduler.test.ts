@@ -115,7 +115,7 @@ function makeScheduler(input: {
   return { scheduler, receipts, setIdle: (value: boolean) => { idle = value; } };
 }
 
-describe('memory consolidation scheduler — the daemon runs the engine', () => {
+describe('memory consolidation scheduler: the daemon runs the engine', () => {
   test('the idle trigger runs consolidation with receipts (mechanical outcomes just happen)', () => {
     const dupA = rec({ id: 'surv', reviewState: 'reviewed', confidence: 80, updatedAt: NOW - 1000, summary: 'CI note', tags: ['ci'] });
     const dupB = rec({ id: 'lose', reviewState: 'fresh', confidence: 50, updatedAt: NOW - 2000, summary: 'CI note', tags: ['deploy'] });
@@ -136,7 +136,7 @@ describe('memory consolidation scheduler — the daemon runs the engine', () => 
     expect(registry.records.size).toBe(2);
   });
 
-  test('judgment outcomes land as proposals — never applied', () => {
+  test('judgment outcomes land as proposals: never applied', () => {
     // Same summary, conflicting detail, no clearly-newer verified winner:
     // the engine must propose, not resolve.
     const one = rec({ id: 'c1', reviewState: 'fresh', confidence: 60, updatedAt: NOW - 1000, summary: 'conflicting fact', detail: 'version A' });
@@ -156,7 +156,7 @@ describe('memory consolidation scheduler — the daemon runs the engine', () => 
     expect(registry.records.get('c1')!.reviewState).not.toBe('stale');
   });
 
-  test('deletion never happens without review — stale-delete is only ever proposed', () => {
+  test('deletion never happens without review: stale-delete is only ever proposed', () => {
     const longStale = rec({ id: 'old-stale', reviewState: 'stale', updatedAt: NOW - 120 * DAY });
     const registry = new FakeRegistry([longStale]);
     const { scheduler } = makeScheduler({ registry, idle: true });
@@ -192,7 +192,7 @@ describe('memory consolidation scheduler — the daemon runs the engine', () => 
     expect(scheduler.listReceipts()[0]!.idle).toBe(false);
   });
 
-  test('enabled:false is the off switch — nothing runs', () => {
+  test('enabled:false is the off switch: nothing runs', () => {
     const registry = new FakeRegistry([rec()]);
     const receipts: unknown[] = [];
     const scheduler = new MemoryConsolidationScheduler({

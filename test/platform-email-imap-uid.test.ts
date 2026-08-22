@@ -192,7 +192,7 @@ function buildService(port: number): {
 }
 
 for (const shape of FETCH_WIRE_SHAPES) {
-describe(`list then read, where UID and sequence number differ — ${shape.name}`, () => {
+describe(`list then read, where UID and sequence number differ: ${shape.name}`, () => {
   beforeEach(() => { activeShape = shape; });
   let fake: FakeServer | null = null;
   afterEach(() => { fake?.close(); fake = null; });

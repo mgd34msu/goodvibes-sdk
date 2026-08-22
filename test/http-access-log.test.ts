@@ -71,7 +71,7 @@ describe('http access log', () => {
     const caught = await fetchWithTimeout('http://example.com/slow', { signal: controller.signal }, 5_000).catch(
       (e: unknown) => e,
     );
-    expect(caught).toBeInstanceOf(Error); // strengthened — abort must produce an Error
+    expect(caught).toBeInstanceOf(Error); // strengthened, abort must produce an Error
   });
 
   test('fetchWithTimeout propagates AbortError when aborted mid-call', async () => {

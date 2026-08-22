@@ -171,7 +171,7 @@ describe('WS call path retained-context caps', () => {
       send: () => { sent += 1; },
       getBufferedAmount: () => buffered,
     });
-    expect(sent).toBe(0); // all dropped — never queued onto a stalled socket
+    expect(sent).toBe(0); // all dropped, never queued onto a stalled socket
     expect(helper.wsCallStats().eventsDropped).toBe(1000);
   });
 });

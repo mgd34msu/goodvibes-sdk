@@ -39,7 +39,7 @@ function fakeRunner(state: 'missing' | 'logged-out' | 'ready', calls: Call[] = [
   };
 }
 
-describe('detectTailscale — strictly read-only', () => {
+describe('detectTailscale: strictly read-only', () => {
   test('missing binary: quietly unavailable, nothing nags', () => {
     const detection = detectTailscale(fakeRunner('missing'));
     expect(detection).toMatchObject({ available: false, loggedIn: false });
@@ -62,7 +62,7 @@ describe('detectTailscale — strictly read-only', () => {
     });
   });
 
-  test('detection only ever runs `tailscale status --json` — no state-changing command', () => {
+  test('detection only ever runs `tailscale status --json`: no state-changing command', () => {
     const calls: Call[] = [];
     detectTailscale(fakeRunner('ready', calls));
     expect(calls).toHaveLength(1);
@@ -70,7 +70,7 @@ describe('detectTailscale — strictly read-only', () => {
   });
 });
 
-describe('enableTailscaleServe — the one state-changing action, honestly receipted', () => {
+describe('enableTailscaleServe: the one state-changing action, honestly receipted', () => {
   test('success yields the https URL and the exact serve command', () => {
     const calls: Call[] = [];
     const receipt = enableTailscaleServe(3423, fakeRunner('ready', calls));

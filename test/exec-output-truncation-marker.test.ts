@@ -50,7 +50,7 @@ function resultWith(stdout: string, stderr = ''): ExecCommandResult {
   } as ExecCommandResult;
 }
 
-describe('exec — minimal verbosity marks what it dropped', () => {
+describe('exec: minimal verbosity marks what it dropped', () => {
   test('a 42-line stdout at minimal keeps one line and names the other 41', async () => {
     const out = await runAt('seq 1 42', 'minimal');
 
@@ -86,7 +86,7 @@ describe('exec — minimal verbosity marks what it dropped', () => {
   });
 });
 
-describe('exec — an overflow cut is disclosed at every verbosity', () => {
+describe('exec: an overflow cut is disclosed at every verbosity', () => {
   for (const verbosity of ['count_only', 'minimal', 'standard', 'verbose'] as const) {
     test(`${verbosity} says the stream was cut at the size limit`, () => {
       const result = { ...resultWith('kept\n'), stdout_truncated: true } as ExecCommandResult;
@@ -99,7 +99,7 @@ describe('exec — an overflow cut is disclosed at every verbosity', () => {
   }
 });
 
-describe('shapeStream — the counted marker is truthful', () => {
+describe('shapeStream: the counted marker is truthful', () => {
   test('a trailing newline is not counted as a dropped line', () => {
     const { text, droppedLines } = shapeStream('a\nb\n', 'stdout', 1, false);
 

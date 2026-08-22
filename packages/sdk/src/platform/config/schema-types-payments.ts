@@ -49,9 +49,9 @@ export interface PaymentsAddressConfig {
 }
 
 export interface PaymentsConfig {
-  enabled: boolean;                 // default: false — master switch
-  defaultCardId: string;            // default: '' — which card a purchase uses when it names none
-  currency: string;                 // default: 'USD' — ISO-4217 the budgets are denominated in
+  enabled: boolean;                 // default: false. Master switch
+  defaultCardId: string;            // default: ''. Which card a purchase uses when it names none
+  currency: string;                 // default: 'USD'. ISO-4217 the budgets are denominated in
   cvvHandling: CvvHandling;         // default: 'stored'
   budget: PaymentsBudgetConfig;
   shipping: { preferredTier: ShippingTierPreference };

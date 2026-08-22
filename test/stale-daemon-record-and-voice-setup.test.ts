@@ -441,7 +441,7 @@ describe('the two flags that gate wake move together', () => {
   });
 });
 
-describe('a setup request is completed, proposed and asked — never handed over as a command', () => {
+describe('a setup request is completed, proposed and asked: never handed over as a command', () => {
   const base = {
     surface: 'agent' as const,
     wakeEnabled: false,

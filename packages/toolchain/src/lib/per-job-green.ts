@@ -205,7 +205,7 @@ async function evaluateCheckSuites(deps: PerJobGreenDeps, config: PerJobGreenCon
   if (suitesRes.status !== 200) return null;
   const suites = asArray<{ status?: string; conclusion?: string | null }>(suitesRes.body, 'check_suites');
   if (suites.length === 0) return null;
-  if (suites.some((s) => s.status !== 'completed')) return null; // still running — let the caller keep polling
+  if (suites.some((s) => s.status !== 'completed')) return null; // still running, let the caller keep polling
   const runsUrl = `${base}/repos/${config.owner}/${config.repo}/commits/${sha}/check-runs?per_page=100`;
   const runsRes = await getWithRetry(deps, config, runsUrl, 'check-runs');
   if (runsRes.status !== 200) return null;

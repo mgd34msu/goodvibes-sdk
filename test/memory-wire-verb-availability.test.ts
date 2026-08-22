@@ -33,7 +33,7 @@ function agentStyleError(status: number, code: string | undefined, path = '/api/
   return err;
 }
 
-describe('classifyMemoryWireError — the runtime signal, not the transport shape', () => {
+describe('classifyMemoryWireError: the runtime signal, not the transport shape', () => {
   test('HttpStatusError from a record-missing 404 → record-missing', () => {
     const err = createTransportError(404, URL_UPDATE, 'POST', recordMissingBody);
     expect(classifyMemoryWireError(err)).toBe('record-missing');
@@ -64,13 +64,13 @@ describe('classifyMemoryWireError — the runtime signal, not the transport shap
   });
 });
 
-describe('foldMemoryWireExtendedError — the transport catch-block fold', () => {
+describe('foldMemoryWireExtendedError: the transport catch-block fold', () => {
   test('method-unavailable throws the canonical unavailable-verb error', () => {
     const err = createTransportError(404, URL_UPDATE, 'POST', routeNotFoundBody);
     expect(() => foldMemoryWireExtendedError('update', err)).toThrow(/does not support the 'update' memory verb/);
   });
 
-  test('record-missing does NOT throw — the caller resolves it (e.g. to null)', () => {
+  test('record-missing does NOT throw: the caller resolves it (e.g. to null)', () => {
     const err = createTransportError(404, URL_UPDATE, 'POST', recordMissingBody);
     expect(() => foldMemoryWireExtendedError('update', err)).not.toThrow();
   });
@@ -81,7 +81,7 @@ describe('foldMemoryWireExtendedError — the transport catch-block fold', () =>
   });
 });
 
-describe('memoryVerbUnavailableError — one canonical message for every consumer', () => {
+describe('memoryVerbUnavailableError: one canonical message for every consumer', () => {
   test('names the verb and states the single-writer reason', () => {
     const err = memoryVerbUnavailableError('list');
     expect(err.message).toMatch(/'list' memory verb over the wire/);

@@ -138,7 +138,7 @@ describe('ElevenLabs streaming TTS provider', () => {
   });
 });
 
-describe('VoiceService.synthesizeStream — cancellation', () => {
+describe('VoiceService.synthesizeStream: cancellation', () => {
   test('aborting via AbortController stops iteration and emits no further chunks', async () => {
     const controller = new AbortController();
     let cleanupCalled = false;

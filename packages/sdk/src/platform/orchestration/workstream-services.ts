@@ -300,7 +300,7 @@ function createWorkstreamCommandService(
       const draft = drafts.get(id);
       if (!draft) return undefined;
       draft.approved = true;
-      store.save(draft); // approval must survive restart too — a resumed approved draft launches straight away
+      store.save(draft); // approval must survive restart too, a resumed approved draft launches straight away
       return draft;
     },
     removeDraft(id) {

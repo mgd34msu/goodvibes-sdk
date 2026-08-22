@@ -13,7 +13,7 @@ describe('SessionLineageTracker.getOriginalTask', () => {
     expect(tracker.getOriginalTask()).toBe('Build a REST API with auth');
   });
 
-  test('setOriginalTask is idempotent — second call is ignored', () => {
+  test('setOriginalTask is idempotent: second call is ignored', () => {
     const tracker = new SessionLineageTracker();
     tracker.setOriginalTask('first task');
     tracker.setOriginalTask('second task');

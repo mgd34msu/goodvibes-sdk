@@ -50,7 +50,7 @@ function openWebStream(gateway: ControlPlaneGateway, opts: { scopes?: readonly s
   });
 }
 
-describe('m1 — session-update honors the declared read:sessions scope', () => {
+describe('m1: session-update honors the declared read:sessions scope', () => {
   test('a web client WITHOUT read:sessions does not receive session-update', async () => {
     const gateway = makeGateway();
     const res = openWebStream(gateway, { scopes: ['read:events'] });

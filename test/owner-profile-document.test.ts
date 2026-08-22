@@ -33,7 +33,7 @@ function parse(text: string) {
   return parseProfileDocument({ path: '/profile.md', text, exists: true });
 }
 
-describe('§4.2 — the provenance suffix is recognised only when the whole shape matches', () => {
+describe('§4.2: the provenance suffix is recognised only when the whole shape matches', () => {
   test('a well-formed suffix on a bullet and on a field line', () => {
     const bullet = splitProvenanceSuffix('- Allergic to shellfish — tui, 2026-07-27, "I\'m allergic to shellfish"');
     expect(bullet.text).toBe('- Allergic to shellfish');
@@ -78,7 +78,7 @@ describe('§4.2 — the provenance suffix is recognised only when the whole shap
   });
 });
 
-describe('§4.4 — everything is preserved and nothing is an error', () => {
+describe('§4.4: everything is preserved and nothing is an error', () => {
   const ODD = [
     '# Title',
     '',
@@ -155,7 +155,7 @@ describe('§4.4 — everything is preserved and nothing is an error', () => {
   });
 });
 
-describe('§14.18 — an invalid mechanical value is preserved and reported, never dropped', () => {
+describe('§14.18: an invalid mechanical value is preserved and reported, never dropped', () => {
   test('timezone: Mars/Olympus stays in the file and is reported with a reason', async () => {
     const dir = tempDir();
     const path = join(dir, 'owner-profile.md');
@@ -243,7 +243,7 @@ describe('§14.18 — an invalid mechanical value is preserved and reported, nev
   });
 });
 
-describe('§14.13 — an unreadable file degrades loudly, never to an empty profile', () => {
+describe('§14.13: an unreadable file degrades loudly, never to an empty profile', () => {
   async function loadBytes(bytes: Uint8Array): Promise<OwnerProfileStore> {
     const dir = tempDir();
     const path = join(dir, 'owner-profile.md');

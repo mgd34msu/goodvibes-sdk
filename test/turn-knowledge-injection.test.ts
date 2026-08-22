@@ -77,7 +77,7 @@ describe('deriveTurnKnowledgeQuery', () => {
   });
 });
 
-describe('buildPerTurnKnowledgeInjection — query derivation pulls records the frozen task alone would miss', () => {
+describe('buildPerTurnKnowledgeInjection: query derivation pulls records the frozen task alone would miss', () => {
   test('a steer word retrieves a record with no overlap with the frozen task', () => {
     // confidence 55 + reviewState 'fresh' (+20) = 75, BELOW the default relevance floor
     // (95) on its own, it takes the "rate limiting" token match (+20 per matching
@@ -118,7 +118,7 @@ describe('buildPerTurnKnowledgeInjection — query derivation pulls records the 
   });
 });
 
-describe('buildPerTurnKnowledgeInjection — relevance floor (stage 2)', () => {
+describe('buildPerTurnKnowledgeInjection: relevance floor (stage 2)', () => {
   test('all candidates below the floor => block===null, honest reason, zero injectedIds', () => {
     const records = [
       makeRecord({ id: 'mem_weak', summary: 'a barely-related note about auth', tags: ['auth'], reviewState: 'fresh', confidence: 55 }),
@@ -128,7 +128,7 @@ describe('buildPerTurnKnowledgeInjection — relevance floor (stage 2)', () => {
       task: 'fix the auth module',
       conversationTail: [{ role: 'user', content: 'fix the auth module' }],
       budgetTokens: 2000,
-      relevanceFloor: 10_000, // impossibly high — nothing can clear it
+      relevanceFloor: 10_000, // impossibly high, nothing can clear it
       alreadyInjectedIds: [],
       turn: 1,
     });
@@ -158,7 +158,7 @@ describe('buildPerTurnKnowledgeInjection — relevance floor (stage 2)', () => {
   });
 });
 
-describe('buildPerTurnKnowledgeInjection — token budget (greedy trim)', () => {
+describe('buildPerTurnKnowledgeInjection: token budget (greedy trim)', () => {
   const records = [
     makeRecord({ id: 'mem_1', summary: 'auth module note one, reviewed and trusted for JWT rotation', tags: ['auth'], reviewState: 'reviewed', confidence: 90 }),
     makeRecord({ id: 'mem_2', summary: 'auth module note two, fresh and relevant to rate limiting policy', tags: ['auth'], reviewState: 'fresh', confidence: 70 }),
@@ -228,7 +228,7 @@ describe('buildPerTurnKnowledgeInjection — token budget (greedy trim)', () => 
   });
 });
 
-describe('buildPerTurnKnowledgeInjection — dedupe against alreadyInjectedIds', () => {
+describe('buildPerTurnKnowledgeInjection: dedupe against alreadyInjectedIds', () => {
   test('ids already surfaced (e.g. the spawn-time baseline) are never re-listed', () => {
     const records = [
       makeRecord({ id: 'mem_1', summary: 'auth module JWT rotation', tags: ['auth'], reviewState: 'reviewed', confidence: 90 }),
@@ -248,7 +248,7 @@ describe('buildPerTurnKnowledgeInjection — dedupe against alreadyInjectedIds',
   });
 });
 
-describe('buildPerTurnKnowledgeInjection — embeddings backend honesty', () => {
+describe('buildPerTurnKnowledgeInjection: embeddings backend honesty', () => {
   test('a registry with vectorStats reporting enabled+available => embeddingBackend "available"', () => {
     const records = [makeRecord({ id: 'mem_1', summary: 'auth module JWT rotation', tags: ['auth'], reviewState: 'reviewed', confidence: 90 })];
     const registry = {
@@ -336,7 +336,7 @@ describe('defaultTurnKnowledgeBudgetTokens', () => {
   });
 });
 
-describe('recordTurnInjection — bounded ring', () => {
+describe('recordTurnInjection: bounded ring', () => {
   function makeTurnRecord(turn: number): TurnInjectionRecord {
     return {
       turn,

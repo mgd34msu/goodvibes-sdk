@@ -120,7 +120,7 @@ describe('a channel-originated session is classified by its surface, not tui', (
     expect(submission.session.surfaceKinds).toContain('telegram');
   });
 
-  test('every channel surface classifies the same way — not a telegram special case', async () => {
+  test('every channel surface classifies the same way: not a telegram special case', async () => {
     for (const surfaceKind of ['slack', 'discord', 'ntfy', 'signal', 'whatsapp'] as const) {
       const { broker } = await makeHarness(scratch());
       const session = await broker.createSession({
@@ -236,7 +236,7 @@ describe('old-shape persisted session records load safely (no crash, no quaranti
     expect(reloaded.getSession('k-channel')?.kind).toBe('channel');
   });
 
-  test('a record wrongly stamped tui for a telegram surface loads as-is — no crash, no silent rewrite', async () => {
+  test('a record wrongly stamped tui for a telegram surface loads as-is: no crash, no silent rewrite', async () => {
     // The exact shape of the live defect: a persisted record whose `kind` is a
     // legitimately-known value ('tui') that is simply WRONG for what actually
     // created it (surfaceKinds says telegram). Loading it must not crash or

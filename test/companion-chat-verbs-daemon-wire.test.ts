@@ -131,7 +131,7 @@ afterAll(async () => {
 // regenerate (companion.chat.messages.retry) over the HTTP route
 // ---------------------------------------------------------------------------
 
-describe('companion.chat.messages.retry — regenerate over the wire', () => {
+describe('companion.chat.messages.retry: regenerate over the wire', () => {
   test('the seeded conversation loaded from disk is served', async () => {
     const messages = await getMessages('seed-regen');
     expect(messages.map((m) => m.content)).toEqual([
@@ -140,7 +140,7 @@ describe('companion.chat.messages.retry — regenerate over the wire', () => {
     ]);
   });
 
-  test('regenerate supersedes the prior response (retained, retrievable) — never silently gone', async () => {
+  test('regenerate supersedes the prior response (retained, retrievable): never silently gone', async () => {
     const res = await fetch(`${daemon.url}/api/companion/chat/sessions/seed-regen/messages/retry`, {
       method: 'POST',
       headers: auth(),
@@ -173,7 +173,7 @@ describe('companion.chat.messages.retry — regenerate over the wire', () => {
 // edit-and-branch (companion.chat.messages.edit) over the HTTP route
 // ---------------------------------------------------------------------------
 
-describe('companion.chat.messages.edit — edit + branch over the wire', () => {
+describe('companion.chat.messages.edit: edit + branch over the wire', () => {
   test('edit supersedes the original (retained) and appends a branch with revisionOf', async () => {
     const res = await fetch(`${daemon.url}/api/companion/chat/sessions/seed-edit/messages/edit`, {
       method: 'POST',
@@ -222,7 +222,7 @@ describe('companion.chat.messages.edit — edit + branch over the wire', () => {
 // The generic control-plane invoke endpoint dispatches the verb by id
 // ---------------------------------------------------------------------------
 
-describe('companion.chat.messages.retry — via the control-plane invoke endpoint', () => {
+describe('companion.chat.messages.retry: via the control-plane invoke endpoint', () => {
   test('POST /api/control-plane/methods/companion.chat.messages.retry/invoke works and preserves lineage', async () => {
     const res = await fetch(
       `${daemon.url}/api/control-plane/methods/companion.chat.messages.retry/invoke`,

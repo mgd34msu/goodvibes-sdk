@@ -5,7 +5,7 @@ import {
   DEFAULT_ALLOWED_CLASSES,
 } from '../packages/sdk/src/platform/runtime/permissions/normalization/index.js';
 
-describe('platform/runtime/permissions/normalization — smoke', () => {
+describe('platform/runtime/permissions/normalization: smoke', () => {
   test('DEFAULT_ALLOWED_CLASSES is a non-empty Set', () => {
     expect(DEFAULT_ALLOWED_CLASSES.size).toBeGreaterThan(0);
   });

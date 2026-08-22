@@ -33,7 +33,7 @@ export class InboundMessageDedup {
    * `if (!dedup.claim(key)) return alreadyHandledResponse;`.
    */
   claim(key: string): boolean {
-    if (!key) return true; // No id to key on — cannot dedupe; process it.
+    if (!key) return true; // No id to key on, cannot dedupe; process it.
     const now = this.now();
     this.prune(now);
     const seenAt = this.seen.get(key);

@@ -166,7 +166,7 @@ describe('FavoritesStore.recordUsage', () => {
     expect(ts2 > ts1).toBe(true);
   });
 
-  test('caps history — oldest entries evicted when over 100', async () => {
+  test('caps history: oldest entries evicted when over 100', async () => {
     const store = makeStore();
     const history = Array.from({ length: 105 }, (_, i) => ({
       registryKey: `test:model-${String(i).padStart(3, '0')}`,

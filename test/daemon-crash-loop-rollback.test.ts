@@ -308,7 +308,7 @@ describe('crash-loop rollback at boot', () => {
     expect(h.exits).toEqual([0]);
   });
 
-  test('a healthy boot in the middle resets the counter — no rollback', () => {
+  test('a healthy boot in the middle resets the counter: no rollback', () => {
     const h = rollbackHarness({ artifact: ARTIFACT });
     expect(h.runtime.onStarting()).toBe(false);
     expect(h.runtime.onStarting()).toBe(false);
@@ -452,7 +452,7 @@ describe('a rollback records the version it rejected', () => {
     expect(h.marker()?.rejectedVersion).toBe('2.0.0');
   });
 
-  test('the rejection outlives the restored build coming up healthy — that is the whole point', () => {
+  test('the rejection outlives the restored build coming up healthy: that is the whole point', () => {
     const { io } = memoryMarkerIo();
     const now = (): number => 1_000_000;
     recordDaemonAutoRollback(MARKER, { io, now, rejectedVersion: '2.0.0' });
@@ -466,7 +466,7 @@ describe('a rollback records the version it rejected', () => {
     expect(readLifecycleMarker(MARKER, io)?.rejectedVersion).toBe('2.0.0');
   });
 
-  test('the rejection clears when the rejected version itself starts successfully — never a permanent pin', () => {
+  test('the rejection clears when the rejected version itself starts successfully: never a permanent pin', () => {
     const { io } = memoryMarkerIo();
     const now = (): number => 1_000_000;
     recordDaemonAutoRollback(MARKER, { io, now, rejectedVersion: '2.0.0' });

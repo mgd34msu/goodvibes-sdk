@@ -34,7 +34,7 @@ describe('formatConsolidationReceipt', () => {
     expect(text).toBe('Memory consolidation: 2 merged, 1 archived, 3 decayed (scanned 42).');
   });
 
-  test('a quiet run (nothing merged/archived/decayed/proposed) yields null — no notice', () => {
+  test('a quiet run (nothing merged/archived/decayed/proposed) yields null: no notice', () => {
     expect(formatConsolidationReceipt(receipt({}))).toBeNull();
   });
 

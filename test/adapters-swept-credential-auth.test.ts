@@ -288,7 +288,7 @@ function reachedHandler(calls: ReadonlyArray<{ kind: string }>): boolean {
   return calls.some((call) => call.kind === 'authorizeSurfaceIngress');
 }
 
-describe('inbound surface adapters — a swept credential reference', () => {
+describe('inbound surface adapters: a swept credential reference', () => {
   for (const adapter of CASES) {
     describe(adapter.name, () => {
       const build = (shape: ConfigShape) => makeContext({

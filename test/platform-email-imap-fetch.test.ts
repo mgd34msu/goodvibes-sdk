@@ -261,7 +261,7 @@ describe('ImapClient.fetchMessage', () => {
     expect(detail.subject).toBe('Déjeuner');
   });
 
-  test('uses UID FETCH and BODY.PEEK — never plain BODY[, which would set \\Seen', async () => {
+  test('uses UID FETCH and BODY.PEEK: never plain BODY[, which would set \\Seen', async () => {
     fake = await startFakeImap((ctx) => {
       if (ctx.line.includes('BODY.PEEK[HEADER]')) writeSection(ctx, 'HEADER', MULTIPART_HEADERS);
       else if (ctx.line.includes('BODYSTRUCTURE')) {
@@ -838,7 +838,7 @@ const PROBE_BODY_EMPTY = (uid: number): string[] => [
   'A0006 OK FETCH completed',
 ];
 
-describe('assessFetchedBody — declared octets against returned bytes', () => {
+describe('assessFetchedBody: declared octets against returned bytes', () => {
   test('bytes came back, so the capability is demonstrated', () => {
     const reading = assessFetchedBody({
       responded: true,
@@ -1067,7 +1067,7 @@ describe('fetchMessage enforces the same invariant on a real read', () => {
     expect(describeEmailCapabilityFailure(error)?.reason).toBe('bodies-unfetchable');
   });
 
-  test('without the option the same read is unchanged — blank, and no throw', async () => {
+  test('without the option the same read is unchanged: blank, and no throw', async () => {
     // The default stays what the mail reader already relied on; the inbound
     // path opts in, because there an unreadable body is not a cosmetic gap.
     fake = await withheldBodyServer();

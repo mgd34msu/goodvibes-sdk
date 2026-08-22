@@ -48,7 +48,7 @@ function at(events: readonly string[], event: string): number {
 
 const SURFACE = 'ntfy-main';
 
-describe('cluster handoff — preemption by a strictly newer build', () => {
+describe('cluster handoff: preemption by a strictly newer build', () => {
   test('the old holder stops consuming BEFORE it resigns, and only then does the new one start', async () => {
     const world = createWorld();
     const oldBuild = addNode(world, { id: 'node-old', version: '1.0.0', surfaces: [SURFACE] });
@@ -175,7 +175,7 @@ describe('cluster handoff — preemption by a strictly newer build', () => {
   });
 });
 
-describe('cluster handoff — clean shutdown', () => {
+describe('cluster handoff: clean shutdown', () => {
   test('a holder stops consuming and says goodbye, so failover skips the crash timeout', async () => {
     const world = createWorld();
     const leaving = addNode(world, { id: 'node-a', surfaces: [SURFACE] });
@@ -247,7 +247,7 @@ describe('cluster handoff — clean shutdown', () => {
   });
 });
 
-describe('cluster handoff — partition and heal', () => {
+describe('cluster handoff: partition and heal', () => {
   test('both sides elect while split; on heal the better-ranked one keeps the surface', async () => {
     const world = createWorld();
     const first = addNode(world, { id: 'node-a', surfaces: [SURFACE] });
@@ -292,7 +292,7 @@ describe('cluster handoff — partition and heal', () => {
   });
 });
 
-describe('cluster handoff — the provider-conflict backstop', () => {
+describe('cluster handoff: the provider-conflict backstop', () => {
   test('a 409 naming another consumer makes this node stand down instead of fighting', async () => {
     const world = createWorld();
     const node = addNode(world, { id: 'node-a', surfaces: [SURFACE] });
@@ -421,7 +421,7 @@ describe('cluster handoff — the provider-conflict backstop', () => {
   });
 });
 
-describe('cluster protocol — the wire', () => {
+describe('cluster protocol: the wire', () => {
   const message: ClusterMessage = {
     v: CLUSTER_PROTOCOL_VERSION,
     type: 'CLAIM',
@@ -541,7 +541,7 @@ describe('cluster protocol — the wire', () => {
   });
 });
 
-describe('cluster coordinator — the wiring contract', () => {
+describe('cluster coordinator: the wiring contract', () => {
   function recordingGate(id: string, log: string[], surfaceName = 'topic-one'): ClusterConsumerGate {
     return {
       id,

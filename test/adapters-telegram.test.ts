@@ -67,7 +67,7 @@ function makeTelegramContext(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-describe('telegram adapter — contract surface', () => {
+describe('telegram adapter: contract surface', () => {
   test('rejects requests with a mismatched Telegram webhook secret', async () => {
     const { context } = makeTelegramContext();
     const res = await handleTelegramSurfaceWebhook(new Request('http://localhost/telegram', {
@@ -150,7 +150,7 @@ describe('telegram adapter — contract surface', () => {
  * task was the literal string "/start". These tests pin the onboarding
  * behaviour: bind the route, answer usefully, dispatch nothing.
  */
-describe('telegram adapter — standard bot commands', () => {
+describe('telegram adapter: standard bot commands', () => {
   async function sendText(text: string, chatType = 'private', extraDeps: Record<string, unknown> = {}) {
     const harness = makeTelegramContext();
     const sent: Array<{ chatId: string; text: string }> = [];

@@ -419,7 +419,7 @@ describe('protocol details', () => {
     expect(above).toEqual([105, 106, 107]);
   });
 
-  test('the re-issue interval is capped strictly below RFC 2177’s advisory', () => {
+  test('the re-issue interval is capped strictly below RFC 2177\'s advisory', () => {
     const settings = resolveWatcherSettings({
       account: 'primary',
       mailbox: 'INBOX',

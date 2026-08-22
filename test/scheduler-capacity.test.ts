@@ -95,7 +95,7 @@ function makeContext(capacity: CapacitySnapshot): DaemonRuntimeRouteContext {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('Arch #3 — GET /api/runtime/scheduler: empty state', () => {
+describe('Arch #3: GET /api/runtime/scheduler: empty state', () => {
   test('empty state returns documented shape with zero counters', async () => {
     const ctx = makeContext({
       slotsTotal: 4,
@@ -131,7 +131,7 @@ describe('Arch #3 — GET /api/runtime/scheduler: empty state', () => {
   });
 });
 
-describe('Arch #3 — GET /api/runtime/scheduler: live state', () => {
+describe('Arch #3: GET /api/runtime/scheduler: live state', () => {
   test('with running runs: slotsInUse reflects executing count', async () => {
     const ctx = makeContext({
       slotsTotal: 4,
@@ -176,7 +176,7 @@ describe('Arch #3 — GET /api/runtime/scheduler: live state', () => {
   });
 });
 
-describe('Arch #3 — GET /api/runtime/scheduler: HTTP route wiring', () => {
+describe('Arch #3: GET /api/runtime/scheduler: HTTP route wiring', () => {
   test('getSchedulerCapacity handler returns 200 with required field keys', async () => {
     const ctx = makeContext({
       slotsTotal: 4,

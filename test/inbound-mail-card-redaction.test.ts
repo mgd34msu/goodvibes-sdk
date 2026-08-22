@@ -112,7 +112,7 @@ describe('a card number in an email never reaches disk', () => {
     expectNoCardOnDisk();
   });
 
-  test('the redaction survives a reload — it was never stored, not merely hidden on read', async () => {
+  test('the redaction survives a reload: it was never stored, not merely hidden on read', async () => {
     const store = new InboundMailStore(storePath);
     await store.record(recordInput({ body: `charged ${CARD}` }));
 
@@ -222,7 +222,7 @@ describe('mail is redacted, NOT refused', () => {
     expect(records[0]!.outcome).toBe('matched-expectation');
   });
 
-  test('an ordinary order confirmation is stored verbatim — long digit runs and all', async () => {
+  test('an ordinary order confirmation is stored verbatim: long digit runs and all', async () => {
     // The consumer this capability exists to serve. Refusing or mangling this
     // is the failure mode redaction-instead-of-refusal is chosen to avoid.
     const body = [

@@ -32,7 +32,7 @@ function reader(scalars: Record<string, unknown>, category?: unknown) {
 }
 
 describe('classifyInboundIntent', () => {
-  test('the reported message — a bare "Testing" — is conversation, not work', () => {
+  test('the reported message, a bare "Testing", is conversation, not work', () => {
     const intent = classifyInboundIntent('Testing');
     expect(intent.kind).toBe('conversation');
   });
@@ -200,7 +200,7 @@ describe('parseWorkProposalReply', () => {
 });
 
 describe('readConversationGateConfig', () => {
-  test('defaults to propose mode — conversation first is the shipped behavior', () => {
+  test('defaults to propose mode: conversation first is the shipped behavior', () => {
     const config = readConversationGateConfig(reader({}));
     expect(config.mode).toBe('propose');
     expect(config).toEqual(CONVERSATION_GATE_DEFAULTS);
@@ -250,12 +250,12 @@ describe('isGatedSurface', () => {
     }
   });
 
-  test('goodvibes-tui is exempt — the operator typed it in front of the terminal', () => {
+  test('goodvibes-tui is exempt: the operator typed it in front of the terminal', () => {
     expect(isGatedSurface(config, 'tui')).toBe(false);
     expect(isGatedSurface(config, 'local')).toBe(false);
   });
 
-  test('generic webhooks are not gated — a registered webhook is pre-authorized automation', () => {
+  test('generic webhooks are not gated: a registered webhook is pre-authorized automation', () => {
     expect(isGatedSurface(config, 'webhook')).toBe(false);
   });
 

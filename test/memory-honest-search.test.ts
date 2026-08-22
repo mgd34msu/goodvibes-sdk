@@ -48,7 +48,7 @@ async function seededStore(): Promise<{ store: MemoryStore; root: string }> {
   return { store, root };
 }
 
-describe('runHonestMemorySearch — recall-injection exclusion', () => {
+describe('runHonestMemorySearch: recall-injection exclusion', () => {
   test('default (no recall) returns everything, unfiltered', async () => {
     const { store } = await seededStore();
     const result = runHonestMemorySearch(store, {}, {});
@@ -70,7 +70,7 @@ describe('runHonestMemorySearch — recall-injection exclusion', () => {
   });
 });
 
-describe('runHonestMemorySearch — semantic fallback is honest, never a silent empty', () => {
+describe('runHonestMemorySearch: semantic fallback is honest, never a silent empty', () => {
   test('semantic requested but index unavailable → literal fallback WITH a stated reason', async () => {
     const { store } = await seededStore();
     const result = runHonestMemorySearch(store, { query: 'alpha', semantic: true }, {});
@@ -102,7 +102,7 @@ describe('MemoryRegistry.honestSearch delegates to the same composition', () => 
   });
 });
 
-describe('fold interop — folded records honor the recall contract on the canonical store', () => {
+describe('fold interop: folded records honor the recall contract on the canonical store', () => {
   test('foldMemoryStores still works, and honestSearch over the canonical store excludes a folded flagged record', async () => {
     const root = mkdtempSync(join(tmpdir(), 'gv-fold-honest-'));
     tmpRoots.push(root);

@@ -166,7 +166,7 @@ describe('on-exit trigger fires exactly once', () => {
     expect(host.launched[0]?.maxDurationMs).toBe(60_000);
   });
 
-  test('a nonzero exit still fires — exit is not success, and neither is failure silent', async () => {
+  test('a nonzero exit still fires: exit is not success, and neither is failure silent', async () => {
     const host = new FakeProcessHost();
     const executor = new RecordingExecutor();
     const clock = { t: 1_000 };
@@ -364,7 +364,7 @@ describe('action grants', () => {
     expect(result.ok === false && result.reason).toContain('modified after it was confirmed');
   });
 
-  test('the digest covers the command, args and cwd — nothing else', () => {
+  test('the digest covers the command, args and cwd: nothing else', () => {
     const a = computeGrantDigest({ command: 'make', args: ['all'], cwd: '/a' });
     expect(computeGrantDigest({ command: 'make', args: ['all'], cwd: '/a' })).toBe(a);
     expect(computeGrantDigest({ command: 'make', args: ['clean'], cwd: '/a' })).not.toBe(a);

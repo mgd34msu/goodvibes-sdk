@@ -31,7 +31,7 @@ async function writeFixture(dir: string, filename: string, content: string): Pro
 // security mode
 // ---------------------------------------------------------------------------
 
-describe('runSecurity — security mode', () => {
+describe('runSecurity: security mode', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
@@ -89,7 +89,7 @@ describe('runSecurity — security mode', () => {
 // dead_code mode
 // ---------------------------------------------------------------------------
 
-describe('runDeadCode — dead_code mode', () => {
+describe('runDeadCode: dead_code mode', () => {
   let tmpDir: string;
 
   beforeEach(async () => {

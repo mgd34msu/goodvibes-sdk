@@ -54,7 +54,7 @@ function scratchRoot(label: string): string {
   return root;
 }
 
-describe('withRunTmpDir — the lifecycle scripts/test.ts and scripts/leak-scan.ts run', () => {
+describe('withRunTmpDir: the lifecycle scripts/test.ts and scripts/leak-scan.ts run', () => {
   test('a run that leaks directories leaves none behind', async () => {
     const root = scratchRoot('green');
     let leakedInside = 0;
@@ -78,7 +78,7 @@ describe('withRunTmpDir — the lifecycle scripts/test.ts and scripts/leak-scan.
     expect(readdirSync(root)).toEqual([]);
   });
 
-  test('the run parent exists while the callback runs — the check is not vacuous', async () => {
+  test('the run parent exists while the callback runs: the check is not vacuous', async () => {
     const root = scratchRoot('exists');
     let seen: string | null = null;
     await withRunTmpDir(root, (runTmpDir) => {
@@ -108,12 +108,12 @@ describe('withRunTmpDir — the lifecycle scripts/test.ts and scripts/leak-scan.
   });
 });
 
-describe('testTmpEnv — the redirect itself', () => {
+describe('testTmpEnv: the redirect itself', () => {
   test('points all three temp variables at the run parent', () => {
     expect(testTmpEnv('/run/parent')).toEqual({ TMPDIR: '/run/parent', TMP: '/run/parent', TEMP: '/run/parent' });
   });
 
-  test('does NOT carry the runner flag — it must survive the redirect being deleted', () => {
+  test('does NOT carry the runner flag: it must survive the redirect being deleted', () => {
     // If the flag travelled inside this object, deleting the
     // `...testTmpEnv(runTmpDir)` spread from a runner would delete the flag
     // with it, and the end-to-end assertion below would take its "raw bun
@@ -139,7 +139,7 @@ describe('sweepStaleTmpDirs', () => {
     expect(existsSync(path)).toBe(false);
   });
 
-  test('leaves a live sibling run alone — the sweep can answer NO on age', () => {
+  test('leaves a live sibling run alone: the sweep can answer NO on age', () => {
     const root = scratchRoot('fresh');
     const path = aged(root, `${RUN_TMP_PREFIX}1000-cafebabe`, 5_000);
     sweepStaleTmpDirs(root, RUN_TMP_PREFIX, STALE_RUN_MS);

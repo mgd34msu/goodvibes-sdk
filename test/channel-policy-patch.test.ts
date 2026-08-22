@@ -193,7 +193,7 @@ describe('channel optional JSON bodies', () => {
 });
 
 describe('PATCH /api/channels/policies/:surface: field filter', () => {
-  test('handler strips untyped fields — only known typed fields reach upsertPolicy', async () => {
+  test('handler strips untyped fields: only known typed fields reach upsertPolicy', async () => {
     let capturedPatch: Record<string, unknown> = {};
     const channelPolicy: DaemonChannelRouteContext['channelPolicy'] = {
       listPolicies: () => [],

@@ -416,7 +416,7 @@ function strandInSurfaceStore(root: string, surfaceRoot: string, key: string, va
 }
 
 describe('the migration, against the real store', () => {
-  test('a migrated credential still exists afterwards — in the daemon tier', async () => {
+  test('a migrated credential still exists afterwards: in the daemon tier', async () => {
     const root = throwawayHome();
     strandInSurfaceStore(root, 'daemon', 'SLACK_BOT_TOKEN', 'xoxb-real-store');
     const store = manager(root, 'daemon');
@@ -462,7 +462,7 @@ describe('the migration, against the real store', () => {
     expect(isDaemonNeededSecretKey(daemonSecretKeyFor('surfaces.telegram.botToken'))).toBe(true);
   });
 
-  test('revoke still sweeps every tier — the narrow verb did not weaken it', async () => {
+  test('revoke still sweeps every tier: the narrow verb did not weaken it', async () => {
     const root = throwawayHome();
     const store = manager(root, 'agent');
     await store.set('SLACK_BOT_TOKEN', 'xoxb-revoke-me');

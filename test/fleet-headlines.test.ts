@@ -131,7 +131,7 @@ describe('HeadlineTable', () => {
     const n = node({ id: 'a', task: 'analyze failures' });
     const first = table.derive(n, T0)!;
     const second = table.derive(n, T0 + 60_000)!;
-    expect(second).toBe(first); // same object — updatedAt did NOT move
+    expect(second).toBe(first); // same object, updatedAt did NOT move
     expect(second.updatedAt).toBe(T0);
   });
 
@@ -186,7 +186,7 @@ describe('HeadlineTable', () => {
 describe('deriveStallTell', () => {
   const threshold = 5 * 60_000;
 
-  test('a live node quiet past the threshold gains the marker — no generated text', () => {
+  test('a live node quiet past the threshold gains the marker: no generated text', () => {
     const quiet = node({
       id: 'a', state: 'thinking', startedAt: T0,
       currentActivity: { kind: 'tool', text: 'exec', at: T0 },
@@ -215,7 +215,7 @@ describe('deriveStallTell', () => {
 
 // ── Registry integration: exposed on every surface's snapshot ────────────────
 
-describe('fleet registry — headline + stall on the snapshot', () => {
+describe('fleet registry: headline + stall on the snapshot', () => {
   test('transition side: a NEW task regenerates the headline; the same task never does', () => {
     let currentNow = T0 + 1_000;
     const record = makeAgent({ id: 'agent-1', task: 'analyze the build failure' });
@@ -277,7 +277,7 @@ describe('fleet registry — headline + stall on the snapshot', () => {
       stallTellMs: 5 * 60_000,
     }));
 
-    expect(registry.getNode('agent-3')!.stall).toBeUndefined(); // fresh — no tell
+    expect(registry.getNode('agent-3')!.stall).toBeUndefined(); // fresh, no tell
 
     currentNow = T0 + 6 * 60_000;
     const quiet = registry.getNode('agent-3')!;

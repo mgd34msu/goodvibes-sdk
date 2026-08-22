@@ -34,7 +34,7 @@ function isKnowledgeIssueNotFound(error: unknown, domainCode: string): boolean {
 // Wire code: always-present floor
 // ---------------------------------------------------------------------------
 
-describe('buildErrorResponseBody — code always present for GoodVibesSdkError on wire', () => {
+describe('buildErrorResponseBody: code always present for GoodVibesSdkError on wire', () => {
   test('GoodVibesSdkError with explicit code preserves code on wire', () => {
     const err = new GoodVibesSdkError('not found', { code: 'NOT_FOUND', category: 'not_found' });
     const body = buildErrorResponseBody(err);
@@ -70,7 +70,7 @@ describe('buildErrorResponseBody — code always present for GoodVibesSdkError o
 // 404-guard rule: domain-specific codes always map to 404
 // ---------------------------------------------------------------------------
 
-describe('knowledge-routes 404 guard — domain-specific codes', () => {
+describe('knowledge-routes 404 guard: domain-specific codes', () => {
   test('KNOWLEDGE_ISSUE_NOT_FOUND always maps to 404 regardless of status', () => {
     const err = new GoodVibesSdkError('issue not found', { category: 'not_found' });
     // Simulate domain-specific explicit code (service layer sets this explicitly)
@@ -90,7 +90,7 @@ describe('knowledge-routes 404 guard — domain-specific codes', () => {
 // 404-guard rule: bare NOT_FOUND only maps to 404 when status === 404
 // ---------------------------------------------------------------------------
 
-describe('knowledge-routes 404 guard — bare NOT_FOUND provenance check', () => {
+describe('knowledge-routes 404 guard: bare NOT_FOUND provenance check', () => {
   test('NOT_FOUND with status 404 maps to 404 (explicit HTTP provenance)', () => {
     const err = new GoodVibesSdkError('upstream 404', { category: 'not_found', status: 404 });
     expect(err.code).toBe('NOT_FOUND');

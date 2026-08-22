@@ -67,7 +67,7 @@ describe('ExecutionPlanManager.dismiss', () => {
     expect(manager.list().map((p) => p.id)).toContain(plan.id);
   });
 
-  test('mid-execution (active) is refused — requires workstream cancel first', () => {
+  test('mid-execution (active) is refused: requires workstream cancel first', () => {
     const root = createTmpRoot('plan-dismiss-active-');
     const manager = new ExecutionPlanManager(root);
     const plan = manager.create('Running plan', items, 'session-1');

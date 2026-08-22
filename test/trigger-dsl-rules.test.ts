@@ -68,7 +68,7 @@ describe('the trigger DSL refuses arbitrary code', () => {
     expect(validateAction({ kind: 'action-grant', grantId: 'g1', digest: 'abc' }).kind).toBe('action-grant');
   });
 
-  test('a command probe is argv-only — no shell string smuggling', () => {
+  test('a command probe is argv-only: no shell string smuggling', () => {
     // The shape is command + args; there is no field that becomes a shell line.
     const probe = validateProbe({ kind: 'command', command: 'git', args: ['status', '--porcelain'] });
     expect(probe.kind).toBe('command');
@@ -147,7 +147,7 @@ describe('rule: change', () => {
 });
 
 describe('rule: value', () => {
-  test('edge-triggered by default — fires on entry, not on every matching check', () => {
+  test('edge-triggered by default: fires on entry, not on every matching check', () => {
     const entering = decide({ kind: 'value', operator: 'gt', operand: 10 }, observations([[1, 20]]));
     expect(entering.fire).toBe(true);
     const stillHigh = decide(

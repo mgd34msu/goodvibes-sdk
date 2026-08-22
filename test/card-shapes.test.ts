@@ -53,7 +53,7 @@ describe('pan detection', () => {
     expect(text.slice(pan!.startIndex, pan!.startIndex + pan!.length)).toBe('4111 1111 1111 1111');
   });
 
-  test('Luhn alone decides it — no issuer prefix is required', () => {
+  test('Luhn alone decides it: no issuer prefix is required', () => {
     // A 16-digit Luhn-valid number under no well-known issuer prefix (leading
     // 9). §11.0 refuses an issuer-prefix allowlist precisely so cards from
     // less common networks are not missed.

@@ -231,7 +231,7 @@ describe('process-exit hygiene (holds never outlive the process)', () => {
     expect(unregistered).toBe(true);
   });
 
-  test('start() reaps a crashed process\'s stamped orphan inhibitors — never a live owner\'s', async () => {
+  test('start() reaps a crashed process\'s stamped orphan inhibitors: never a live owner\'s', async () => {
     const killed: number[] = [];
     const reaped = await reapOrphanedInhibitors('goodvibes', {
       listProcesses: () => [
@@ -252,7 +252,7 @@ describe('process-exit hygiene (holds never outlive the process)', () => {
     expect(killed).toEqual([501]);
   });
 
-  test('start() reaps a crashed process\'s stamped orphan sleep-edge watcher — never a live owner\'s', async () => {
+  test('start() reaps a crashed process\'s stamped orphan sleep-edge watcher: never a live owner\'s', async () => {
     const killed: number[] = [];
     const watcher = (ownerPid: number): string =>
       `dbus-monitor --system type='signal',interface='org.freedesktop.login1.Manager',member='PrepareForSleep' type='signal',interface='org.goodvibes.SleepWatch',member='GoodvibesSleepWatchOwner${ownerPid}'`;
@@ -403,7 +403,7 @@ describe('live logind proof on this host', () => {
 });
 
 describe('live sleep-edge watcher on this host (proves the leak fix)', () => {
-  test('a real dbus-monitor watcher spawns, carries its owner-pid stamp, and the unsubscribe reaps it — no orphan left', async () => {
+  test('a real dbus-monitor watcher spawns, carries its owner-pid stamp, and the unsubscribe reaps it: no orphan left', async () => {
     const hasDbusMonitor = spawnSync('sh', ['-c', 'command -v dbus-monitor'], { encoding: 'utf-8' }).status === 0;
     if (!hasDbusMonitor) {
       console.warn('[power test] dbus-monitor unavailable in this environment, live sleep-edge watcher proof skipped honestly');

@@ -65,7 +65,7 @@ function fakeVerbGroupDeps(): GatewayVerbGroupDeps {
   return deps as unknown as GatewayVerbGroupDeps;
 }
 
-describe('conformance helper — consumer contract', () => {
+describe('conformance helper: consumer contract', () => {
   test('passes when every descriptor has a handler', () => {
     const catalog = fakeCatalog([
       { id: 'a.one', handled: true },
@@ -98,7 +98,7 @@ describe('conformance helper — consumer contract', () => {
   });
 });
 
-describe('attachWsOnlyGatewayVerbHandlers — real SDK catalog', () => {
+describe('attachWsOnlyGatewayVerbHandlers: real SDK catalog', () => {
   test('ws-only verb family goes from handler-less to invokable', () => {
     // A fresh catalog carries the ws-only DESCRIPTORS but no handlers: exactly
     // the state that answered 501 in production.

@@ -19,7 +19,7 @@ import {
 // resolveContextWindow, unit tests (pure function, no network)
 // ---------------------------------------------------------------------------
 
-describe('resolveContextWindow — provenance ladder', () => {
+describe('resolveContextWindow: provenance ladder', () => {
   test('provider_api wins when apiContextLength is valid', () => {
     const result = resolveContextWindow('my-model', 131072, 32768);
     expect(result.tokens).toBe(131072);
@@ -106,7 +106,7 @@ describe('clearAllContextCaches', () => {
 // extractContextLength field coverage (via resolveContextWindow)
 // ---------------------------------------------------------------------------
 
-describe('resolveContextWindow — field validation', () => {
+describe('resolveContextWindow: field validation', () => {
   test('large context windows (e.g. 1M tokens) are passed through', () => {
     const result = resolveContextWindow('gemini-ultra', 1_048_576, 0);
     expect(result.tokens).toBe(1_048_576);

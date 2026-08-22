@@ -120,7 +120,7 @@ describe('MemoryStore.reviewQueue scope filter (Item 7)', () => {
 });
 
 describe('MemoryRegistry.reviewQueue scope filter (Item 7)', () => {
-  test('backward compatible — no scope returns all scopes', async () => {
+  test('backward compatible: no scope returns all scopes', async () => {
     const root = mkdtempSync(join(tmpdir(), 'gv-reg-rq-compat-'));
     tmpRoots.push(root);
     const store = makeStore(root);

@@ -50,7 +50,7 @@ function makeOtelApi(spanCtx: ReturnType<typeof makeSpanContext> | null = makeSp
 // injectTraceparent(), synchronous
 // ---------------------------------------------------------------------------
 
-describe('injectTraceparent() — OTel absent', () => {
+describe('injectTraceparent(): OTel absent', () => {
   test('no traceparent header added when OTel is not installed', () => {
     // In the test environment, @opentelemetry/api is not installed.
     // The sync probe falls back to null.
@@ -68,7 +68,7 @@ describe('injectTraceparent() — OTel absent', () => {
   });
 });
 
-describe('injectTraceparent() — OTel present via injected state', () => {
+describe('injectTraceparent(): OTel present via injected state', () => {
   const origRequire = (globalThis as { require?: unknown }).require;
 
   afterEach(() => {
@@ -121,7 +121,7 @@ describe('injectTraceparent() — OTel present via injected state', () => {
 // injectTraceparentAsync(), async variant
 // ---------------------------------------------------------------------------
 
-describe('injectTraceparentAsync() — OTel absent', () => {
+describe('injectTraceparentAsync(): OTel absent', () => {
   test('returns without adding traceparent header when OTel not installed', async () => {
     const headers: Record<string, string> = {};
     await injectTraceparentAsync(headers);
@@ -223,7 +223,7 @@ describe('HTTP transport: traceparent not present when OTel absent', () => {
 // MINOR 1: Positive OTel path, injection seam
 // ---------------------------------------------------------------------------
 
-describe('injectTraceparent() — OTel present via test state', () => {
+describe('injectTraceparent(): OTel present via test state', () => {
   test('traceparent header injected with correct W3C format when active span is present', async () => {
     resetOtelState();
     setOtelModuleOverride(makeOtelApi(makeSpanContext()) as never);
@@ -350,7 +350,7 @@ describe('HTTP transport: traceparent injection with OTel test state', () => {
     expect(headers['tracestate']).toBe('vendor=example');
   });
 
-  test('no span active — no traceparent injected even when OTel is present', async () => {
+  test('no span active: no traceparent injected even when OTel is present', async () => {
     const { injectTraceparent: inject } =
       await import('../packages/transport-core/src/otel.js') as {
         injectTraceparent: (h: Record<string, string>) => void;

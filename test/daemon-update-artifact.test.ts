@@ -80,7 +80,7 @@ function updaterOf(runtime: DaemonLifecycleRuntime): { readonly options: { curre
 }
 
 describe('daemon update artifact identity', () => {
-  test('embedded default: update.auto=true but no artifact identity — no loop starts', () => {
+  test('embedded default: update.auto=true but no artifact identity: no loop starts', () => {
     const { runtime } = lifecycleWith(undefined);
     runtime.onStarted();
     try {
@@ -90,7 +90,7 @@ describe('daemon update artifact identity', () => {
     }
   });
 
-  test('a host artifact identity drives the comparison — never the SDK package version', () => {
+  test('a host artifact identity drives the comparison: never the SDK package version', () => {
     const { runtime } = lifecycleWith({ version: '999.0.0-host-artifact', execPath: '/opt/host/bin/host-app' });
     runtime.onStarted();
     try {
@@ -165,7 +165,7 @@ describe('boot-edge service promotion (independent of updates)', () => {
     }
   });
 
-  test('an embedded daemon (no artifact identity) never self-promotes — exiting would kill the host', () => {
+  test('an embedded daemon (no artifact identity) never self-promotes: exiting would kill the host', () => {
     const { runtime, installs, exits } = lifecycleWith(undefined);
     runtime.onStarted();
     try {

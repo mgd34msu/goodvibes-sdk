@@ -27,7 +27,7 @@ const DIRTY_OUTPUT = [
 ].join('\n');
 
 describe('readCompilerOutput', () => {
-  test('finds nothing in clean output — it can answer NO', () => {
+  test('finds nothing in clean output: it can answer NO', () => {
     const verdict = readCompilerOutput(CLEAN_OUTPUT);
     expect(verdict.diagnostics).toEqual([]);
     expect(verdict.reportedErrorCount).toBe(0);

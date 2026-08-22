@@ -84,7 +84,7 @@ function harness(options: {
   };
 }
 
-describe('socket surfaces — the identity must be real', () => {
+describe('socket surfaces: the identity must be real', () => {
   test('the surface is contested under the identity the provider reported', async () => {
     const rig = harness({ identities: ['T0ACME999'] });
     await rig.supervisor.begin();
@@ -282,7 +282,7 @@ describe('socket surfaces — the identity must be real', () => {
   });
 });
 
-describe('socket surfaces — in a live group', () => {
+describe('socket surfaces: in a live group', () => {
   test('two workspaces on one group elect independently and BOTH are consumed', async () => {
     const world = createWorld();
     // Two machines, each holding a token for a DIFFERENT Slack workspace.

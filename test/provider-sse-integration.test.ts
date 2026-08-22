@@ -40,7 +40,7 @@ describe('gateway DEFAULT_DOMAINS', () => {
 // Real end-to-end SSE test
 // ---------------------------------------------------------------------------
 
-describe('ControlPlaneGateway SSE — real end-to-end', () => {
+describe('ControlPlaneGateway SSE: real end-to-end', () => {
   test('MODEL_CHANGED emitted on bus arrives as exactly one SSE frame on the providers domain', async () => {
     const bus = new RuntimeEventBus();
     const gateway = new ControlPlaneGateway({ runtimeBus: bus });

@@ -150,7 +150,7 @@ describe('the envelope', () => {
   });
 });
 
-describe('the merged wire format — group fields and surface fields together', () => {
+describe('the merged wire format: group fields and surface fields together', () => {
   /** A router over an in-memory socket, with the far side wired back to itself. */
   function loopback(): {
     readonly router: GroupWireRouter;

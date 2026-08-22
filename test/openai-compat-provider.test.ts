@@ -86,7 +86,7 @@ function makeDiscoveredServer(over: Partial<DiscoveredServer> = {}): DiscoveredS
 
 // ── Empty-apiKey construction (discovered/anonymous providers) ───────────────
 
-describe('OpenAICompatProvider — empty apiKey construction', () => {
+describe('OpenAICompatProvider: empty apiKey construction', () => {
   test('constructing with apiKey: "" (discovered-provider shape) does not throw', () => {
     expect(() =>
       new OpenAICompatProvider({
@@ -153,7 +153,7 @@ describe('OpenAICompatProvider — empty apiKey construction', () => {
 
 // ── discovered-factory.ts integration: the exact regression scenario ─────────
 
-describe('createDiscoveredProvider — every discovered server type constructs without throwing', () => {
+describe('createDiscoveredProvider: every discovered server type constructs without throwing', () => {
   const serverTypes: DiscoveredServer['serverType'][] = [
     'ollama',
     'lm-studio',
@@ -178,7 +178,7 @@ describe('createDiscoveredProvider — every discovered server type constructs w
 
 // ── Error diagnostic message format: request phase and stream phase ──────────
 
-describe('OpenAICompatProvider.chat — error diagnostic message format', () => {
+describe('OpenAICompatProvider.chat: error diagnostic message format', () => {
   let server: Server<undefined> | undefined;
   afterAll(() => {
     server?.stop(true);

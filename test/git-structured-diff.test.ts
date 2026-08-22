@@ -28,7 +28,7 @@ function makeRepo(): string {
   return dir;
 }
 
-describe('structured git diff — complete, never truncated', () => {
+describe('structured git diff: complete, never truncated', () => {
   test('a >4,000-char diff round-trips complete through the structure', async () => {
     const dir = makeRepo();
     // 300 numbered lines committed, then all rewritten + 100 added: the raw

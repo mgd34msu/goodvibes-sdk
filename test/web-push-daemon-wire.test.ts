@@ -153,7 +153,7 @@ afterAll(async () => {
   rmSync(work, { recursive: true, force: true });
 });
 
-describe('web push — VAPID public key', () => {
+describe('web push: VAPID public key', () => {
   test('push.vapid.get returns the public key and never the private key', async () => {
     const { status, json } = await invokeVerb('push.vapid.get');
     expect(status).toBe(200);
@@ -167,7 +167,7 @@ describe('web push — VAPID public key', () => {
   });
 });
 
-describe('web push — subscription lifecycle', () => {
+describe('web push: subscription lifecycle', () => {
   let subscriptionId: string;
 
   test('subscribe stores a device; the wire view is redacted', async () => {
@@ -230,7 +230,7 @@ describe('web push — subscription lifecycle', () => {
   });
 });
 
-describe('web push — real event source (approval fan-out)', () => {
+describe('web push: real event source (approval fan-out)', () => {
   test('a created approval fans out as a high-urgency push to the subscription', async () => {
     const endpoint = `${sinkOrigin}/push/device-approvals`;
     await invokeVerb('push.subscriptions.create', { endpoint, keys: { p256dh, auth } });
@@ -255,7 +255,7 @@ describe('web push — real event source (approval fan-out)', () => {
   });
 });
 
-describe('web push — registration refuses what could never receive a push', () => {
+describe('web push: registration refuses what could never receive a push', () => {
   test('a junk p256dh is refused at 400 with the delivery path\'s own wording', async () => {
     const { status, json } = await invokeVerb('push.subscriptions.create', {
       endpoint: `${sinkOrigin}/push/junk-key`,
@@ -291,7 +291,7 @@ describe('web push — registration refuses what could never receive a push', ()
   });
 });
 
-describe('web push — honest degrade (410 gone pruned with receipt)', () => {
+describe('web push: honest degrade (410 gone pruned with receipt)', () => {
   test('a 410-gone endpoint is pruned and reported, not faked', async () => {
     const endpoint = `${sinkOrigin}/gone/device-dead`;
     const created = await invokeVerb('push.subscriptions.create', { endpoint, keys: { p256dh, auth } });
@@ -309,7 +309,7 @@ describe('web push — honest degrade (410 gone pruned with receipt)', () => {
   });
 });
 
-describe('web push — self-heal on open (device-identity reconcile)', () => {
+describe('web push: self-heal on open (device-identity reconcile)', () => {
   test('a rotated endpoint heals the one record in place and reports the drift', async () => {
     const deviceId = 'device-phone-1';
     const first = `${sinkOrigin}/push/heal-old`;
@@ -346,7 +346,7 @@ describe('web push — self-heal on open (device-identity reconcile)', () => {
   });
 });
 
-describe('web push — bounded retries then prune on a dead (non-gone) endpoint', () => {
+describe('web push: bounded retries then prune on a dead (non-gone) endpoint', () => {
   test('repeated 500s prune the record after the bounded retries, with an honest receipt', async () => {
     const endpoint = `${sinkOrigin}/fail/device-flaky`;
     const created = await invokeVerb('push.subscriptions.create', { endpoint, keys: { p256dh, auth } });
@@ -397,7 +397,7 @@ describe('web push — bounded retries then prune on a dead (non-gone) endpoint'
   });
 });
 
-describe('web push — VAPID private key custody', () => {
+describe('web push: VAPID private key custody', () => {
   test('the private key is held by the secrets store, never returned by a read verb, never in config', async () => {
     // The private key is retrievable ONLY through the SecretsManager (the same
     // secret-store posture as any credential), proving it was stored as a

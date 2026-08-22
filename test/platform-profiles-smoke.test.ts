@@ -4,7 +4,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 
-describe('platform/profiles — smoke', () => {
+describe('platform/profiles: smoke', () => {
   test('configSnapshotToProfileData returns an object for empty snapshot', async () => {
     const { configSnapshotToProfileData } = await import('../packages/sdk/src/platform/profiles/index.js');
     const result = configSnapshotToProfileData({});

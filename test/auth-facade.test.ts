@@ -34,7 +34,7 @@ function makeOperator(token = 'facade-token') {
   } as unknown as OperatorSdk;
 }
 
-describe('auth facade — GoodVibesAuthClient delegates to client-auth', () => {
+describe('auth facade: GoodVibesAuthClient delegates to client-auth', () => {
   test('createGoodVibesAuthClient login persists token', async () => {
     const tokenStore = createMemoryTokenStore();
     const client = createGoodVibesAuthClient(makeOperator(), tokenStore);
@@ -68,7 +68,7 @@ describe('auth facade — GoodVibesAuthClient delegates to client-auth', () => {
   });
 });
 
-describe('auth facade — new split classes are re-exported', () => {
+describe('auth facade: new split classes are re-exported', () => {
   test('TokenStore is accessible from auth module', async () => {
     const ts = new TokenStore(makeRawStore());
     await ts.setToken('tok');

@@ -67,7 +67,7 @@ function definition(overrides: Partial<ManagedServiceDefinition> & { workingDire
   };
 }
 
-describe('launchd plist rendering (install) — platform faked via service.platform=launchd', () => {
+describe('launchd plist rendering (install): platform faked via service.platform=launchd', () => {
   test('install() writes a plist to <home>/Library/LaunchAgents/<name>.plist with the correct structure', () => withTempDir((dir) => {
     const configManager = launchdConfig(dir, 'goodvibes-launchd-test');
     const def = definition({
@@ -227,7 +227,7 @@ describe('launchd status()/uninstall() semantics', () => {
   }));
 });
 
-describe('launchd start/stop/restart dispatch (injected actionRunner — never a real launchctl call)', () => {
+describe('launchd start/stop/restart dispatch (injected actionRunner: never a real launchctl call)', () => {
   function recordingRunner(status = 0): {
     runner: (command: string, args: readonly string[]) => ManagedServiceActionResult;
     calls: string[][];
@@ -305,7 +305,7 @@ describe('launchd start/stop/restart dispatch (injected actionRunner — never a
     expect(result.actionError).toBeUndefined();
   }));
 
-  test('restart() tolerates a failing unload (agent not loaded yet) but still loads — best-effort unload mirrors `launchctl unload || true`', () => withTempDir((dir) => {
+  test('restart() tolerates a failing unload (agent not loaded yet) but still loads: best-effort unload mirrors `launchctl unload || true`', () => withTempDir((dir) => {
     const calls: string[][] = [];
     const runner = (command: string, args: readonly string[]): ManagedServiceActionResult => {
       calls.push([command, ...args]);
@@ -348,7 +348,7 @@ describe('launchd start/stop/restart dispatch (injected actionRunner — never a
     expect(result.actionError).toBeDefined();
   }));
 
-  test('the real launchctl binary is never invoked — guard: the injected runner captures every dispatched call', () => withTempDir((dir) => {
+  test('the real launchctl binary is never invoked: guard: the injected runner captures every dispatched call', () => withTempDir((dir) => {
     const { runner, calls } = recordingRunner();
     const manager = makeManager(dir, runner);
 
@@ -395,7 +395,7 @@ describe('service-management feature gate (launchd)', () => {
   }));
 });
 
-describe('status() running detection — systemd/launchd query through the injected actionRunner (Finding 2)', () => {
+describe('status() running detection: systemd/launchd query through the injected actionRunner (Finding 2)', () => {
   function makeQueryManager(
     dir: string,
     platform: 'systemd' | 'launchd',
@@ -490,7 +490,7 @@ describe('status() running detection — systemd/launchd query through the injec
     expect(status.running).toBe(false);
   }));
 
-  test('manual: status() never invokes the actionRunner at all — pid-file semantics are unchanged by Finding 2', () => withTempDir((dir) => {
+  test('manual: status() never invokes the actionRunner at all: pid-file semantics are unchanged by Finding 2', () => withTempDir((dir) => {
     let called = false;
     const configManager = testConfigManager(join(dir, 'config'));
     configManager.set('service.platform', 'manual');
@@ -532,7 +532,7 @@ function detectRealLaunchctl(): { available: boolean; reason: string } {
   return { available: true, reason: 'launchctl reachable on darwin' };
 }
 
-describe('real launchd probe (read-only structure check, darwin-only — honest gap on non-macOS CI)', () => {
+describe('real launchd probe (read-only structure check, darwin-only: honest gap on non-macOS CI)', () => {
   test('on darwin, status() resolves the launchd platform against the real host; elsewhere, the unavailability is detected and named (no fabricated darwin pass)', () => {
     const realLaunchctl = detectRealLaunchctl();
     if (!realLaunchctl.available) {

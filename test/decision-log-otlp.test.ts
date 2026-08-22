@@ -108,7 +108,7 @@ function validateLogsPayload(p: OtlpLogsPayload): void {
 // ── attribute mapping ────────────────────────────────────────────────────────
 
 describe('decisionAttributes', () => {
-  test('maps id, tool, class, layer, reason, allowed — plus mode when supplied', () => {
+  test('maps id, tool, class, layer, reason, allowed: plus mode when supplied', () => {
     const attrs = decisionAttributes(entry(7), { mode: 'prompt' });
     const byKey = new Map(attrs.map((a) => [a.key, a.value]));
     expect(byKey.get('decision.id')).toEqual({ intValue: '7' });
@@ -243,7 +243,7 @@ function permissionConfigManager(values: Record<string, unknown>): ConfigManager
  */
 const policyEngineOn = { isEnabled: (id: string): boolean => id === 'permissions-policy-engine' };
 
-describe('telemetry.decisionOtlp* — the export the permission layer performs', () => {
+describe('telemetry.decisionOtlp*: the export the permission layer performs', () => {
   const received: Array<{ path: string; body: unknown }> = [];
   const server = Bun.serve({
     port: 0,

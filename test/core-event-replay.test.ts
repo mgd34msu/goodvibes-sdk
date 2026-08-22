@@ -69,7 +69,7 @@ describe('EventReplayQueue', () => {
     test('acknowledged events are not returned by onTurnComplete', async () => {
       const id = queue.enqueue('AGENT_COMPLETED', { id: 'a1' });
       queue.acknowledge(id);
-      queue.onTurnComplete(); // turn 1 — past grace
+      queue.onTurnComplete(); // turn 1, past grace
       queue.onTurnComplete(); // turn 2
       const replays = queue.onTurnComplete();
       expect(replays).toHaveLength(0);
@@ -297,8 +297,8 @@ describe('EventReplayQueue', () => {
     test('message includes turns-ago count', async () => {
       queue.enqueue('AGENT_COMPLETED', { id: 'a1' });
       queue.onTurnComplete(); // turn 1
-      queue.onTurnComplete(); // turn 2 — replay 1 (2 turns elapsed)
-      const replays = queue.onTurnComplete(); // turn 3 — replay 2 (3 turns elapsed)
+      queue.onTurnComplete(); // turn 2, replay 1 (2 turns elapsed)
+      const replays = queue.onTurnComplete(); // turn 3, replay 2 (3 turns elapsed)
       const msgs = queue.formatReplays(replays);
       expect(msgs[0]).toContain('turns ago');
     });

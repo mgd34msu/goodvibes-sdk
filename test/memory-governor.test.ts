@@ -203,7 +203,7 @@ describe('MemoryGovernor leak tripwire', () => {
     h.gov.sampleOnce();
     for (let i = 0; i < 120; i++) {
       h.advance(1000);
-      h.setRssMb(85 + (i + 1) * 0.1); // +0.1MB/s — far below 25MB/s
+      h.setRssMb(85 + (i + 1) * 0.1); // +0.1MB/s, far below 25MB/s
       h.gov.sampleOnce();
     }
     expect(h.exitReceipt()).toBeNull();
@@ -233,7 +233,7 @@ describe('MemoryGovernor absolute-RSS backstop (anchored to the effective kill c
     // budget×anything but ~59GB below the kernel kill line. That is the
     // critical tier's stay-alive job (refuse expensive work), never an exit.
     const h = makeGovernor({ budgetMb: 0, systemRamMb: 64 * 1024 }); // auto budget -> 4096MB
-    h.setRssMb(5000); // stable — never grows
+    h.setRssMb(5000); // stable, never grows
     h.gov.sampleOnce();
     expect(h.gov.currentTier()).toBe('critical');
     expect(h.gov.admitExpensiveWork('reindex').allowed).toBe(false);
@@ -254,7 +254,7 @@ describe('MemoryGovernor absolute-RSS backstop (anchored to the effective kill c
     // tripwire, so ONLY the ceiling-anchored backstop can end it. Without the
     // backstop this rides to the kernel/cgroup OOM kill with no receipt.
     const h = makeGovernor({ budgetMb: 0, systemRamMb: 8 * 1024 });
-    let rss = 1700; // > high (1638.4MB of the 2048MB budget) — arms the tripwire
+    let rss = 1700; // > high (1638.4MB of the 2048MB budget), arms the tripwire
     h.setRssMb(rss);
     h.gov.sampleOnce();
     for (let i = 0; i < 400 && h.receipts.length === 0; i++) {

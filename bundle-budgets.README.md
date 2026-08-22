@@ -1,4 +1,4 @@
-# bundle-budgets.json — methodology and exclusions
+# bundle-budgets.json: methodology and exclusions
 
 This document explains the structure of `bundle-budgets.json` so that file can stay machine-focused with entries and per-entry rationales.
 
@@ -15,7 +15,7 @@ This document explains the structure of `bundle-budgets.json` so that file can s
 1. Run `bun run bundle:check` to see the current actual sizes.
 2. Set `gzip_bytes` to `max(ceil(actual * 1.2), actual + 50)` for each changed entry.
 3. Update the per-entry `rationale` with the new measurement and the release or commit at which it was taken.
-4. Keep entry rationales free of stale wave/date-specific narrative — anchor to a concrete release or commit.
+4. Keep entry rationales free of stale wave/date-specific narrative. Anchor to a concrete release or commit.
 
 Entry keys must match the `exports` map keys in `packages/sdk/package.json` exactly.
 

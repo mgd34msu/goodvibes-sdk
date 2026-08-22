@@ -291,7 +291,7 @@ describe('a release that already crash looped here is not installed again', () =
     }
   });
 
-  test('the tag form of the rejected version matches the bare form — v2.0.0 and 2.0.0 are one release', async () => {
+  test('the tag form of the rejected version matches the bare form: v2.0.0 and 2.0.0 are one release', async () => {
     const h = makeHarness({ idle: () => true, rejectedVersion: () => 'v2.0.0' });
     try {
       await h.updater.tick();
@@ -316,7 +316,7 @@ describe('a release that already crash looped here is not installed again', () =
     }
   });
 
-  test('a NEWER release than the rejected one installs normally — the daemon un-sticks itself', async () => {
+  test('a NEWER release than the rejected one installs normally: the daemon un-sticks itself', async () => {
     // The rollback rejected 2.0.0; the release that fixed it is 2.0.0 here only
     // because the fixture publishes one tag, so reject the version BELOW it.
     const h = makeHarness({ idle: () => true, rejectedVersion: () => '1.5.0' });
@@ -375,7 +375,7 @@ describe('repeated update-check failures reach the owner', () => {
     }
   });
 
-  test('a persistent failure is ONE message, not one an hour — the quiet window holds', async () => {
+  test('a persistent failure is ONE message, not one an hour: the quiet window holds', async () => {
     let clock = new Date(2026, 6, 12, 14, 30).getTime();
     const h = makeHarness({
       idle: () => true,

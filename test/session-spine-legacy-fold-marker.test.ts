@@ -108,7 +108,7 @@ const REJECTED_MARKERS: readonly { readonly label: string; readonly body: string
   { label: 'an OLDER schema version', body: JSON.stringify({ schemaVersion: 0, completed: true }), reason: 'older schema' },
 ];
 
-describe('session spine legacy fold marker — validated by content, not existence', () => {
+describe('session spine legacy fold marker: validated by content, not existence', () => {
   for (const scenario of REJECTED_MARKERS) {
     test(`re-folds when the marker is ${scenario.label}`, () => {
       const fx = fixture();

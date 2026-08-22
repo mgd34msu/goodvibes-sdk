@@ -202,10 +202,10 @@ function buildAutomaticStrategy(
   _context: CacheContext,
 ): CacheStrategy {
   return {
-    breakpoints: [], // No explicit breakpoints — provider handles it
+    breakpoints: [], // No explicit breakpoints, provider handles it
     prefixStable: true, // Critical: prefix stability maximizes automatic cache hits
     sessionAffinityHeader: cap.sessionAffinityHeader,
-    refreshAfterTurns: 0, // No need to refresh — nothing to configure
+    refreshAfterTurns: 0, // No need to refresh, nothing to configure
   };
 }
 

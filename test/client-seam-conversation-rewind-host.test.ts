@@ -138,7 +138,7 @@ describe('the surface holding a conversation is the one that answers for it', ()
     expect(answered['available']).toBe(false);
   });
 
-  test('polling is what renews the lease — a live host stays registered across cycles', async () => {
+  test('polling is what renews the lease: a live host stays registered across cycles', async () => {
     const { broker, host } = harness();
     host.offer(SESSION);
     await host.pump();

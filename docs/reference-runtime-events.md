@@ -1616,7 +1616,7 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
 
 ## Named WRFC workflow events
 
-The following named events are emitted on the `workflows` domain by the WRFC controller. They are not currently in the operator contract artifact — they are documented here as the authoritative reference.
+The following named events are emitted on the `workflows` domain by the WRFC controller. They are not currently in the operator contract artifact. They are documented here as the authoritative reference.
 
 ---
 
@@ -1640,9 +1640,9 @@ interface Constraint {
 }
 ```
 
-**Trigger:** `WrfcController.handleEngineerCompletion` — fires when `!chain.constraintsEnumerated` (guards against duplicate emission on fixer re-runs).
+**Trigger:** `WrfcController.handleEngineerCompletion`. Fires when `!chain.constraintsEnumerated` (guards against duplicate emission on fixer re-runs).
 
-**Semantics:** Signals the authoritative constraint list for the chain. An empty `constraints` array signals the zero-constraint (unconstrained) path — no constraint enforcement follows.
+**Semantics:** Signals the authoritative constraint list for the chain. An empty `constraints` array signals the zero-constraint (unconstrained) path. No constraint enforcement follows.
 
 ---
 

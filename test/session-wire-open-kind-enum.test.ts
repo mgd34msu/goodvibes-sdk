@@ -30,7 +30,7 @@ function recordWithKind(kind: string): Record<string, unknown> {
   };
 }
 
-describe('session wire — kind enum is open on read', () => {
+describe('session wire: kind enum is open on read', () => {
   test('a record carrying an unknown kind passes RECORD response validation', () => {
     // 'quantum' is not one of the six modeled kinds; a future/mixed-version daemon
     // could emit a kind this build does not know.
@@ -59,7 +59,7 @@ describe('session wire — kind enum is open on read', () => {
   });
 });
 
-describe('session wire — register INPUT kind stays strict', () => {
+describe('session wire: register INPUT kind stays strict', () => {
   const validInput = {
     sessionId: 'user-abc',
     participant: { surfaceKind: 'tui', surfaceId: 'surface:tui', lastSeenAt: 1 },

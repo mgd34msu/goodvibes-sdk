@@ -52,7 +52,7 @@ describe('ImapClient protocol', () => {
     fakeServer = null;
   });
 
-  test('LOGIN success — open() sends greeting, auth, and EXAMINE', async () => {
+  test('LOGIN success: open() sends greeting, auth, and EXAMINE', async () => {
     const events: string[] = [];
 
     fakeServer = await makeFakeImapServer((sock) => {
@@ -90,7 +90,7 @@ describe('ImapClient protocol', () => {
     expect(events.some((e) => e.includes('EXAMINE INBOX'))).toBe(true);
   });
 
-  test('LOGIN failure — throws on NO response', async () => {
+  test('LOGIN failure: throws on NO response', async () => {
     fakeServer = await makeFakeImapServer((sock) => {
       serverWrite(sock, '* OK IMAP4rev1 Fake Server ready');
       sock.on('data', (chunk) => {
@@ -114,7 +114,7 @@ describe('ImapClient protocol', () => {
     await expect(client.open()).rejects.toThrow('IMAP command failed');
   });
 
-  test('SEARCH UNSEEN — parses sequence numbers from * SEARCH response', async () => {
+  test('SEARCH UNSEEN: parses sequence numbers from * SEARCH response', async () => {
     fakeServer = await makeFakeImapServer((sock) => {
       serverWrite(sock, '* OK IMAP4rev1 Fake Server ready');
       sock.on('data', (chunk) => {
@@ -144,7 +144,7 @@ describe('ImapClient protocol', () => {
     expect(nums).toEqual([3, 7, 12, 15]);
   });
 
-  test('SEARCH SINCE — command includes date criterion', async () => {
+  test('SEARCH SINCE: command includes date criterion', async () => {
     const commandsSeen: string[] = [];
 
     fakeServer = await makeFakeImapServer((sock) => {
@@ -181,7 +181,7 @@ describe('ImapClient protocol', () => {
     expect(searchCmd).toContain('15-Jan-2025');
   });
 
-  test('FETCH envelope — parses FROM, SUBJECT, DATE headers; messages stay unread (PEEK)', async () => {
+  test('FETCH envelope: parses FROM, SUBJECT, DATE headers; messages stay unread (PEEK)', async () => {
     const commandsSeen: string[] = [];
 
     fakeServer = await makeFakeImapServer((sock) => {
@@ -239,7 +239,7 @@ describe('ImapClient protocol', () => {
     }
   });
 
-  test('FETCH body preview — uses PEEK and returns bounded content', async () => {
+  test('FETCH body preview: uses PEEK and returns bounded content', async () => {
     const commandsSeen: string[] = [];
 
     fakeServer = await makeFakeImapServer((sock) => {
@@ -277,7 +277,7 @@ describe('ImapClient protocol', () => {
     expect(preview).toContain('Hello from the body');
   });
 
-  test('LOGOUT — sends LOGOUT command and closes', async () => {
+  test('LOGOUT: sends LOGOUT command and closes', async () => {
     const commandsSeen: string[] = [];
 
     fakeServer = await makeFakeImapServer((sock) => {
@@ -316,7 +316,7 @@ describe('ImapClient protocol', () => {
 // imapQuoteCredential, direct unit tests
 // ---------------------------------------------------------------------------
 
-describe('imapQuoteCredential — direct unit tests', () => {
+describe('imapQuoteCredential: direct unit tests', () => {
   test('plain ASCII password is wrapped in double quotes', () => {
     expect(imapQuoteCredential('simplepass', 'password')).toBe('"simplepass"');
   });
@@ -818,7 +818,7 @@ describe('ImapClient UID addressing', () => {
   // `each<const T>(table: T[])`, so the imported readonly array matches no
   // overload and `shape` degrades to `unknown`.
   test.each([...FETCH_WIRE_SHAPES])(
-    'search and fetch speak UID, and the envelope reports the real UID — $name',
+    'search and fetch speak UID, and the envelope reports the real UID: $name',
     async (shape) => {
     activeShape = shape;
     const seen: string[] = [];
@@ -1715,7 +1715,7 @@ describe('ImapSession line retention', () => {
       expect(verdict.detail).toContain('not yet proven');
     });
 
-    test('a plain open() never probes — no FETCH is issued until the watcher asks', async () => {
+    test('a plain open() never probes: no FETCH is issued until the watcher asks', async () => {
       const commands: string[] = [];
       fakeServer = await makeFakeImapServer((sock) => {
         serverWrite(sock, '* OK IMAP4rev1 Fake Server ready');

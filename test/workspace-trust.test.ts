@@ -72,7 +72,7 @@ describe('WorkspaceTrustManager', () => {
   // first non-read tool request is what raises the real question (via
   // trustGatedAsk's requestTrustDecision callback), never a silent
   // side-effect of the state already sitting on disk.
-  it('prior GoodVibes runtime state no longer grandfathers trust — the workspace still starts undecided', async () => {
+  it('prior GoodVibes runtime state no longer grandfathers trust: the workspace still starts undecided', async () => {
     mkdirSync(join(workspace, '.goodvibes', 'sessions'), { recursive: true });
     writeFileSync(join(workspace, '.goodvibes', 'sessions', 's.json'), '{}');
     expect(detectPriorWorkspaceState(workspace, SURFACE_ROOT)).toBe(true);

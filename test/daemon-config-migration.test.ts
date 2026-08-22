@@ -88,7 +88,7 @@ describe('daemon-owned config migration', () => {
     expect(reread?.moved).toEqual(marker.moved);
   });
 
-  test('is idempotent — a second run moves nothing and changes nothing', () => {
+  test('is idempotent: a second run moves nothing and changes nothing', () => {
     const h = home();
     writeSurface(h, 'tui', { surfaces: { telegram: { botUsername: 'goodvibes_agent_bot' } } });
 

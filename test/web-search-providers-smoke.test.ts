@@ -73,7 +73,7 @@ async function assertSearchReturnsPromise(provider: MinimalProvider): Promise<vo
   });
 }
 
-describe('platform/web-search/providers — behavior smoke', () => {
+describe('platform/web-search/providers: behavior smoke', () => {
   test('createBraveSearchProvider returns correct provider shape and search() returns a Promise', async () => {
     const provider = createBraveSearchProvider(makeContext()) as MinimalProvider;
     assertProviderShape(provider, 'brave');

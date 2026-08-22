@@ -37,7 +37,7 @@ describe('diffModelIds', () => {
   });
 });
 
-describe('runLiveModelRefresh — not configured', () => {
+describe('runLiveModelRefresh: not configured', () => {
   test('falls back to the dated-static list with an asOf label, never a bare empty array', async () => {
     const result = await runLiveModelRefresh({
       providerName: 'test-provider',
@@ -52,7 +52,7 @@ describe('runLiveModelRefresh — not configured', () => {
   });
 });
 
-describe('runLiveModelRefresh — live fetch success', () => {
+describe('runLiveModelRefresh: live fetch success', () => {
   test('reports added/removed against the dated-static baseline on first run and persists a cache', () =>
     withTempDir(async (dir) => {
       const cachePath = join(dir, 'test-provider.json');
@@ -100,7 +100,7 @@ describe('runLiveModelRefresh — live fetch success', () => {
     }));
 });
 
-describe('runLiveModelRefresh — TTL cache respected unless forced', () => {
+describe('runLiveModelRefresh: TTL cache respected unless forced', () => {
   test('a fresh on-disk cache short-circuits the live fetch when force is not set', () =>
     withTempDir(async (dir) => {
       const cachePath = join(dir, 'test-provider.json');
@@ -162,7 +162,7 @@ describe('runLiveModelRefresh — TTL cache respected unless forced', () => {
     }));
 });
 
-describe('runLiveModelRefresh — honest failure reporting', () => {
+describe('runLiveModelRefresh: honest failure reporting', () => {
   test('a live fetch failure with a prior cache falls back to the cache and reports the real error', () =>
     withTempDir(async (dir) => {
       const cachePath = join(dir, 'test-provider.json');

@@ -100,26 +100,26 @@ describe('safeEvaluate', () => {
   });
 
   describe('injection rejection', () => {
-    test('process.exit(1) does not execute — process is not in context', () => {
+    test('process.exit(1) does not execute: process is not in context', () => {
       // process is not a key in the context, so it resolves to undefined;
       // the method call parsePostfix silently returns false
       const result = safeEvaluate('process.exit(1)', {});
       expect(result).toBe(false);
     });
 
-    test('require expression is rejected — not in context', () => {
+    test('require expression is rejected: not in context', () => {
       const result = safeEvaluate("require('child_process')", {});
       // require is not in context; method call on undefined returns false
       expect(result).toBe(false);
     });
 
-    test('import expression is rejected — not valid token', () => {
+    test('import expression is rejected: not valid token', () => {
       // import is not a valid identifier our tokenizer produces
       const result = safeEvaluate("import('fs')", {});
       expect(result).toBe(false);
     });
 
-    test('globalThis access is rejected — not in context', () => {
+    test('globalThis access is rejected: not in context', () => {
       const result = safeEvaluate('globalThis.process.exit', {});
       expect(result).toBe(false);
     });

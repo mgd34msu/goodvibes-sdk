@@ -74,7 +74,7 @@ export function resolveEffectiveSystemRamMb(
     try {
       return parseLimit(readFile(path));
     } catch {
-      return null; // absent — not limited at this level/version
+      return null; // absent, not limited at this level/version
     }
   };
   /** Ancestor chain of a cgroup path: '/system.slice/gv.service' -> ['', '/system.slice', '/system.slice/gv.service']. */

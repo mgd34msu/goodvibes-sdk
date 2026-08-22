@@ -23,7 +23,7 @@ describe('resolveHostBinding unrecognized-value posture', () => {
     expect(resolveHostBinding('CUSTOM', 'h', 1, 'web').effectiveMode).toBe('custom');
   });
 
-  test("the exact fixture strings — 'LAN', '' — fall back to the SAFE local posture with recognized:false", () => {
+  test("the exact fixture strings, 'LAN', '', fall back to the SAFE local posture with recognized:false", () => {
     for (const raw of ['LAN', '', 'lan ', 'public', '0.0.0.0']) {
       const binding = resolveHostBinding(raw, '10.0.0.1', 5000, 'controlPlane');
       expect(binding.recognized, `"${raw}" must be flagged unrecognized`).toBe(false);
@@ -42,7 +42,7 @@ describe('resolveHostBinding unrecognized-value posture', () => {
   });
 });
 
-describe('resolveWebBinding — the web endpoint truth', () => {
+describe('resolveWebBinding: the web endpoint truth', () => {
   test('valid stored values resolve recognized', () => {
     expect(resolveWebBinding({ hostMode: 'network', host: '', port: 8080 })).toEqual({ host: '0.0.0.0', port: 8080, recognized: true, effectiveMode: 'network' });
   });

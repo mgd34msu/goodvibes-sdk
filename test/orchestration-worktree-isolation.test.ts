@@ -183,7 +183,7 @@ function freshRoot(): string {
   return dir;
 }
 
-describe('WorktreeIsolationManager — claim-time creation + concurrent non-conflicting edits', () => {
+describe('WorktreeIsolationManager: claim-time creation + concurrent non-conflicting edits', () => {
   test('two items editing the SAME file on different lines both pass, integrate sequentially, and both hunks land', async () => {
     root = freshRoot();
     writeFileSync(join(root, 'shared.txt'), 'line1\nline2\nline3\n');
@@ -351,7 +351,7 @@ describe('WorktreeIsolationManager — claim-time creation + concurrent non-conf
   }, WAIT_TEST_TIMEOUT_MS);
 });
 
-describe('WorktreeIsolationManager — shared isolation (default) stays fully untouched', () => {
+describe('WorktreeIsolationManager: shared isolation (default) stays fully untouched', () => {
   test('no worktree/branch is ever created when isolation is omitted, even with concurrent items touching the same file', async () => {
     root = freshRoot();
     writeFileSync(join(root, 'shared.txt'), 'original\n');
@@ -385,7 +385,7 @@ describe('WorktreeIsolationManager — shared isolation (default) stays fully un
   }, WAIT_TEST_TIMEOUT_MS);
 });
 
-describe('WorktreeIsolationManager — fail/kill cleanup rules', () => {
+describe('WorktreeIsolationManager: fail/kill cleanup rules', () => {
   test('kill on a DIRTY worktree keeps it; kill on a CLEAN worktree removes it', async () => {
     root = freshRoot();
     const h = makeWtHarness();
@@ -454,7 +454,7 @@ describe('WorktreeIsolationManager — fail/kill cleanup rules', () => {
   }, WAIT_TEST_TIMEOUT_MS);
 });
 
-describe('WorktreeIsolationManager — orphan reconciliation (adopt-or-report)', () => {
+describe('WorktreeIsolationManager: orphan reconciliation (adopt-or-report)', () => {
   test('an unrecorded ws/* worktree matching a known non-terminal item is ADOPTED; an unrecorded one matching no item is REPORTED, never deleted', async () => {
     root = freshRoot();
     const engineA = makeEngine(root, makeWtHarness());
@@ -473,7 +473,7 @@ describe('WorktreeIsolationManager — orphan reconciliation (adopt-or-report)',
     const ghostPath = join(root, '.goodvibes', '.worktrees', 'ws', 'orphan', 'ghost');
     runGit(root, ['worktree', 'add', ghostPath, '-b', 'ws/orphan/ghost']);
 
-    expect(ws.items[0]!.worktreePath).toBeUndefined(); // not recorded — matches the crash scenario
+    expect(ws.items[0]!.worktreePath).toBeUndefined(); // not recorded, matches the crash scenario
 
     const snapshotJson = engineA.serializeWorkstream(ws.id)!;
 
@@ -511,7 +511,7 @@ describe('WorktreeIsolationManager — orphan reconciliation (adopt-or-report)',
   }, WAIT_TEST_TIMEOUT_MS);
 });
 
-describe('WorktreeIsolationManager — empty integration (no commits beyond base)', () => {
+describe('WorktreeIsolationManager: empty integration (no commits beyond base)', () => {
   test('an item whose phase never committed anything integrates as an honest no-op: mergeState "merged", no hash, worktree reclaimed', async () => {
     root = freshRoot();
     const h = makeWtHarness();
@@ -543,7 +543,7 @@ describe('WorktreeIsolationManager — empty integration (no commits beyond base
   }, WAIT_TEST_TIMEOUT_MS);
 });
 
-describe('WorktreeIsolationManager — per-worktree dirty-guard', () => {
+describe('WorktreeIsolationManager: per-worktree dirty-guard', () => {
   test('a freshly created item worktree has an EMPTY launch-dirty snapshot', async () => {
     root = freshRoot();
     const h = makeWtHarness();
@@ -563,7 +563,7 @@ describe('WorktreeIsolationManager — per-worktree dirty-guard', () => {
   }, WAIT_TEST_TIMEOUT_MS);
 });
 
-describe('WorktreeIsolationManager — bounded kept-worktree cap, oldest-first eviction', () => {
+describe('WorktreeIsolationManager: bounded kept-worktree cap, oldest-first eviction', () => {
   test('a third dirty kill evicts the OLDEST kept worktree once the cap (1) is exceeded', async () => {
     root = freshRoot();
     const h = makeWtHarness();
@@ -679,7 +679,7 @@ describe('WorktreeIsolationManager — bounded kept-worktree cap, oldest-first e
   }, WAIT_TEST_TIMEOUT_MS);
 });
 
-describe('WorktreeIsolationManager — cold-start setup hook', () => {
+describe('WorktreeIsolationManager: cold-start setup hook', () => {
   test('runWorktreeSetup fires once per created item worktree, with that worktree path', async () => {
     root = freshRoot();
     writeFileSync(join(root, 'seed.txt'), 'seed\n');

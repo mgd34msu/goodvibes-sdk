@@ -71,7 +71,7 @@ describe('gate-id registry membership (fails loudly)', () => {
   });
 });
 
-describe('surface gate map — every channel adapter has a real entry', () => {
+describe('surface gate map: every channel adapter has a real entry', () => {
   test('every adapter surface maps to a registered gate id', () => {
     for (const surface of CHANNEL_ADAPTER_SURFACES) {
       const gateId = surfaceFeatureGateId(surface);

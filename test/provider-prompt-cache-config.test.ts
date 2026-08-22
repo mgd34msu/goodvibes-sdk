@@ -143,7 +143,7 @@ describe('cache.enabled governs whether breakpoints are placed at all', () => {
     expect(off.headers['anthropic-beta'] ?? '').not.toContain('prompt-caching');
   });
 
-  test('no config at all keeps the shipped behaviour — caching on', async () => {
+  test('no config at all keeps the shipped behaviour: caching on', async () => {
     const request = await captureChatRequest(undefined);
     expect(cacheControls(request.body).length).toBeGreaterThan(0);
   });
@@ -171,7 +171,7 @@ describe('cache.stableTtl reaches the stable-content breakpoint', () => {
   });
 });
 
-describe('resolveCacheStrategy — the read itself', () => {
+describe('resolveCacheStrategy: the read itself', () => {
   const context = {
     providerName: 'anthropic',
     systemPromptTokens: 4000,

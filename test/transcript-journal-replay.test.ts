@@ -106,7 +106,7 @@ describe('replayJournalIntoConversation', () => {
     expect(existsSync(journalPath)).toBe(false);
   });
 
-  test('edge: all journal records older than snapshot — silent rotate, conversation unchanged', () => {
+  test('edge: all journal records older than snapshot: silent rotate, conversation unchanged', () => {
     const journalPath = join(tmpDir, 'transcript-old.journal');
     const sessionId = 'ses-old-test';
     const futureSnapshot = Date.now() + 100_000; // snapshot far in the future
@@ -140,7 +140,7 @@ describe('replayJournalIntoConversation', () => {
     expect(existsSync(journalPath)).toBe(false);
   });
 
-  test('edge: journal corrupt from line 1 (bad JSON header) — quarantine, snapshot unchanged', () => {
+  test('edge: journal corrupt from line 1 (bad JSON header): quarantine, snapshot unchanged', () => {
     const journalPath = join(tmpDir, 'transcript-corrupt-header.journal');
     const sessionId = 'ses-corrupt-test';
 
@@ -173,7 +173,7 @@ describe('replayJournalIntoConversation', () => {
     expect(existsSync(`${journalPath}.unrecognized`)).toBe(true);
   });
 
-  test('edge: journal schemaVersion mismatch — quarantine, no replay', () => {
+  test('edge: journal schemaVersion mismatch: quarantine, no replay', () => {
     const journalPath = join(tmpDir, 'transcript-ver-mismatch.journal');
     const sessionId = 'ses-ver-test';
 
@@ -206,7 +206,7 @@ describe('replayJournalIntoConversation', () => {
     expect(existsSync(`${journalPath}.unrecognized`)).toBe(true);
   });
 
-  test('e2e: partial corrupt tail — replays good records, flags hadCorruptTail', () => {
+  test('e2e: partial corrupt tail: replays good records, flags hadCorruptTail', () => {
     const journalPath = join(tmpDir, 'transcript-partial-corrupt.journal');
     const sessionId = 'ses-partial-test';
     const snapshotTimestamp = Date.now() - 5000;
@@ -417,7 +417,7 @@ describe('authoritative-record selection', () => {
         stale(1, base + 200),
         stale(2, base + 300), // sorts LAST by seq, but is STALE
         fresh(0, base + 1000, 2),
-        fresh(1, base + 1100, 3), // NEWEST ts — authoritative
+        fresh(1, base + 1100, 3), // NEWEST ts, authoritative
         '',
       ].join('\n'),
       'utf-8',

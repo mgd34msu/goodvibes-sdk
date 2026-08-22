@@ -27,7 +27,7 @@ function makeStream() {
   };
 }
 
-describe('terminal output guard — double install', () => {
+describe('terminal output guard: double install', () => {
   test('second install disposes first guard before patching', () => {
     const stdout = makeStream();
     const capturedFirst: TerminalOutputIntercept[] = [];

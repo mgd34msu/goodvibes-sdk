@@ -24,7 +24,7 @@ import { makeRequest } from './_helpers/router-requests.js';
 // describe: control routes, happy paths
 // ---------------------------------------------------------------------------
 
-describe('router-e2e control — GET /status (happy path)', () => {
+describe('router-e2e control: GET /status (happy path)', () => {
   test('standalone daemon dispatches /login to the control handler', async () => {
     const loginRequest = makeRequest('POST', 'http://localhost/login');
     let capturedRequest: Request | null = null;
@@ -164,7 +164,7 @@ describe('router-e2e control — GET /status (happy path)', () => {
 // describe: control routes, failure / unmatched paths
 // ---------------------------------------------------------------------------
 
-describe('router-e2e control — failure paths', () => {
+describe('router-e2e control: failure paths', () => {
   test('returns null for unmatched route (passes through to next dispatcher)', async () => {
     const handlers = makeDefaultDaemonHandlerStub();
     const req = makeRequest('GET', 'http://localhost/api/no-such-control-route');

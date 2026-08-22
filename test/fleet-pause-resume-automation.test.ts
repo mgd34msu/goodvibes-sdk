@@ -63,7 +63,7 @@ async function flushMicrotasks(rounds = 8): Promise<void> {
 // d2, pause <-> resume
 // ---------------------------------------------------------------------------
 
-describe('fleet registry — pause/resume (d2)', () => {
+describe('fleet registry: pause/resume (d2)', () => {
   test('trigger: disabled is "paused" (not "killed"), resumable only while paused; resume() re-arms via triggerManager.enable', () => {
     const trigger: TriggerDefinition = { id: 'trg-1', event: 'push', action: 'run tests', enabled: false };
     const enableCalls: string[] = [];
@@ -149,7 +149,7 @@ describe('fleet registry — pause/resume (d2)', () => {
 
     expect(registry.resume('does-not-exist')).toBe(false);
     expect(registry.resume('ag-1')).toBe(false); // agent: never resumable
-    expect(registry.resume('trg-armed')).toBe(false); // already idle — nothing to resume
+    expect(registry.resume('trg-armed')).toBe(false); // already idle, nothing to resume
     expect(enableCalled).toBe(false); // never dispatched for any of the above
     registry.dispose();
   });
@@ -175,7 +175,7 @@ describe('adaptAutomationJob', () => {
   });
 });
 
-describe('fleet registry — automation jobs in the fleet tree (d4)', () => {
+describe('fleet registry: automation jobs in the fleet tree (d4)', () => {
   test('absent automationManager dep: zero automation-job nodes (graceful degrade)', () => {
     const registry = createProcessRegistry(makeDeps());
     expect(registry.query().nodes).toEqual([]);

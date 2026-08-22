@@ -279,7 +279,7 @@ describe('perMethodPolicy end-to-end via contract route', () => {
         maxAttempts: 1,
         baseDelayMs: 0,
         retryOnStatuses: [503],
-        retryOnMethods: ['GET', 'POST'], // POST included — perMethodPolicy gating controls safety
+        retryOnMethods: ['GET', 'POST'], // POST included, perMethodPolicy gating controls safety
         perMethodPolicy: {
           'accounts.snapshot': { maxAttempts: 3 },
         },

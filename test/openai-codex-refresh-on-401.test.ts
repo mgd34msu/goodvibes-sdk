@@ -8,7 +8,7 @@ import type { ProviderSubscription, SubscriptionManager } from '../packages/sdk/
  * timestamp-gated refresh in resolveSubscriptionAccessToken never fires.
  * The provider must spend the stored refresh token on ONE recovery attempt,
  * retry the request once on success, and on refresh failure surface an error
- * that names the subscription session — never the words "API key".
+ * that names the subscription session, never the words "API key".
  */
 
 function fakeJwt(header: string): string {

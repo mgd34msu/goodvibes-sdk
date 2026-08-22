@@ -24,7 +24,7 @@ function useRealNow(): void {
 
 // ── Construction ──────────────────────────────────────────────────────────────
 
-describe('SelectorHotspotSampler — construction', () => {
+describe('SelectorHotspotSampler: construction', () => {
   test('initialises with no tracked keys', () => {
     const s = new SelectorHotspotSampler();
     expect(s.trackedKeyCount).toBe(0);
@@ -43,7 +43,7 @@ describe('SelectorHotspotSampler — construction', () => {
 
 // ── record() ─────────────────────────────────────────────────────────────────
 
-describe('SelectorHotspotSampler — record', () => {
+describe('SelectorHotspotSampler: record', () => {
   test('creates a new key on first record', () => {
     const s = new SelectorHotspotSampler();
     s.record('selectSession', 0.5);
@@ -70,7 +70,7 @@ describe('SelectorHotspotSampler — record', () => {
 
 // ── Latency percentiles ───────────────────────────────────────────────────────
 
-describe('SelectorHotspotSampler — latency percentiles', () => {
+describe('SelectorHotspotSampler: latency percentiles', () => {
   test('computes p50, p95, p99, avg, max correctly for a known distribution', () => {
     const s = new SelectorHotspotSampler({ windowMs: 60_000 });
     // Record 100 samples: 1ms through 100ms
@@ -115,7 +115,7 @@ describe('SelectorHotspotSampler — latency percentiles', () => {
 
 // ── Sliding-window eviction ───────────────────────────────────────────────────
 
-describe('SelectorHotspotSampler — sliding window', () => {
+describe('SelectorHotspotSampler: sliding window', () => {
   beforeEach(() => { useFakeNow(0); });
   afterEach(() => { useRealNow(); });
 
@@ -152,7 +152,7 @@ describe('SelectorHotspotSampler — sliding window', () => {
 
 // ── Hotspot classification ────────────────────────────────────────────────────
 
-describe('SelectorHotspotSampler — hotspot flags', () => {
+describe('SelectorHotspotSampler: hotspot flags', () => {
   beforeEach(() => { useFakeNow(0); });
   afterEach(() => { useRealNow(); });
 
@@ -190,7 +190,7 @@ describe('SelectorHotspotSampler — hotspot flags', () => {
 
 // ── getReport ─────────────────────────────────────────────────────────────────
 
-describe('SelectorHotspotSampler — getReport', () => {
+describe('SelectorHotspotSampler: getReport', () => {
   test('returns hotspots sorted by callsInWindow descending', () => {
     const s = new SelectorHotspotSampler({ windowMs: 60_000 });
     for (let i = 0; i < 3; i++) s.record('selA', 1); // 3 calls
@@ -224,7 +224,7 @@ describe('SelectorHotspotSampler — getReport', () => {
 
 // ── getTopHotspots ────────────────────────────────────────────────────────────
 
-describe('SelectorHotspotSampler — getTopHotspots', () => {
+describe('SelectorHotspotSampler: getTopHotspots', () => {
   test('returns at most N hotspots', () => {
     const s = new SelectorHotspotSampler({ windowMs: 60_000 });
     for (let k = 0; k < 10; k++) s.record(`sel${k}`, 1);
@@ -242,7 +242,7 @@ describe('SelectorHotspotSampler — getTopHotspots', () => {
 
 // ── per-key sample cap ────────────────────────────────────────────────────────
 
-describe('SelectorHotspotSampler — per-key sample cap', () => {
+describe('SelectorHotspotSampler: per-key sample cap', () => {
   test('does not retain more than maxSamplesPerKey samples', () => {
     const s = new SelectorHotspotSampler({ windowMs: 600_000, maxSamplesPerKey: 10 });
     for (let i = 0; i < 50; i++) s.record('sel', 1);
@@ -255,7 +255,7 @@ describe('SelectorHotspotSampler — per-key sample cap', () => {
 
 // ── reset ─────────────────────────────────────────────────────────────────────
 
-describe('SelectorHotspotSampler — reset', () => {
+describe('SelectorHotspotSampler: reset', () => {
   test('clears all tracked keys', () => {
     const s = new SelectorHotspotSampler();
     s.record('sel', 1);

@@ -18,7 +18,7 @@ function urlEncodingFlagged(command: string): boolean {
   );
 }
 
-describe('obfuscation detection — format specifiers are not URL-encoded content', () => {
+describe('obfuscation detection: format specifiers are not URL-encoded content', () => {
   const allowed: ReadonlyArray<[label: string, command: string]> = [
     ['printf width specifiers', 'printf "%4d %4d %-20s\\n" 1 2 three'],
     ['printf zero-padded pairs', 'printf "%02d:%02d\\n" 7 5'],
@@ -38,7 +38,7 @@ describe('obfuscation detection — format specifiers are not URL-encoded conten
   }
 });
 
-describe('obfuscation detection — genuine percent-encoding is still detected', () => {
+describe('obfuscation detection: genuine percent-encoding is still detected', () => {
   // This check reads `node.args`. The tokenizer emits a URL as its own `url`
   // token rather than an argument, so a percent-encoded URL never reaches this
   // predicate at all, that is unchanged by the narrowing above, and the

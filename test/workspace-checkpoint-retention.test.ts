@@ -110,7 +110,7 @@ describe('WorkspaceCheckpointManager retention/gc', () => {
     expect(remaining.some((c) => c.id === pin!.id)).toBe(true);
   });
 
-  test('gc() only touches refs under refs/goodvibes/checkpoints/ — an unrelated ref namespace (standing in for compaction) is untouched', async () => {
+  test('gc() only touches refs under refs/goodvibes/checkpoints/: an unrelated ref namespace (standing in for compaction) is untouched', async () => {
     const root = tempWorkspace('wcp-namespace-');
     const manager = new WorkspaceCheckpointManager({
       workspaceRoot: root,

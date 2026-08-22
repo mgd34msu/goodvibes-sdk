@@ -103,7 +103,7 @@ function freshConfig(): ConfigManager {
   return new ConfigManager({ surfaceRoot: 'daemon', configDir: join(root, 'cfg'), homeDir: root });
 }
 
-describe('§12 — the profile config domain is real, editable and daemon-owned', () => {
+describe('§12: the profile config domain is real, editable and daemon-owned', () => {
   test('all eight keys exist with the design\'s defaults and carry a reasoned description', () => {
     const expected: Record<string, unknown> = {
       'profile.enabled': true,
@@ -135,7 +135,7 @@ describe('§12 — the profile config domain is real, editable and daemon-owned'
   });
 });
 
-describe('§13.1 — fallback direction: an explicit value wins, the profile fills a gap', () => {
+describe('§13.1: fallback direction: an explicit value wins, the profile fills a gap', () => {
   test('an unset checkin key reads from the profile; a configured one does not', async () => {
     const store = await loadedStore();
     const config = freshConfig();
@@ -188,7 +188,7 @@ describe('§13.1 — fallback direction: an explicit value wins, the profile fil
   });
 });
 
-describe('§13.1 — the fallback is confined to get(), and nothing else', () => {
+describe('§13.1: the fallback is confined to get(), and nothing else', () => {
   test('getAll, getCategory and getRaw all still report the key as unset', async () => {
     const store = await loadedStore();
     const config = freshConfig();
@@ -214,7 +214,7 @@ describe('§13.1 — the fallback is confined to get(), and nothing else', () =>
   });
 });
 
-describe('§4.3 — an invalid mechanical value falls back exactly like an unset one', () => {
+describe('§4.3: an invalid mechanical value falls back exactly like an unset one', () => {
   test('timezone: Mars/Olympus never reaches a consumer through the fallback', async () => {
     const store = await loadedStore();
     const reader = createConsumerFallbackReader(store, () => true);
@@ -224,7 +224,7 @@ describe('§4.3 — an invalid mechanical value falls back exactly like an unset
   });
 });
 
-describe('§13.1 — rows for keys that do not exist yet are inert', () => {
+describe('§13.1: rows for keys that do not exist yet are inert', () => {
   test('the declared map covers the design table, and the payments rows are absent from the schema', async () => {
     const store = await loadedStore();
     const keys = CONSUMER_FALLBACKS.map((row) => row.configKey);
@@ -301,7 +301,7 @@ describe('the unset predicate is narrow on purpose', () => {
   });
 });
 
-describe('§13.2 / §13.3 — the two direct consumers, and the one deliberately left alone', () => {
+describe('§13.2 / §13.3: the two direct consumers, and the one deliberately left alone', () => {
   test('signup base address falls back to the profile only when no mail account is configured', async () => {
     const store = await loadedStore();
     const config = freshConfig();
@@ -319,7 +319,7 @@ describe('§13.2 / §13.3 — the two direct consumers, and the one deliberately
     expect(resolveSignupBaseAddress('configured@example.com')).toBe('configured@example.com');
   });
 
-  test('resolveOwnerAddresses still reads configuration only — the taint exemption is not widened', () => {
+  test('resolveOwnerAddresses still reads configuration only: the taint exemption is not widened', () => {
     // The keys that gate the send-to-owner-only exemption are all config paths;
     // no profile field id is among them, and none of them is a fallback row.
     const fallbackKeys = new Set(CONSUMER_FALLBACKS.map((row) => row.configKey));
@@ -405,7 +405,7 @@ describe('the two halves of "inert until the payments branch merges", now that i
   });
 });
 
-describe('§13.3 — the taint exemption must never be fed from the profile', () => {
+describe('§13.3: the taint exemption must never be fed from the profile', () => {
   test('no owner-address config key is a fallback row, asserted not assumed', () => {
     const fallbackKeys = new Set(CONSUMER_FALLBACKS.map((row) => row.configKey));
     for (const key of OWNER_ADDRESS_CONFIG_KEYS) {

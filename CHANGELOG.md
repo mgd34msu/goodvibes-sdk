@@ -21,7 +21,7 @@
   "no target node available" in seconds and latch off with crash wording.
   It now announces once, in plain words, that no microphone is available,
   re-probes every minute outside the crash-latch budget, and recovers only
-  when audio actually arrives — a recorder that merely spawns on a
+  when audio actually arrives. A recorder that merely spawns on a
   deviceless machine dies a beat later and proves nothing. The
   silent-recorder case (opens, delivers nothing) keeps its prompt
   excluded-backend restart under the new `no-audio` failure reason.
@@ -45,8 +45,8 @@
   concurrent callers so a revocation storm spends the refresh token exactly
   once, skipped entirely when another caller or process already refreshed,
   and bounded to a 30-second token exchange. On success the turn retries
-  once and narrates the retry; on an answered 4xx — the authorization server
-  refusing the grant — the error says the subscription session has ended and
+  once and narrates the retry; on an answered 4xx, the authorization server
+  refusing the grant, the error says the subscription session has ended and
   to sign in again; on a transport failure or 5xx the original rejection
   surfaces, because telling a user to re-login over a token-endpoint blip is
   a lie. A persist failure after a successful refresh keeps the refreshed

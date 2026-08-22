@@ -79,7 +79,7 @@ const HAZARDS = [
   '',
 ].join('\n');
 
-describe('§14.14 — odd content survives a write to another section byte-for-byte', () => {
+describe('§14.14: odd content survives a write to another section byte-for-byte', () => {
   test('a fenced fake heading and fake field are never treated as real', () => {
     const projection = parseProfileDocument({ path: '/x', text: HAZARDS, exists: true });
 
@@ -140,7 +140,7 @@ describe('§14.14 — odd content survives a write to another section byte-for-b
   });
 });
 
-describe('§14.15 — his edits are authoritative and are never restored', () => {
+describe('§14.15: his edits are authoritative and are never restored', () => {
   const DOC = [
     '## Location',
     '',
@@ -235,7 +235,7 @@ describe('§14.15 — his edits are authoritative and are never restored', () =>
   });
 });
 
-describe('§14.4 and §14.5 — provenance round-trips and is retrievable', () => {
+describe('§14.4 and §14.5: provenance round-trips and is retrievable', () => {
   const DOC = ['## Commerce', '', 'currency: USD', ''].join('\n');
 
   test('surface, date and verbatim survive the file', async () => {
@@ -278,7 +278,7 @@ describe('§14.4 and §14.5 — provenance round-trips and is retrievable', () =
   });
 });
 
-describe('§14.7 — deletion deletes, including its history', () => {
+describe('§14.7: deletion deletes, including its history', () => {
   test('after forget the value is gone from memory and from the bytes', async () => {
     const path = tempProfile(['## Contact', '', 'phone: +1 517 555 0134', ''].join('\n'));
     const store = await loadedStore(path);
@@ -307,7 +307,7 @@ describe('§14.7 — deletion deletes, including its history', () => {
   });
 });
 
-describe('§14.8 — supersede keeps history and undo restores it', () => {
+describe('§14.8: supersede keeps history and undo restores it', () => {
   test('the old value survives as a comment and undo puts it back', async () => {
     const path = tempProfile(['## Commerce', '', 'shipping address: 401 Home St, Lansing, MI 48933, US', 'currency: USD', ''].join('\n'));
     const store = await loadedStore(path);
@@ -338,7 +338,7 @@ describe('§14.8 — supersede keeps history and undo restores it', () => {
   });
 });
 
-describe('§14.17 — an interrupted write leaves the previous complete file', () => {
+describe('§14.17: an interrupted write leaves the previous complete file', () => {
   test('a failed rename leaves the original bytes and removes the temp file', async () => {
     const original = ['## Location', '', 'timezone: America/Detroit', ''].join('\n');
     const path = tempProfile(original);

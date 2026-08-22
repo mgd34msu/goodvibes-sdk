@@ -388,7 +388,7 @@ describe('command-word resolution', () => {
     expect(result.commandArgs).toEqual([]);
   });
 
-  test('only tokens AFTER the command word become that command’s arguments', () => {
+  test('only tokens AFTER the command word become that command\'s arguments', () => {
     const result = parse(['a.txt', 'serve', 'b.txt']);
     expect(result.command).toBe('serve');
     expect(result.positionals).toEqual(['a.txt', 'b.txt']);
@@ -410,7 +410,7 @@ describe('unknown flags', () => {
     expect(result.commandArgs).toEqual([]);
   });
 
-  test('an unknown flag typed after the command word rides that command’s leniency', () => {
+  test('an unknown flag typed after the command word rides that command\'s leniency', () => {
     const result = parse(['status', '--typo-flag']);
     expect(result.errors).toEqual([]);
     expect(result.commandArgs).toEqual(['--typo-flag']);
@@ -437,7 +437,7 @@ describe('missing flag values', () => {
 });
 
 describe('a bare `-`', () => {
-  test('is not swallowed as an optional flag’s value', () => {
+  test('is not swallowed as an optional flag\'s value', () => {
     expect(flags(['--fork', '-']).fork).toBe(true);
     expect(flags(['--resume', '-']).resume).toBe('latest');
     expect(parse(['--resume', '-']).positionals).toEqual(['-']);

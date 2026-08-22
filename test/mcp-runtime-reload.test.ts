@@ -99,7 +99,7 @@ describe('startMcpConfigAutoReload', () => {
     expect(registry.reloadCalls).toBe(0);
   });
 
-  test('does not reload on start — only on an observed change', async () => {
+  test('does not reload on start: only on an observed change', async () => {
     writeProjectConfig('{"mcpServers":{}}');
     const registry = fakeRegistry();
     const handle = startMcpConfigAutoReload({ roots, registry, intervalMs: 500 });

@@ -50,7 +50,7 @@ describe('resolveOrCreateDaemonPath', () => {
     expect(root).toEqual({ surfaces: { email: { imap: { host: 'imap.fastmail.com' } } } });
   });
 
-  test('an existing section is used, not replaced — sibling values survive', () => {
+  test('an existing section is used, not replaced: sibling values survive', () => {
     const root: Record<string, unknown> = { email: { username: 'someone@example.com' } };
     const slot = resolveOrCreateDaemonPath(root, 'email.imapHost' as DaemonOwnedConfigPath);
     slot.parent[slot.field] = 'imap.gmail.com';
@@ -66,7 +66,7 @@ describe('resolveOrCreateDaemonPath', () => {
     expect(root).toEqual({ email: { imapHost: 'imap.gmail.com' } });
   });
 
-  test('an array is treated the same way — indexing into it would corrupt the store', () => {
+  test('an array is treated the same way: indexing into it would corrupt the store', () => {
     const root: Record<string, unknown> = { email: ['stale'] };
     const slot = resolveOrCreateDaemonPath(root, 'email.imapHost' as DaemonOwnedConfigPath);
     slot.parent[slot.field] = 'imap.gmail.com';

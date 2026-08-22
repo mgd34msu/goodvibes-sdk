@@ -26,7 +26,7 @@ function agentEnvelope(agentId: string) {
 }
 
 describe('RuntimeEventBus dispatch ordering contract', () => {
-  test('a subscriber can never observe state mid-mutation — emit dispatches after the mutating call completes', async () => {
+  test('a subscriber can never observe state mid-mutation: emit dispatches after the mutating call completes', async () => {
     const bus = new RuntimeEventBus();
     const state = { phase: 'initial' as 'initial' | 'mutating' | 'settled' };
     const observed: string[] = [];
@@ -74,7 +74,7 @@ describe('RuntimeEventBus dispatch ordering contract', () => {
     expect(order.indexOf('after-emit')).toBeLessThan(order.indexOf('domain-listener'));
   });
 
-  test('a throwing subscriber cannot break the mutating caller — emit returns normally', async () => {
+  test('a throwing subscriber cannot break the mutating caller: emit returns normally', async () => {
     const bus = new RuntimeEventBus();
     let reached = false;
     bus.onDomain('agents', () => { throw new Error('subscriber blew up'); });

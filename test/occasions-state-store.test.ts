@@ -200,7 +200,7 @@ describe('housekeeping', () => {
     expect(await store.answerFor("sarah's birthday", '2026-03-14')).toBeUndefined();
   });
 
-  test('a one-off answer has no expiry — handled is permanent', async () => {
+  test('a one-off answer has no expiry: handled is permanent', async () => {
     const store = new OccasionStateStore(statePath());
     await store.recordAnswer({ ...ack(), expiresAfter: undefined });
     const report = await store.sweep({

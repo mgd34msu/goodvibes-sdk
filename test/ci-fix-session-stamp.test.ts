@@ -58,7 +58,7 @@ async function waitFor(check: () => boolean, ms = 500): Promise<void> {
 }
 
 describe('accepted fix-this offers stamp the spawned session onto the approval record', () => {
-  test('an accepted offer gains fixSessionId — observable through the broker subscription AND listApprovals', async () => {
+  test('an accepted offer gains fixSessionId: observable through the broker subscription AND listApprovals', async () => {
     const broker = new ApprovalBroker({ storePath: ':memory:' });
     const liveUpdates: SharedApprovalRecord[] = [];
     broker.subscribe((record) => liveUpdates.push(record));
@@ -139,7 +139,7 @@ describe('accepted fix-this offers stamp the spawned session onto the approval r
     expect(broker.listApprovals(10)).toHaveLength(0);
   });
 
-  test('a failed spawn stamps the honest error onto the accepted record — never a dead id', async () => {
+  test('a failed spawn stamps the honest error onto the accepted record: never a dead id', async () => {
     const broker = new ApprovalBroker({ storePath: ':memory:' });
     const liveUpdates: SharedApprovalRecord[] = [];
     broker.subscribe((record) => liveUpdates.push(record));

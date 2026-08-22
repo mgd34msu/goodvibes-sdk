@@ -36,7 +36,7 @@ function makeProposal(items: ProposalWorkItem[], overrides: Partial<PlanProposal
 
 const cfg = makeFakeConfigManager();
 
-describe('fromPlanProposal — item mapping', () => {
+describe('fromPlanProposal: item mapping', () => {
   test('one work item per proposal item; title + brief become title + task', () => {
     const proposal = makeProposal([
       proposalItem({ id: 'a', title: 'Item A', brief: 'do A carefully' }),
@@ -91,7 +91,7 @@ describe('fromPlanProposal — item mapping', () => {
   });
 });
 
-describe('fromPlanProposal — provenance', () => {
+describe('fromPlanProposal: provenance', () => {
   test('carries decomposedBy/proposalId/strategy/cost/elapsed', () => {
     const proposal = makeProposal(
       [proposalItem({ id: 'a', title: 'A', brief: 'a' })],
@@ -114,7 +114,7 @@ describe('fromPlanProposal — provenance', () => {
   });
 });
 
-describe('fromPlanProposal — assemble-time assertions (BIG-3 item 2)', () => {
+describe('fromPlanProposal: assemble-time assertions (BIG-3 item 2)', () => {
   test('throws on a dangling dependency id', () => {
     const proposal = makeProposal([
       proposalItem({ id: 'a', title: 'A', brief: 'a' }),

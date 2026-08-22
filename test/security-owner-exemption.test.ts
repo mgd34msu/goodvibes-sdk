@@ -87,7 +87,7 @@ describe('the owner identity comes from configuration and nowhere else', () => {
   });
 });
 
-describe('attacks on the exemption — every one must fail', () => {
+describe('attacks on the exemption: every one must fail', () => {
   const owners = new Set([OWNER]);
 
   test('the owner PLUS an attacker is not exempt', () => {

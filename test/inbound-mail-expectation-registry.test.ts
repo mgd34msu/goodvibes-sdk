@@ -449,7 +449,7 @@ describe('an expectation is refused against a mailbox that cannot be read (gate 
     expect(raised.message).toContain('surfaces.email.imap.mailbox');
   });
 
-  test('a DEGRADED mailbox still opens — a reconnect is not a refusal', async () => {
+  test('a DEGRADED mailbox still opens: a reconnect is not a refusal', async () => {
     const { registry } = build({ capability: () => RECONNECTING });
     const opened = await registry.open({
       serviceDomain: 'example.com',
@@ -459,7 +459,7 @@ describe('an expectation is refused against a mailbox that cannot be read (gate 
     expect(registry.list().map((entry) => entry.id)).toEqual([opened.id]);
   });
 
-  test('an unprobed mailbox still opens — no answer yet is not an answer of no', async () => {
+  test('an unprobed mailbox still opens: no answer yet is not an answer of no', async () => {
     const { registry } = build({ capability: () => null });
     await registry.open({
       serviceDomain: 'example.com',
@@ -547,7 +547,7 @@ describe('a watcher in reconnect backoff does NOT fail expectations (gate #33)',
     expect(registry.list().map((entry) => entry.id)).toEqual([opened.id]);
   });
 
-  test('and it still matches afterwards — the grant was untouched, not merely uncounted', async () => {
+  test('and it still matches afterwards: the grant was untouched, not merely uncounted', async () => {
     const { registry } = build();
     await registry.open({
       serviceDomain: 'example.com',

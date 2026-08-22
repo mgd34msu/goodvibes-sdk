@@ -36,7 +36,7 @@ function scratch(): string {
   return mkdtempSync(join(tmpdir(), 'gv-voice-prov-'));
 }
 
-describe('downloadVerifiedFile — atomic + checksum', () => {
+describe('downloadVerifiedFile: atomic + checksum', () => {
   test('a matching download lands; a re-run skips it (resumable)', async () => {
     const dir = scratch();
     const dest = join(dir, 'model.onnx');
@@ -165,7 +165,7 @@ describe('a managed install supersedes a manual one, and says which path it repl
     expect(receipt.skipped.map((entry) => entry.key)).toEqual(['voice.local.ttsModelPath']);
   });
 
-  test('with NO managed root nothing is superseded — an unclassifiable path is left alone', () => {
+  test('with NO managed root nothing is superseded: an unclassifiable path is left alone', () => {
     // Not a softening: without a root every configured path looks foreign, so
     // superseding here would repoint ALL of them. Refusing to judge is the
     // careful branch, and it is pinned so it cannot drift into the other one.
@@ -334,7 +334,7 @@ describe('fix-round hardening (reviewer scenarios)', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  test('status verification is cached by (path,size,mtime) — the model is hashed once, not per poll', async () => {
+  test('status verification is cached by (path,size,mtime): the model is hashed once, not per poll', async () => {
     const dir = scratch();
     const { fileMatchesCached } = await import('../packages/sdk/src/platform/voice/provisioning/index.ts');
     const file = join(dir, 'model.onnx');
@@ -435,7 +435,7 @@ describe('breaker classification + reset (reviewer scenario)', () => {
     });
     await expect(provider.synthesize!({ text: 'x', metadata: {} } as never)).rejects.toThrow();
     await expect(provider.synthesize!({ text: 'x', metadata: {} } as never)).rejects.toThrow();
-    expect(calls).toBe(2); // NOT tripped — both calls invoked the engine
+    expect(calls).toBe(2); // NOT tripped, both calls invoked the engine
   });
 
   test('resetEngineFailureState clears a genuinely tripped breaker (the install recovery act)', async () => {

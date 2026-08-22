@@ -38,7 +38,7 @@ function withPreconnect(
 // --------------------------------------------------------------------------
 // trackDisposables, method detection
 // --------------------------------------------------------------------------
-describe('trackDisposables — disposes what a test registers', () => {
+describe('trackDisposables: disposes what a test registers', () => {
   const log: string[] = [];
 
   test('registers values with dispose/stop/close and returns them unchanged', () => {
@@ -61,7 +61,7 @@ describe('trackDisposables — disposes what a test registers', () => {
   });
 });
 
-describe('trackDisposables — explicit disposers and bare callbacks', () => {
+describe('trackDisposables: explicit disposers and bare callbacks', () => {
   const seen: string[] = [];
 
   test('an explicit disposer overrides method detection', () => {
@@ -77,7 +77,7 @@ describe('trackDisposables — explicit disposers and bare callbacks', () => {
   });
 });
 
-describe('trackDisposables — refuses to silently leak', () => {
+describe('trackDisposables: refuses to silently leak', () => {
   test('a value with no teardown method is rejected loudly', () => {
     expect(() => disposables.add({ notDisposable: true })).toThrow(
       /no dispose\/stop\/close\/destroy\/shutdown method/,
@@ -107,7 +107,7 @@ describe('trackDisposables — refuses to silently leak', () => {
 // --------------------------------------------------------------------------
 // trackGlobalStubs, unconditional restore
 // --------------------------------------------------------------------------
-describe('trackGlobalStubs — restores process-wide globals after each test', () => {
+describe('trackGlobalStubs: restores process-wide globals after each test', () => {
   const realFetch = globalThis.fetch;
   const realNow = Date.now;
 

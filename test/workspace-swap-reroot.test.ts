@@ -37,7 +37,7 @@ function cleanup(...dirs: string[]): void {
 // B1, rerootStores is called with the new working directory
 // ---------------------------------------------------------------------------
 
-describe('WorkspaceSwapManager — rerootStores is called on swap', () => {
+describe('WorkspaceSwapManager: rerootStores is called on swap', () => {
   let workspace1: string;
   let workspace2: string;
   let daemonHome: string;
@@ -135,7 +135,7 @@ describe('WorkspaceSwapManager — rerootStores is called on swap', () => {
 // Real-services integration: MemoryStore disk isolation across workspace swap
 // ---------------------------------------------------------------------------
 
-describe('WorkspaceSwapManager — real MemoryStore disk isolation', () => {
+describe('WorkspaceSwapManager: real MemoryStore disk isolation', () => {
   /**
    * Build a real MemoryEmbeddingProviderRegistry pre-loaded with the
    * built-in deterministic HASHED provider (no external API keys required).

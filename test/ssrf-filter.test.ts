@@ -54,13 +54,13 @@ describe('HTTP hook SSRF filter', () => {
     expect(result.error).toMatch(/blocked/);
   });
 
-  test('allowInternal: true bypasses the SSRF filter (attempts actual fetch — expected network fail, not SSRF block)', async () => {
+  test('allowInternal: true bypasses the SSRF filter (attempts actual fetch: expected network fail, not SSRF block)', async () => {
     const hook: HookDefinition = {
       match: 'Post:tool:*',
       type: 'http',
       url: 'http://127.0.0.1:19999/no-such-endpoint',
       allowInternal: true,
-      timeout: 1, // 1 second — connection refused is instant
+      timeout: 1, // 1 second, connection refused is instant
     };
     const result = await runHttpHook(hook, MOCK_EVENT);
     expect(result.ok).toBe(false);

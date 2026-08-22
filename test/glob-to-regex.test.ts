@@ -13,7 +13,7 @@
 import { describe, expect, test } from 'bun:test';
 import { globBodyToRegexSource, globToRegex, buildGlobMatcher } from '../packages/sdk/src/platform/utils/glob-to-regex.js';
 
-describe('globBodyToRegexSource — single-pass glob body', () => {
+describe('globBodyToRegexSource: single-pass glob body', () => {
   test('maps **, *, and ? to the caller-chosen sub-expressions', () => {
     expect(globBodyToRegexSource('a/**', '[^/]*', '.*', '[^/]')).toBe('a/.*');
     expect(globBodyToRegexSource('a/*', '[^/]*', '.*', '[^/]')).toBe('a/[^/]*');
@@ -45,7 +45,7 @@ describe('globBodyToRegexSource — single-pass glob body', () => {
   });
 });
 
-describe('globToRegex — shared path matcher', () => {
+describe('globToRegex: shared path matcher', () => {
   test('**/ expands to an optional path prefix (previously corrupted by the sentinel)', () => {
     const match = buildGlobMatcher('**/*.ts');
     expect(match('a.ts')).toBe(true);

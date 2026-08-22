@@ -188,7 +188,7 @@ describe('the depth guard refuses a re-entered synthesized request as a loop', (
     expect(helper.wsCallStats().inFlight).toBe(0);
   });
 
-  test('a first synthesis is still allowed — the guard is not a blanket ban', async () => {
+  test('a first synthesis is still allowed: the guard is not a blanket ban', async () => {
     const catalog = new GatewayMethodCatalog();
     const { helper, dispatches } = loopingHelper(catalog);
 

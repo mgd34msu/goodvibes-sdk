@@ -149,7 +149,7 @@ describe('session-persistence: consumeRecovery', () => {
     expect(result.snapshot).toBeNull();
   });
 
-  test('does not apply the snapshot to any conversation on its own — it only returns data', () => {
+  test('does not apply the snapshot to any conversation on its own: it only returns data', () => {
     const { surface } = tempSurface();
     writeRecoveryFile(snapshotOf('untouched'), 'sess-passive', '', { surface });
     const result = consumeRecovery(surface, 'sess-passive');
@@ -189,7 +189,7 @@ describe('session-persistence: removeRecoveryPoint', () => {
     expect(existsSync(surface.recoveryFile('sess-a'))).toBe(false);
   });
 
-  test('without a sessionId, retires ONLY the offered (newest) snapshot — never every other session\'s', () => {
+  test('without a sessionId, retires ONLY the offered (newest) snapshot: never every other session\'s', () => {
     // The keyless "no, remove it" answers the ONE snapshot the user was
     // offered. Clearing the whole directory would silently destroy other
     // sessions' crash snapshots that were never shown to anyone.

@@ -205,7 +205,7 @@ function makeRegistryDeps(record: AgentRecord, messageBus: Pick<AgentMessageBus,
   };
 }
 
-describe('orchestrator-runner — per-turn passive knowledge injection', () => {
+describe('orchestrator-runner: per-turn passive knowledge injection', () => {
   let tmpDir: string | undefined;
 
   afterEach(() => {

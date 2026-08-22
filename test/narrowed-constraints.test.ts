@@ -194,7 +194,7 @@ describe('Anthropic max_tokens matches what the provider publishes', () => {
     expect(await capturedMaxTokens('claude-fable-5', 200_000)).toBe(128_000);
   });
 
-  test('haiku-4-5 gets 64000 — the table is corrected, not merely widened', async () => {
+  test('haiku-4-5 gets 64000: the table is corrected, not merely widened', async () => {
     expect(await capturedMaxTokens('claude-haiku-4-5', 200_000)).toBe(64_000);
   });
 

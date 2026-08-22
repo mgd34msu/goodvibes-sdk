@@ -164,7 +164,7 @@ describe('occasion line grammar', () => {
     expect(piped.occasion.kind).toBe('remember-only');
   });
 
-  test('a line with no kind is refused, and says so — nothing is inferred', () => {
+  test('a line with no kind is refused, and says so: nothing is inferred', () => {
     const result = parseOccasionLine(2, "- Mum's birthday · 04-02 · annual");
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -236,7 +236,7 @@ describe('plan line grammar', () => {
     expect(result.plan.destination).toBe('Lisbon');
   });
 
-  test('away is opt-in — a dated range at home is still a plan', () => {
+  test('away is opt-in: a dated range at home is still a plan', () => {
     const result = parsePlanLine(0, '- Kitchen refit · 2026-09-03..2026-09-10');
     expect(result.ok).toBe(true);
     if (!result.ok) return;

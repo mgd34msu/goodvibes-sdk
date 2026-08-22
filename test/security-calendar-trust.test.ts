@@ -390,7 +390,7 @@ describe('a subscription poll records nothing; reading it records', () => {
     });
   }
 
-  test('add() and refresh() — which run because a timer said so — record NOTHING', async () => {
+  test('add() and refresh(), which run because a timer said so, record NOTHING', async () => {
     const ledger = new UntrustedContentLedger();
     const subscriptions = store(recorderInto(ledger), feedBody('Standup'));
 
@@ -405,7 +405,7 @@ describe('a subscription poll records nothing; reading it records', () => {
     expect(ledger.hasIngestedThisTurn()).toBe(false);
   });
 
-  test('events() is a PURE accessor — it records nothing even when a recorder is wired', async () => {
+  test('events() is a PURE accessor: it records nothing even when a recorder is wired', async () => {
     // The property Ruling 1 restored. `events()` reads as an accessor and is
     // already called from an arrival path in a consumer: goodvibes-agent's
     // calendar-subscription-registry `refresh()` calls `store.events(name)` to
@@ -440,7 +440,7 @@ describe('a subscription poll records nothing; reading it records', () => {
     expect(ledger.hasIngestedThisTurn()).toBe(false);
   });
 
-  test('readEvents() — a read someone asked for — records, with the feed URL masked', async () => {
+  test('readEvents(), a read someone asked for, records, with the feed URL masked', async () => {
     const ledger = new UntrustedContentLedger();
     const subscriptions = store(recorderInto(ledger), feedBody('Standup'));
     await subscriptions.add({ url: FEED_URL });
@@ -482,7 +482,7 @@ describe('a subscription poll records nothing; reading it records', () => {
     );
   });
 
-  test('a store with no recorder still works — the recording is injected, never reached for', async () => {
+  test('a store with no recorder still works: the recording is injected, never reached for', async () => {
     const subscriptions = new SubscriptionStore({
       fetcher: async () => okFeed(feedBody('Standup')),
       clock: () => FIXED_NOW,
@@ -586,7 +586,7 @@ describe('a CalDAV collection is the owner\'s own server, so the organizer decid
     expect(ledger.all()[0]?.origin).toBe('calendar:alice@stranger.example (claimed organizer)');
   });
 
-  test('an event with no ORGANIZER at all still records — absent is not owned', async () => {
+  test('an event with no ORGANIZER at all still records: absent is not owned', async () => {
     // The fail-towards-recording default. Only a positive match is exempt.
     const ledger = new UntrustedContentLedger();
     await listOnce(ANONYMOUS_EVENT_ICS, ledger, OWNER_CALDAV_CONFIG);
@@ -597,7 +597,7 @@ describe('a CalDAV collection is the owner\'s own server, so the organizer decid
     expect(ledger.all()[0]?.origin).toBe('calendar:CalDAV collection default');
   });
 
-  test('an unconfigurable owner identity records everything — no owner set, no exemption', async () => {
+  test('an unconfigurable owner identity records everything: no owner set, no exemption', async () => {
     // `surfaces.calendar.caldavUser` is 'avery', which is not the address the
     // ORGANIZER claims, so nothing matches and the event is external.
     const ledger = new UntrustedContentLedger();

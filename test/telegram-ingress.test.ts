@@ -185,7 +185,7 @@ async function waitFor(predicate: () => boolean, label: string, ceilingMs = 10_0
 
 // ── mode selection ──────────────────────────────────────────────────────────
 
-describe('telegram ingress — mode selection is explicit and exclusive', () => {
+describe('telegram ingress: mode selection is explicit and exclusive', () => {
   test('polling mode clears any registered webhook before polling, and never registers one', async () => {
     const h = makeHarness();
     try {
@@ -262,7 +262,7 @@ describe('telegram ingress — mode selection is explicit and exclusive', () => 
 
 // ── reconfiguration ─────────────────────────────────────────────────────────
 
-describe('telegram ingress — reconfiguration leaves no state behind', () => {
+describe('telegram ingress: reconfiguration leaves no state behind', () => {
   test('switching webhook to polling swaps modes without leaving both armed', async () => {
     const h = makeHarness({ config: { 'surfaces.telegram.mode': 'webhook' } });
     try {
@@ -314,7 +314,7 @@ describe('telegram ingress — reconfiguration leaves no state behind', () => {
 
 // ── diagnostics instead of silence ──────────────────────────────────────────
 
-describe('telegram ingress — a configured surface that cannot receive says so', () => {
+describe('telegram ingress: a configured surface that cannot receive says so', () => {
   test('a token with the surface disabled reports the half-finished setup', async () => {
     const h = makeHarness({ config: { 'surfaces.telegram.enabled': false } });
     try {
@@ -349,7 +349,7 @@ describe('telegram ingress — a configured surface that cannot receive says so'
 
 // ── the poll loop ───────────────────────────────────────────────────────────
 
-describe('telegram ingress — polled updates reach the shared handler', () => {
+describe('telegram ingress: polled updates reach the shared handler', () => {
   test('a polled message is dispatched through the same path as a webhook update', async () => {
     const h = makeHarness();
     h.telegram.queue('getUpdates', () => ok([textUpdate(101, 'triage the build')]));
@@ -393,7 +393,7 @@ describe('telegram ingress — polled updates reach the shared handler', () => {
 
 // ── failure handling ────────────────────────────────────────────────────────
 
-describe('telegram ingress — errors are classified, not blindly retried', () => {
+describe('telegram ingress: errors are classified, not blindly retried', () => {
   test('a 409 conflict clears the webhook and resumes rather than backing off', async () => {
     // Jitter pinned to zero, so the only wait here is the backoff floor. With
     // the production draw this test raced a 0–5 s random delay against a 5 s
@@ -438,7 +438,7 @@ describe('telegram ingress — errors are classified, not blindly retried', () =
     } finally { await h.supervisor.stop(); h.cleanup(); }
   }, TEST_BUDGET_MS);
 
-  test('a non-conflict failure is not staggered — the jitter is for competing consumers only', async () => {
+  test('a non-conflict failure is not staggered: the jitter is for competing consumers only', async () => {
     const draws: string[] = [];
     const h = makeHarness({
       conflictJitterFraction: () => { draws.push('drawn'); return 0; },
@@ -601,7 +601,7 @@ describe('telegram ingress — errors are classified, not blindly retried', () =
 
 // ── offset persistence ──────────────────────────────────────────────────────
 
-describe('telegram offset store — the cursor survives restarts', () => {
+describe('telegram offset store: the cursor survives restarts', () => {
   test('the cursor is persisted after a batch and resumed on the next start', async () => {
     const first = makeHarness();
     first.telegram.queue('getUpdates', () => ok([textUpdate(500, 'first run')]));

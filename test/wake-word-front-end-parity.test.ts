@@ -107,7 +107,7 @@ describe('wake-word front end reproduces openWakeWord', () => {
     expect(peak).toBeCloseTo(1.4234e-2, 6);
   });
 
-  test('framing is center=False — no padding, 8 frames per 80 ms chunk with context', () => {
+  test('framing is center=False: no padding, 8 frames per 80 ms chunk with context', () => {
     expect(melFrameCount(511)).toBe(0);
     expect(melFrameCount(512)).toBe(1);
     // The streaming recipe: 1280 new samples plus 3 hops of context yields

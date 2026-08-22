@@ -126,7 +126,7 @@ describe('both runtime service factories resolve the shared path', () => {
     }
   });
 
-  test('a login recorded by one surface graph is visible to another surface graph on the same home — the defect this round fixes', () => {
+  test('a login recorded by one surface graph is visible to another surface graph on the same home: the defect this round fixes', () => {
     const home = makeHome('gv-sub-cross-surface-factories');
     const tui = createClientRuntimeServices({
       configManager: new ConfigManager({ surfaceRoot: 'tui', configDir: join(home, 'tui-cfg'), workingDir: home, homeDir: home }),
@@ -184,7 +184,7 @@ describe('legacy surface store migration', () => {
     expect(second.get('openai-subscriber')?.accessToken).toBe('legacy-fresh');
   });
 
-  test('a legacy record older than the shared one is never adopted — no downgrade', () => {
+  test('a legacy record older than the shared one is never adopted: no downgrade', () => {
     const home = makeHome('gv-sub-migrate-no-downgrade');
     const shellPaths = createShellPathService({ workingDirectory: home, homeDirectory: home });
     const sharedPath = sharedSubscriptionsPath(shellPaths);
@@ -246,7 +246,7 @@ describe('legacy surface store migration', () => {
     expect(existsSync(corruptShared)).toBe(false); // nothing to fold, so nothing was written
   });
 
-  test('omitting legacyPath does nothing extra — the pre-migration constructor shape still works', () => {
+  test('omitting legacyPath does nothing extra: the pre-migration constructor shape still works', () => {
     const home = makeHome('gv-sub-no-legacy');
     const shellPaths = createShellPathService({ workingDirectory: home, homeDirectory: home });
     const sharedPath = sharedSubscriptionsPath(shellPaths);
@@ -270,7 +270,7 @@ describe('cross-instance visibility on the shared path', () => {
     expect(reader.get('openai-subscriber')?.accessToken).toBe('written-by-writer');
   });
 
-  test('get() re-reads on every call rather than caching — a write from elsewhere on disk is picked up by an existing instance', () => {
+  test('get() re-reads on every call rather than caching: a write from elsewhere on disk is picked up by an existing instance', () => {
     const home = makeHome('gv-sub-no-cache');
     const shellPaths = createShellPathService({ workingDirectory: home, homeDirectory: home });
     const sharedPath = sharedSubscriptionsPath(shellPaths);

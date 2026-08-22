@@ -107,7 +107,7 @@ import { validateSmtpAddress, validateSmtpSubject } from '../packages/sdk/src/pl
 // SMTP header/command injection prevention
 // ---------------------------------------------------------------------------
 
-describe('validateSmtpAddress / validateSmtpSubject — injection prevention', () => {
+describe('validateSmtpAddress / validateSmtpSubject: injection prevention', () => {
   test('rejects from address with \\r\\n in it', () => {
     expect(() => validateSmtpAddress('evil\r\nBCC: victim@example.test', 'from'))
       .toThrow(/must not contain control characters/);
@@ -152,7 +152,7 @@ describe('validateSmtpAddress / validateSmtpSubject — injection prevention', (
   });
 });
 
-describe('SmtpClient sendMail — hostile from/to/subject blocked before envelope write', () => {
+describe('SmtpClient sendMail: hostile from/to/subject blocked before envelope write', () => {
   let fakeServer: FakeServer | null = null;
 
   afterEach(() => {
@@ -299,7 +299,7 @@ describe('SmtpClient protocol', () => {
     fakeServer = null;
   });
 
-  test('happy path — EHLO, AUTH PLAIN, MAIL FROM, RCPT TO, DATA, QUIT', async () => {
+  test('happy path: EHLO, AUTH PLAIN, MAIL FROM, RCPT TO, DATA, QUIT', async () => {
     const commands: string[] = [];
     fakeServer = await makeFakeSmtpServer((sock) => happyPathScript(sock, commands));
 
@@ -327,7 +327,7 @@ describe('SmtpClient protocol', () => {
     expect(commands.some((c) => c.trim() === '.')).toBe(true);
   });
 
-  test('dot-stuffing — lines beginning with "." get an extra "."', async () => {
+  test('dot-stuffing: lines beginning with "." get an extra "."', async () => {
     const commands: string[] = [];
     fakeServer = await makeFakeSmtpServer((sock) => happyPathScript(sock, commands));
 
@@ -355,7 +355,7 @@ describe('SmtpClient protocol', () => {
     expect(bodyLines.some((l) => l === '.')).toBe(true);
   });
 
-  test('AUTH LOGIN fallback — uses two-step base64 when PLAIN not advertised', async () => {
+  test('AUTH LOGIN fallback: uses two-step base64 when PLAIN not advertised', async () => {
     const commands: string[] = [];
     fakeServer = await makeFakeSmtpServer((sock) => {
       serverWrite(sock, '220 fake.smtp.example.test ESMTP ready');
@@ -419,7 +419,7 @@ describe('SmtpClient protocol', () => {
     expect(commands.some((c) => c.trim().toUpperCase().startsWith('AUTH LOGIN'))).toBe(true);
   });
 
-  test('AUTH failure — throws when server returns 535', async () => {
+  test('AUTH failure: throws when server returns 535', async () => {
     fakeServer = await makeFakeSmtpServer((sock) => {
       serverWrite(sock, '220 fake.smtp.example.test ESMTP ready');
       sock.setEncoding('utf8');
@@ -490,7 +490,7 @@ describe('SmtpClient protocol', () => {
     expect(bodyText2).toContain('CRIT-2');
   });
 
-  test('no AUTH capability — throws descriptive error', async () => {
+  test('no AUTH capability: throws descriptive error', async () => {
     fakeServer = await makeFakeSmtpServer((sock) => {
       serverWrite(sock, '220 fake.smtp.example.test ESMTP ready');
       sock.setEncoding('utf8');
@@ -615,7 +615,7 @@ describe('SmtpClient.verifyAuth', () => {
 // Message-ID and the send result
 // ---------------------------------------------------------------------------
 
-describe('SmtpClient.sendMail — Message-ID and sentAt', () => {
+describe('SmtpClient.sendMail: Message-ID and sentAt', () => {
   let fakeServer: FakeServer | null = null;
 
   afterEach(() => {

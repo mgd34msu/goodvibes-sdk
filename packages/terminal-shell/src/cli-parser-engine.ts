@@ -247,7 +247,7 @@ export function parseWithCatalog<TCommand extends string, TField extends string,
           warnings,
         };
       }
-      // 'passthrough': the token stands as an ordinary positional below; the
+      // 'passthrough': the token is an ordinary positional below; the
       // command stays the catalog default and sawCommand stays false, so the
       // REST of argv is also parsed in the pre-command (strict) posture,
       // matching a single unmatched word never partially unlocking anything.

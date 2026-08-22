@@ -74,7 +74,7 @@ function makeBroker(storePath: string): SharedSessionBroker {
   } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]));
 }
 
-describe('inversion guard — the 299-closed-chat scenario is never mass-deleted', () => {
+describe('inversion guard: the 299-closed-chat scenario is never mass-deleted', () => {
   test('companion manager: boot → advance past grace → sweep×3 → all 299 still listable + on disk, memory bounded', async () => {
     const sessionsDir = mkdtempSync(join(tmpdir(), 'inversion-companion-'));
     try {

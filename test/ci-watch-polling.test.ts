@@ -164,7 +164,7 @@ describe('daemon polling over the watcher registry', () => {
   test('the cadence respects the rate-limit floor', () => {
     const { host, registered } = makePollHost();
     const service = new CiWatchService({ source: fakeSource(() => []), store: new CiWatchStore(':memory:') });
-    registerCiWatchPolling(host, service, { intervalMs: 1 }); // absurdly hot — clamped
+    registerCiWatchPolling(host, service, { intervalMs: 1 }); // absurdly hot, clamped
     expect(registered[0]!.intervalMs).toBe(MIN_CI_POLL_INTERVAL_MS);
   });
 

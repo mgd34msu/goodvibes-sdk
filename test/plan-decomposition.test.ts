@@ -77,7 +77,7 @@ const VALID_JSON = JSON.stringify({
 
 const USAGE = { inputTokens: 800, outputTokens: 200, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 1000 };
 
-describe('parseDecomposition — strict validation', () => {
+describe('parseDecomposition: strict validation', () => {
   test('accepts a contract-valid object and orders items by ordinal', () => {
     const out = JSON.stringify({
       items: [
@@ -132,7 +132,7 @@ describe('parseDecomposition — strict validation', () => {
   });
 });
 
-describe('decomposeGoal — agent path success', () => {
+describe('decomposeGoal: agent path success', () => {
   test('valid agent output yields an agent-provenance proposal with usage/cost/elapsed', async () => {
     const { runner, calls } = scriptedRunner([completed(VALID_JSON, USAGE)]);
     const outcomes: DecompositionOutcome[] = [];
@@ -162,7 +162,7 @@ describe('decomposeGoal — agent path success', () => {
   });
 });
 
-describe('decomposeGoal — repair then accept', () => {
+describe('decomposeGoal: repair then accept', () => {
   test('malformed initial output, valid repair → agent proposal, repaired=true, two runner calls', async () => {
     const { runner, calls } = scriptedRunner([completed('no json here'), completed(VALID_JSON, USAGE)]);
     const outcomes: DecompositionOutcome[] = [];
@@ -177,7 +177,7 @@ describe('decomposeGoal — repair then accept', () => {
   });
 });
 
-describe('decomposeGoal — fallback honesty', () => {
+describe('decomposeGoal: fallback honesty', () => {
   test('malformed after one repair → heuristic fallback with reason + event', async () => {
     const { runner, calls } = scriptedRunner([completed('garbage'), completed('still garbage')]);
     const outcomes: DecompositionOutcome[] = [];
@@ -241,7 +241,7 @@ describe('decomposeGoal — fallback honesty', () => {
   });
 });
 
-describe('decomposeGoal — configured / gated heuristic (not a fallback)', () => {
+describe('decomposeGoal: configured / gated heuristic (not a fallback)', () => {
   test('config mode "heuristic" forces the heuristic path, no agent, no fallbackReason', async () => {
     const { runner, calls } = scriptedRunner([completed(VALID_JSON, USAGE)]);
     const outcomes: DecompositionOutcome[] = [];

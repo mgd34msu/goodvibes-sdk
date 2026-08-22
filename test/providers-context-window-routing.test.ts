@@ -57,7 +57,7 @@ afterEach(() => {
 // provider_api provenance is highest priority in getContextWindowForModel
 // ---------------------------------------------------------------------------
 
-describe('getContextWindowForModel — provider_api provenance', () => {
+describe('getContextWindowForModel: provider_api provenance', () => {
   test('uses contextWindow directly when provenance is provider_api', () => {
     const modelLimitsService = makeModelLimitsService();
     const model = makeModel({
@@ -95,7 +95,7 @@ describe('getContextWindowForModel — provider_api provenance', () => {
 // configured_cap and fallback provenance
 // ---------------------------------------------------------------------------
 
-describe('getContextWindowForModel — configured_cap and fallback', () => {
+describe('getContextWindowForModel: configured_cap and fallback', () => {
   test('configured_cap falls through to OpenRouter/registry path (not provider_api shortcut)', () => {
     const modelLimitsService = makeModelLimitsService();
     const model = makeModel({

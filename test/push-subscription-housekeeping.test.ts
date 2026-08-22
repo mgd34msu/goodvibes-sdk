@@ -320,7 +320,7 @@ describe('reaping requires evidence the subscription is already dead', () => {
     expect(await store.all()).toHaveLength(1);
   });
 
-  test('the sweep is idempotent — a second pass removes nothing', async () => {
+  test('the sweep is idempotent: a second pass removes nothing', async () => {
     seed([record({ id: 'push-dead', consecutiveFailures: 7 }), record({ id: 'push-live' })]);
     const store = makeStore({ failureThreshold: 5 });
     expect((await store.sweep('manual')).removed).toHaveLength(1);

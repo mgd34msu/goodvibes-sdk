@@ -75,7 +75,7 @@ describe('OpenAICompatProvider.refreshModels (gateway live discovery)', () => {
     );
   });
 
-  test('a dead endpoint degrades to the dated baseline with the honest reason — never a blank list', async () => {
+  test('a dead endpoint degrades to the dated baseline with the honest reason: never a blank list', async () => {
     await withMockedFetch(
       () => new Response('bad gateway', { status: 502, statusText: 'Bad Gateway' }),
       async () => {

@@ -59,7 +59,7 @@ describe('decideHomeClaim', () => {
     expect(decision.message).toContain('already owned by a live process');
   });
 
-  test('our OWN claim is already-held, not a refusal — re-entrancy is not contention', () => {
+  test('our OWN claim is already-held, not a refusal: re-entrancy is not contention', () => {
     expect(decideHomeClaim({ existing: claim({ pid: 77 }), pid: 77, identity: AGENT, holderIdentityNow: AGENT }))
       .toEqual({ outcome: 'already-held' });
   });
@@ -69,7 +69,7 @@ describe('decideHomeClaim', () => {
       .toEqual({ outcome: 'claim' });
   });
 
-  test('a RECYCLED pid — alive, but now some other program — does not refuse a boot', () => {
+  test('a RECYCLED pid, alive, but now some other program, does not refuse a boot', () => {
     expect(decideHomeClaim({
       existing: claim(),
       pid: 99,
@@ -130,7 +130,7 @@ describe('claimSurfaceHome', () => {
     expect(onDisk.pid).toBe(501);
   });
 
-  test('a different surface is a different home — the agent does not block the terminal', () => {
+  test('a different surface is a different home: the agent does not block the terminal', () => {
     const home = newHome();
     claimSurfaceHome({ homeDirectory: home, surfaceRoot: 'agent', pid: 500, identity: AGENT });
     const tui = claimSurfaceHome({
@@ -203,7 +203,7 @@ describe('createClientRuntimeServices homeSingleWriter', () => {
     expect(existsSync(claimPath)).toBe(false);
   });
 
-  test('the default claims nothing — a terminal is legitimately run twice', () => {
+  test('the default claims nothing: a terminal is legitimately run twice', () => {
     const { services, claimPath } = compose();
     expect(existsSync(claimPath)).toBe(false);
     services.dispose();

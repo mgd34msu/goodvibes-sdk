@@ -51,7 +51,7 @@ describe('auth events', () => {
 // ---------------------------------------------------------------------------
 // Integration: auth counter wiring through the HTTP login path
 // ---------------------------------------------------------------------------
-describe('auth counter wiring — login path', () => {
+describe('auth counter wiring: login path', () => {
   const tmpRoots: string[] = [];
   afterEach(() => {
     for (const root of tmpRoots.splice(0)) {

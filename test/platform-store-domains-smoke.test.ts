@@ -27,7 +27,7 @@ function assertBaseShape(state: unknown, domainName: string) {
   expect(typeof s.revision, `${domainName}: revision should be a number`).toBe('number');
 }
 
-describe('platform/runtime/store/domains — behavior smoke', () => {
+describe('platform/runtime/store/domains: behavior smoke', () => {
   test('createInitialAcpState returns correct shape', () => {
     const state = createInitialAcpState();
     assertBaseShape(state, 'acp');

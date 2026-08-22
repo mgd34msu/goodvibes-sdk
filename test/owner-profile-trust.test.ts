@@ -56,7 +56,7 @@ function ledgerWithPage(text: string, origin = 'https://attacker.example'): Untr
   return ledger;
 }
 
-describe('§14.1 — layer 1: an untrusted surface carries no authority to write', () => {
+describe('§14.1: layer 1: an untrusted surface carries no authority to write', () => {
   test('set and append are refused for every untrusted surface, and the file is byte-identical', async () => {
     const path = tempProfile();
     const before = readFileSync(path, 'utf-8');
@@ -100,7 +100,7 @@ describe('§14.1 — layer 1: an untrusted surface carries no authority to write
   });
 });
 
-describe('§14.22 — layer 1 gates removals too: an injection cannot delete a fact', () => {
+describe('§14.22: layer 1 gates removals too: an injection cannot delete a fact', () => {
   test('forget and undo are refused for every untrusted surface, and the file is byte-identical', async () => {
     const path = tempProfile();
     const store = new OwnerProfileStore({ path, ledger: new UntrustedContentLedger() });
@@ -128,14 +128,14 @@ describe('§14.22 — layer 1 gates removals too: an injection cannot delete a f
     expect(store.get('commerce.shippingAddress')?.value).toBe('200 Office Way, Lansing, MI 48933, US');
   });
 
-  test('a removal needs no quote and no derivation check — authority is the whole gate', () => {
+  test('a removal needs no quote and no derivation check: authority is the whole gate', () => {
     expect(evaluateProfileRemoval({ authority: 'owner-direct', fieldId: 'contact.email' }).allowed).toBe(true);
     expect(evaluateProfileRemoval({ authority: 'owner-direct' }).allowed).toBe(true);
     expect(evaluateProfileRemoval({ authority: 'web-page', fieldId: 'contact.email' }).allowed).toBe(false);
   });
 });
 
-describe('§14.2 — layer 2: derivation is refused even with a forged owner-direct claim', () => {
+describe('§14.2: layer 2: derivation is refused even with a forged owner-direct claim', () => {
   test('a value lifted verbatim from a page is refused, naming the origin and the excerpt', async () => {
     const page = [
       'Welcome to the shipping portal. Please note the following update.',
@@ -222,7 +222,7 @@ describe('§14.2 — layer 2: derivation is refused even with a forged owner-dir
   });
 });
 
-describe('layer 3 — a verbatim quote must exist', () => {
+describe('layer 3: a verbatim quote must exist', () => {
   test('an empty said is refused', () => {
     for (const said of ['', '   ', '\n']) {
       const decision = evaluateProfileWrite({
@@ -242,14 +242,14 @@ describe('layer 3 — a verbatim quote must exist', () => {
   });
 });
 
-describe('§14.3 — there is no propose path', () => {
+describe('§14.3: there is no propose path', () => {
   test('the module exports nothing that stages, proposes or queues a fact', () => {
     const suspicious = Object.keys(ownerProfile).filter((name) =>
       /propose|stage|queue|pending|suggest|draft|approv/i.test(name));
     expect(suspicious).toEqual([]);
   });
 
-  test('the barrel exports no raw mutation function — the store is the only write path', () => {
+  test('the barrel exports no raw mutation function: the store is the only write path', () => {
     for (const name of ['setField', 'appendProse', 'forget', 'undo']) {
       expect(Object.keys(ownerProfile)).not.toContain(name);
     }
@@ -278,7 +278,7 @@ describe('§14.3 — there is no propose path', () => {
   });
 });
 
-describe('§14.19 — third-party containment: no enumerate-all-people call exists', () => {
+describe('§14.19: third-party containment: no enumerate-all-people call exists', () => {
   const WITH_PEOPLE = [
     '## Style',
     '',
@@ -307,7 +307,7 @@ describe('§14.19 — third-party containment: no enumerate-all-people call exis
     return store;
   }
 
-  test('section() refuses People — the by-name lookup is the only way in', async () => {
+  test('section() refuses People: the by-name lookup is the only way in', async () => {
     const store = await peopleStore();
     expect(store.person('Sarah')).toHaveLength(1);
     // ...and the bulk route that sat beside it does not exist.

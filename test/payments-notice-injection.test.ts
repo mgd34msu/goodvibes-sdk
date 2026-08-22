@@ -198,7 +198,7 @@ describe('each case is genuinely gated by its trigger', () => {
     return breakMentionForms(noMarkup).replace(/ {2,}/g, ' ').trim();
   }
 
-  test('dropping "(" lets a markdown link survive — so "(" is what gates it', () => {
+  test('dropping "(" lets a markdown link survive: so "(" is what gates it', () => {
     // Without this, "[" removal alone would look sufficient and the parenthesis
     // case would be passing for a reason nobody chose.
     const weakened = sanitizeMinus('[Approved](https://evil.example)', '(');
@@ -207,7 +207,7 @@ describe('each case is genuinely gated by its trigger', () => {
     expect(sanitizeNoticeField('[Approved](https://evil.example)')).not.toContain('(');
   });
 
-  test('dropping "[" still leaves the pair broken — the sets overlap on purpose', () => {
+  test('dropping "[" still leaves the pair broken: the sets overlap on purpose', () => {
     const weakened = sanitizeMinus('[Approved](https://evil.example)', '[');
     expect(weakened).not.toMatch(/\[[^\]]*\]\([^)]*\)/);
   });

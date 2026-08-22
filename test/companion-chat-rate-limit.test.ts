@@ -60,7 +60,7 @@ function makeManager(opts: ManagerOptions = {}): CompanionChatManager {
 // RL1: Per-session limit, (N+1)-th message throws
 // ---------------------------------------------------------------------------
 
-describe('RL1: per-session rate limit — (N+1)-th message throws', () => {
+describe('RL1: per-session rate limit: (N+1)-th message throws', () => {
   test('sends exactly perSessionLimit messages then throws on the next', async () => {
     const PER_SESSION = 3;
     const manager = makeManager({ perSessionLimit: PER_SESSION, perClientLimit: 100 });
@@ -142,7 +142,7 @@ describe('RL6: runtime configManager overrides per-session limit', () => {
 // RL2: Per-client limit enforced
 // ---------------------------------------------------------------------------
 
-describe('RL2: per-client rate limit — enforced across messages', () => {
+describe('RL2: per-client rate limit: enforced across messages', () => {
   test('throws GoodVibesSdkError after perClientLimit messages from same client', async () => {
     const PER_CLIENT = 4;
     // Set per-session high so client limit triggers first
@@ -181,7 +181,7 @@ describe('RL3: rate-limit error includes retryAfterMs inside the rate-limit wind
 
     await manager.postMessage(session.id, 'first');
 
-    const err = await manager.postMessage(session.id, 'second — over limit').catch((e: unknown) => e);
+    const err = await manager.postMessage(session.id, 'second, over limit').catch((e: unknown) => e);
     expect(err).toBeInstanceOf(GoodVibesSdkError);
     const sdkErr = err as GoodVibesSdkError;
     expect(sdkErr.retryAfterMs).toBeGreaterThanOrEqual(59_000);

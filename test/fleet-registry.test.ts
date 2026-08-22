@@ -196,7 +196,7 @@ function flushBus(): Promise<void> {
 
 // ── 10. Empty fleet ───────────────────────────────────────────────────────────
 
-describe('fleet registry — empty fleet', () => {
+describe('fleet registry: empty fleet', () => {
   test('query() over empty managers returns an empty snapshot, no throw', () => {
     const registry = createProcessRegistry(makeDeps());
     const snapshot = registry.query();
@@ -209,7 +209,7 @@ describe('fleet registry — empty fleet', () => {
 
 // ── 1. Adapter mapping ────────────────────────────────────────────────────────
 
-describe('fleet registry — adapter mapping', () => {
+describe('fleet registry: adapter mapping', () => {
   test('agent node: usage passthrough, coarse status mapping, capabilities', () => {
     const agent = makeAgent({
       id: 'ag-1',
@@ -406,7 +406,7 @@ describe('fleet registry — adapter mapping', () => {
     const registryLater = createProcessRegistry(makeDeps({
       agentManager: { list: () => [...agents], cancel: () => false },
       wrfcController: { listChains: () => [chain] },
-      now: () => T0 + 60_000, // a full minute later — elapsed must NOT have climbed
+      now: () => T0 + 60_000, // a full minute later, elapsed must NOT have climbed
     }));
     const nodeEarly = nodeById(registryEarly, 'chain:ch-cascade-killed');
     const nodeLater = nodeById(registryLater, 'chain:ch-cascade-killed');
@@ -512,7 +512,7 @@ describe('fleet registry — adapter mapping', () => {
     expect(trgNode.kind).toBe('trigger');
     expect(trgNode.state).toBe('idle');
     expect(trgNode.capabilities.pausable).toBe(true);
-    expect(trgNode.capabilities.resumable).toBe(false); // already armed — nothing to resume
+    expect(trgNode.capabilities.resumable).toBe(false); // already armed, nothing to resume
     const schNode = nodeById(registry, 'schedule:nightly');
     expect(schNode.kind).toBe('schedule');
     // A disabled schedule entry is 'paused', NOT 'killed', the entry
@@ -585,7 +585,7 @@ describe('fleet registry — adapter mapping', () => {
 
 // ── 2. Fine-grained states from REAL bus emitters ─────────────────────────────
 
-describe('fleet registry — activity side-table via runtime bus', () => {
+describe('fleet registry: activity side-table via runtime bus', () => {
   function busSetup(agent: AgentRecord): { registry: ProcessRegistry; bus: RuntimeEventBus } {
     const bus = new RuntimeEventBus();
     const registry = createProcessRegistry(makeDeps({
@@ -687,7 +687,7 @@ describe('fleet registry — activity side-table via runtime bus', () => {
 
 // ── 3. Stalled derivation ─────────────────────────────────────────────────────
 
-describe('fleet registry — stalled derivation', () => {
+describe('fleet registry: stalled derivation', () => {
   test('running agent with stale activity flips to stalled, and back on the next event', async () => {
     const agent = makeAgent({ id: 'ag-stall', startedAt: T0 });
     const bus = new RuntimeEventBus();
@@ -764,7 +764,7 @@ describe('fleet registry — stalled derivation', () => {
 
 // ── 4. awaiting-approval cross-reference ──────────────────────────────────────
 
-describe('fleet registry — awaiting-approval', () => {
+describe('fleet registry: awaiting-approval', () => {
   test('pending approval with metadata.agentId flips that agent to awaiting-approval', () => {
     const agent = makeAgent({ id: 'ag-appr' });
     const registry = createProcessRegistry(makeDeps({
@@ -820,7 +820,7 @@ describe('fleet registry — awaiting-approval', () => {
 
 // ── 5. Cost honesty ───────────────────────────────────────────────────────────
 
-describe('fleet registry — cost honesty', () => {
+describe('fleet registry: cost honesty', () => {
   const usage = {
     inputTokens: 1_000_000, outputTokens: 1_000_000, cacheReadTokens: 0, cacheWriteTokens: 0,
     llmCallCount: 1, turnCount: 1,
@@ -848,7 +848,7 @@ describe('fleet registry — cost honesty', () => {
     expect(unknown.costUsd).toBeNull();
     expect(unknown.costState).toBe('unpriced');
     const noModel = nodeById(registry, 'ag-nomodel');
-    expect(noModel.costUsd).toBeNull(); // priceUsage threw — swallowed, honest null
+    expect(noModel.costUsd).toBeNull(); // priceUsage threw, swallowed, honest null
     expect(noModel.costState).toBe('unpriced');
     expect(nodeById(registry, 'ag-nousage').costUsd).toBeNull();
     registry.dispose();
@@ -875,7 +875,7 @@ describe('fleet registry — cost honesty', () => {
 
 // ── 6. Edge/nesting integrity ─────────────────────────────────────────────────
 
-describe('fleet registry — edge integrity', () => {
+describe('fleet registry: edge integrity', () => {
   test('chain with 2 subtasks and 3 agents forms a connected tree (no dangling parentIds)', () => {
     const chain = makeChain({
       id: 'ch-tree',
@@ -947,7 +947,7 @@ function makeFakeTimers(): FakeTimerHarness {
   return harness;
 }
 
-describe('fleet registry — subscribe/tick/dispose', () => {
+describe('fleet registry: subscribe/tick/dispose', () => {
   test('tick notifies on change, stays silent when unchanged, and dispose stops everything', () => {
     const agent = makeAgent({ id: 'ag-sub' });
     const harness = makeFakeTimers();
@@ -1026,7 +1026,7 @@ describe('fleet registry — subscribe/tick/dispose', () => {
 
 // ── 8. Control dispatch ───────────────────────────────────────────────────────
 
-describe('fleet registry — control dispatch', () => {
+describe('fleet registry: control dispatch', () => {
   // Registry routing must pass the termination intent through
   // to AgentManager.cancel(id, kind), kill() always 'kill' (direct agent
   // kill, and chain/subtask cascade via cancelAgents), interrupt() always
@@ -1288,7 +1288,7 @@ function fakeMessageBus(sendResult = true): FakeSend {
   };
 }
 
-describe('fleet registry — steer', () => {
+describe('fleet registry: steer', () => {
   test('capabilities.steerable: true for a running agent with a messageBus dep, false without one, false once terminal', () => {
     const running = makeAgent({ id: 'ag-run', status: 'running' });
     const done = makeAgent({ id: 'ag-done', status: 'completed', completedAt: T0 });

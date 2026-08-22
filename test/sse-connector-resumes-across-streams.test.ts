@@ -83,7 +83,7 @@ describe('the connector resumes across stream lifetimes, not just across reconne
     expect(presented).toEqual([null, 'evt-1']);
   });
 
-  test('each URL keeps its own position — one domain does not resume from another', async () => {
+  test('each URL keeps its own position: one domain does not resume from another', async () => {
     const presented: Array<{ url: string; id: string | null }> = [];
     const connector = createEventSourceConnector(
       'http://127.0.0.1:3210',

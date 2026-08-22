@@ -64,8 +64,8 @@ function makePolicyRuntimeState(): Pick<PolicyRuntimeState, 'recordPermissionReq
   };
 }
 
-describe('PermissionManager — shipped credential-read gate (prompt mode)', () => {
-  test('a credential read is NOT auto-allowed — it reaches the prompt (ask)', async () => {
+describe('PermissionManager: shipped credential-read gate (prompt mode)', () => {
+  test('a credential read is NOT auto-allowed: it reaches the prompt (ask)', async () => {
     let prompted = false;
     const manager = new PermissionManager(
       async () => { prompted = true; return { approved: false, remember: false }; },

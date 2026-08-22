@@ -36,7 +36,7 @@ function makeTransport(fetch: (input: string | URL | Request, init?: RequestInit
   });
 }
 
-describe('createPeerRemoteClient — listOperations / getOperation', () => {
+describe('createPeerRemoteClient: listOperations / getOperation', () => {
   test('listOperations returns all endpoints from contract', () => {
     const transport = makeTransport(async () => createJsonResponse({ ok: true }));
     const contract = getPeerContract();
@@ -79,7 +79,7 @@ describe('createPeerRemoteClient — listOperations / getOperation', () => {
   });
 });
 
-describe('createPeerRemoteClient — invoke generic overload', () => {
+describe('createPeerRemoteClient: invoke generic overload', () => {
   test('invoke with a valid endpoint id calls the transport', async () => {
     const calls: string[] = [];
     const transport = makeTransport(async (input, _init) => {
@@ -102,7 +102,7 @@ describe('createPeerRemoteClient — invoke generic overload', () => {
   });
 });
 
-describe('createPeerRemoteClient — shorthand methods', () => {
+describe('createPeerRemoteClient: shorthand methods', () => {
   test('pairing.verify calls the verify endpoint', async () => {
     const calls: string[] = [];
     const sdk = createPeerSdk({
@@ -164,7 +164,7 @@ describe('createPeerRemoteClient — shorthand methods', () => {
   });
 });
 
-describe('createPeerSdk — getOperation is accessible', () => {
+describe('createPeerSdk: getOperation is accessible', () => {
   test('getOperation returns endpoint contract from PeerSdk', () => {
     const sdk = createPeerSdk({
       baseUrl: 'http://127.0.0.1:3210',

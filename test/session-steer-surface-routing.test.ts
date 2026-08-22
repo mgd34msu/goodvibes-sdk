@@ -41,7 +41,7 @@ function innerEvents(events: Captured[]): string[] {
   return events.map((e) => e.event);
 }
 
-describe('steer routing — surface-managed session queues for the surface', () => {
+describe('steer routing: surface-managed session queues for the surface', () => {
   test('steer to a session with a live registered surface participant queues (no spawn)', async () => {
     const { broker, events } = makeBroker();
     await broker.register({
@@ -115,7 +115,7 @@ describe('steer routing — surface-managed session queues for the surface', () 
   });
 });
 
-describe('steer routing — surfaceless session keeps the executor path', () => {
+describe('steer routing: surfaceless session keeps the executor path', () => {
   test('steer to a session that was never surface-registered spawns (executor path)', async () => {
     const { broker } = makeBroker();
     // createSession does NOT mark the session surface-managed (only register does).
@@ -160,7 +160,7 @@ describe('steer routing — surfaceless session keeps the executor path', () => 
 // history, no message recorded, no input queued, no activeAgentId touched).
 // Open sessions (both the surface-collection path and the spawn fallback)
 // keep working, and a legitimately reopened session accepts steers again.
-describe('steer routing — closed session is rejected before any mutation', () => {
+describe('steer routing: closed session is rejected before any mutation', () => {
   test('steer to a closed session throws SESSION_CLOSED/409 and mutates nothing', async () => {
     const { broker, events } = makeBroker();
     await broker.createSession({ id: 's-closed' });

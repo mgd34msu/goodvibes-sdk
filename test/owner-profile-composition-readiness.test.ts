@@ -95,7 +95,7 @@ function compose(text: string = FIXTURE): {
   return { catalog, config, dispose: composed.dispose };
 }
 
-describe('§4.4 — a composed profile is never in a pre-load state', () => {
+describe('§4.4: a composed profile is never in a pre-load state', () => {
   test('profile.status answers loaded immediately, with no await anywhere', async () => {
     const { catalog, dispose } = compose();
     try {
@@ -143,7 +143,7 @@ describe('§4.4 — a composed profile is never in a pre-load state', () => {
   });
 });
 
-describe('§13 — the consumer half, which no readiness promise could have fixed', () => {
+describe('§13: the consumer half, which no readiness promise could have fixed', () => {
   test('checkin.quietHours resolves from the profile on the first synchronous read', () => {
     const { config, dispose } = compose();
     try {

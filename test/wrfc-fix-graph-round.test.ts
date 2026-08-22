@@ -69,7 +69,7 @@ function multiFindingReview(): ReviewerReport {
   };
 }
 
-describe('parser/planner — a multi-finding review becomes a dependency graph', () => {
+describe('parser/planner: a multi-finding review becomes a dependency graph', () => {
   test('typed tasks with citations; shared-file + semantic edges; suggestions and verified items excluded', () => {
     const tasks = parseReviewIntoTasks({ review: multiFindingReview(), originalTask: 'Build the CSV tool' });
     // 3 findings (suggestion excluded) + 1 unmet constraint + 1 unverified checklist item.
@@ -120,7 +120,7 @@ describe('parser/planner — a multi-finding review becomes a dependency graph',
   });
 });
 
-describe('release semantics — claimed-done releases NOTHING', () => {
+describe('release semantics: claimed-done releases NOTHING', () => {
   function fakeWorkstream(dep: Partial<WorkItem>): { ws: Workstream; dep: WorkItem } {
     const item = {
       id: 'dep', title: 'Blocker', task: 't', dependsOn: [], currentPhaseId: null,
@@ -151,7 +151,7 @@ describe('release semantics — claimed-done releases NOTHING', () => {
   });
 });
 
-describe('dynamic graph — live edges, cycles, orphans', () => {
+describe('dynamic graph: live edges, cycles, orphans', () => {
   function makeEngine(h: OrchestrationTestHarness, extra: Record<string, unknown> = {}) {
     return createOrchestrationEngine({
       agentManager: h.agentManager, configManager: cfg, runtimeBus: h.bus, projectRoot,
@@ -186,7 +186,7 @@ describe('dynamic graph — live edges, cycles, orphans', () => {
     expect(t2.blockedReason).toContain('T1');
   });
 
-  test('a seeded cycle surfaces IMMEDIATELY as a structured outcome — never a silently-never-ready node', async () => {
+  test('a seeded cycle surfaces IMMEDIATELY as a structured outcome: never a silently-never-ready node', async () => {
     const h = createOrchestrationHarness();
     const engine = makeEngine(h);
     const events: OrchestrationEvent[] = [];
@@ -244,7 +244,7 @@ describe('dynamic graph — live edges, cycles, orphans', () => {
   });
 });
 
-describe('elastic pool — spawn on ready, visible at-cap, retire on empty', () => {
+describe('elastic pool: spawn on ready, visible at-cap, retire on empty', () => {
   function makeElasticEngine(h: OrchestrationTestHarness, probe: () => { active: number; maxSize: number; capKey: string; refusal?: string }) {
     return createOrchestrationEngine({
       agentManager: h.agentManager, configManager: cfg, runtimeBus: h.bus, projectRoot,
@@ -333,7 +333,7 @@ describe('elastic pool — spawn on ready, visible at-cap, retire on empty', () 
   });
 });
 
-describe('fleet.maxSize — one ceiling, responsibility-counted, invisible migration', () => {
+describe('fleet.maxSize: one ceiling, responsibility-counted, invisible migration', () => {
   test('a native agent + an ACP-hosted row + an elastic fixer share the ONE ceiling', () => {
     // The counting seam takes OWNED sources only; the elastic fixer spawns
     // through the same native AgentManager, so all three meet at one number.
@@ -385,7 +385,7 @@ describe('fleet.maxSize — one ceiling, responsibility-counted, invisible migra
     }
   });
 
-  test('a failing receipt sink is caught and warned — the migration itself still lands', () => {
+  test('a failing receipt sink is caught and warned: the migration itself still lands', () => {
     const dir = mkdtempSync(join(tmpdir(), 'fleet-migrate-sink-'));
     try {
       const sourcePath = join(dir, 'settings.json');

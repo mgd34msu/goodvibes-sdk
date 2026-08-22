@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "2.0.22",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 507 cataloged methods: 435 with dedicated REST bindings, 72 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 507 cataloged methods: 435 with dedicated REST bindings, 72 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false`. They are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -101519,14 +101519,14 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "description": "The method-specific input (see the method’s inputSchema)."
+                "description": "The method-specific input (see the method's inputSchema)."
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Method-specific response (see the method’s outputSchema).",
+            "description": "Method-specific response (see the method's outputSchema).",
             "content": {
               "application/json": {
                 "schema": {}

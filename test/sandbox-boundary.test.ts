@@ -53,7 +53,7 @@ function makeConfigManagerWith(
   };
 }
 
-describe('platform/runtime/sandbox — behavior smoke', () => {
+describe('platform/runtime/sandbox: behavior smoke', () => {
   test('isRunningInWsl returns a boolean', () => {
     expect(typeof isRunningInWsl()).toBe('boolean');
   });

@@ -89,7 +89,7 @@ function loginRequest(ip?: string): Request {
   });
 }
 
-describe('/login rate limiter — tight budget enforced', () => {
+describe('/login rate limiter: tight budget enforced', () => {
   let dir: string;
 
   beforeEach(() => { dir = tempDir('login-rl'); });
@@ -139,7 +139,7 @@ describe('/login rate limiter — tight budget enforced', () => {
     listener.stop();
   });
 
-  test('IPs are tracked independently — different IPs each get their own budget', async () => {
+  test('IPs are tracked independently: different IPs each get their own budget', async () => {
     const { listener, dispatch } = makeListener({ dir, loginRateLimit: 2, trustProxy: true });
     await listener.start();
 

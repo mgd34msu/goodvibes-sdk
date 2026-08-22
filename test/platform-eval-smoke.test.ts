@@ -7,7 +7,7 @@
 import { describe, expect, test } from 'bun:test';
 import { EvalRunner } from '../packages/sdk/src/platform/runtime/eval/runner.js';
 
-describe('platform/runtime/eval — eval runner behavior', () => {
+describe('platform/runtime/eval: eval runner behavior', () => {
 
   test('EvalRunner constructs and exposes runSuite method', () => {
     const runner = new EvalRunner();

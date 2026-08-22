@@ -81,7 +81,7 @@ describe('a turn boundary must not clear the evidence a profile write is judged 
     expect(decision.reason).toContain('evil.example');
   });
 
-  test('and after several boundaries — waiting a turn does not launder it', () => {
+  test('and after several boundaries: waiting a turn does not launder it', () => {
     const ledger = ledgerWithPage();
     for (let i = 0; i < 5; i++) startTurnForOwnerRequest(true, ledger);
     const decision = evaluateProfileWrite({
@@ -144,7 +144,7 @@ describe('the widened window must not start refusing ordinary work', () => {
     expect(decision.allowed).toBe(true);
   });
 
-  test('a note into a canonical section is allowed — "Notes" is not evidence', () => {
+  test('a note into a canonical section is allowed: "Notes" is not evidence', () => {
     const ledger = new UntrustedContentLedger();
     ledger.record({
       surface: 'web-page',
@@ -164,7 +164,7 @@ describe('the widened window must not start refusing ordinary work', () => {
   });
 });
 
-describe('profile.append — the section heading passes the gate too', () => {
+describe('profile.append: the section heading passes the gate too', () => {
   test('a heading lifted verbatim off a page is refused', () => {
     const ledger = ledgerWithPage();
     startTurnForOwnerRequest(true, ledger);

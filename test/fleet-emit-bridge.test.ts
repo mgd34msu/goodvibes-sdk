@@ -69,7 +69,7 @@ async function flush(): Promise<void> {
 }
 
 describe('fleet emit-bridge', () => {
-  test('first snapshot only seeds — it emits nothing', async () => {
+  test('first snapshot only seeds: it emits nothing', async () => {
     const bus = new RuntimeEventBus();
     const reg = fakeRegistry();
     const { events } = collectFleetEvents(bus);

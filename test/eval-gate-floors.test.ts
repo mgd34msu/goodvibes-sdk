@@ -68,7 +68,7 @@ function mkBaseline(scores: Record<string, number>): EvalBaseline {
   };
 }
 
-describe('evaluateGate — absolute floor enforcement', () => {
+describe('evaluateGate: absolute floor enforcement', () => {
   test('a floor failure fails the gate even when there is NO regression', () => {
     const runner = new EvalRunner({ regressionThreshold: 5 });
     // Fresh score equals baseline score -> delta 0, no regression at all.
@@ -107,7 +107,7 @@ describe('evaluateGate — absolute floor enforcement', () => {
   test('an unbaselined scenario that clears its floor is reported but does NOT fail the gate', () => {
     const runner = new EvalRunner({ regressionThreshold: 5 });
     const fresh = mkSuite([mkResult('s_new', 97, true)]);
-    const baseline = mkBaseline({}); // empty — s_new is unbaselined
+    const baseline = mkBaseline({}); // empty, s_new is unbaselined
 
     const gate = runner.evaluateGate(fresh, baseline);
 

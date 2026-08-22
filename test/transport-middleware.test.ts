@@ -55,7 +55,7 @@ function stubFetch(impl: (...args: Parameters<typeof fetch>) => Promise<Response
 // ---------------------------------------------------------------------------
 
 describe('composeMiddleware: execution order', () => {
-  test('single middleware wraps inner fetch — pre/post hooks fire in correct order', async () => {
+  test('single middleware wraps inner fetch: pre/post hooks fire in correct order', async () => {
     const order: string[] = [];
     const mw: TransportMiddleware = async (ctx, next) => {
       order.push('before');
@@ -70,7 +70,7 @@ describe('composeMiddleware: execution order', () => {
     expect(order.length).toBe(2);
   });
 
-  test('three middleware run in order — onion model (outer-first, inner-last)', async () => {
+  test('three middleware run in order: onion model (outer-first, inner-last)', async () => {
     const order: string[] = [];
     const mw = (label: string): TransportMiddleware => async (ctx, next) => {
       order.push(`${label}:before`);
@@ -90,7 +90,7 @@ describe('composeMiddleware: execution order', () => {
     ]);
   });
 
-  test('empty middleware array — innerFetch called directly', async () => {
+  test('empty middleware array: innerFetch called directly', async () => {
     let called = false;
     const inner = async (_ctx: TransportContext) => {
       called = true;
@@ -108,7 +108,7 @@ describe('composeMiddleware: execution order', () => {
 // ---------------------------------------------------------------------------
 
 describe('composeMiddleware: ctx mutation', () => {
-  test('middleware can add headers — inner fetch receives mutated headers', async () => {
+  test('middleware can add headers: inner fetch receives mutated headers', async () => {
     let capturedHeaders: Record<string, string> | undefined;
     const mw: TransportMiddleware = async (ctx, next) => {
       ctx.headers['X-Custom'] = 'middleware-value';
@@ -170,7 +170,7 @@ describe('composeMiddleware: ctx mutation', () => {
 // ---------------------------------------------------------------------------
 
 describe('composeMiddleware: error propagation', () => {
-  test('inner fetch error propagates — ctx.error is set, error re-thrown', async () => {
+  test('inner fetch error propagates: ctx.error is set, error re-thrown', async () => {
     const expectedError = new Error('fetch failed');
     const inner = async (_ctx: TransportContext): Promise<Response> => {
       throw expectedError;
@@ -184,7 +184,7 @@ describe('composeMiddleware: error propagation', () => {
     expect(ctx.durationMs).toBeLessThan(1000);
   });
 
-  test('middleware error before next() — propagates, inner fetch not called', async () => {
+  test('middleware error before next(): propagates, inner fetch not called', async () => {
     let innerCalled = false;
     const inner = async (_ctx: TransportContext): Promise<Response> => {
       innerCalled = true;
@@ -235,7 +235,7 @@ describe('composeMiddleware: signal propagation', () => {
 // sdk.use() facade integration
 // ---------------------------------------------------------------------------
 
-describe('transport.use() — appends to chain', () => {
+describe('transport.use(): appends to chain', () => {
   test('middleware registered via use() fires for each request', async () => {
     const intercepted: string[] = [];
     const fetchStub = createFetchStub(async (input) => {
@@ -256,7 +256,7 @@ describe('transport.use() — appends to chain', () => {
     expect(intercepted[1]).toContain('/v1/other');
   });
 
-  test('second use() call appends — both middleware fire in order', async () => {
+  test('second use() call appends: both middleware fire in order', async () => {
     const order: string[] = [];
     const fetchStub = createFetchStub(async () => {
       return new Response('{}', { status: 200 });
@@ -294,7 +294,7 @@ describe('transport.use() — appends to chain', () => {
 // MAJOR 3: sdk.use() facade on the full SDK instance
 // ---------------------------------------------------------------------------
 
-describe('sdk.use() — full SDK facade integration', () => {
+describe('sdk.use(): full SDK facade integration', () => {
   test('sdk.use() appends middleware that runs on operator transport requests', async () => {
     const { createGoodVibesSdk } = await import('../packages/sdk/src/client.js');
     const intercepted: string[] = [];

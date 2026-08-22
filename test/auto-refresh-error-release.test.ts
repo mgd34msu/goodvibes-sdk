@@ -41,7 +41,7 @@ describe('auto-refresh reactive-401 error release', () => {
       refreshLeewayMs: 0,
       refresh: async () => {
         refreshEntered();
-        await parked; // park mid-refresh — the exact window the error was pinned across
+        await parked; // park mid-refresh, the exact window the error was pinned across
         return { token: 'fresh-token' };
       },
     });

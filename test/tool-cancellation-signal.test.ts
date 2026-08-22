@@ -19,7 +19,7 @@ function tempRoot(prefix: string): string {
   return mkdtempSync(join(tmpdir(), prefix));
 }
 
-describe('exec tool — cooperative cancellation via opts.signal', () => {
+describe('exec tool: cooperative cancellation via opts.signal', () => {
   test('aborting mid-run kills the child process instead of letting it run to completion (no orphan)', async () => {
     const root = tempRoot('gv-exec-cancel-');
     const tool = createExecTool(new ProcessManager(), { overflowHandler: new OverflowHandler({ baseDir: root }) });
@@ -62,14 +62,14 @@ describe('exec tool — cooperative cancellation via opts.signal', () => {
     expect(output.cancelled).toBe(true);
   }, 10_000);
 
-  test('omitting opts is unchanged from before this change — existing callers compile and run untouched', async () => {
+  test('omitting opts is unchanged from before this change: existing callers compile and run untouched', async () => {
     const root = tempRoot('gv-exec-no-opts-');
     const tool = createExecTool(new ProcessManager(), { overflowHandler: new OverflowHandler({ baseDir: root }) });
     const result = await tool.execute({ working_dir: root, commands: [{ cmd: 'echo hi' }] });
     expect(result.success).toBe(true);
   });
 
-  test('a background command is never cancelled by the caller signal (deliberately excluded — it is meant to outlive the tool call)', async () => {
+  test('a background command is never cancelled by the caller signal (deliberately excluded: it is meant to outlive the tool call)', async () => {
     const root = tempRoot('gv-exec-bg-');
     const processManager = new ProcessManager();
     const tool = createExecTool(processManager, { overflowHandler: new OverflowHandler({ baseDir: root }) });
@@ -86,7 +86,7 @@ describe('exec tool — cooperative cancellation via opts.signal', () => {
   });
 });
 
-describe('ToolRegistry.execute — additive signal forwarding', () => {
+describe('ToolRegistry.execute: additive signal forwarding', () => {
   test('a signal passed to registry.execute reaches the underlying tool.execute call', async () => {
     let receivedSignal: AbortSignal | undefined;
     const tool: Tool = {
@@ -103,7 +103,7 @@ describe('ToolRegistry.execute — additive signal forwarding', () => {
     expect(receivedSignal).toBe(controller.signal);
   });
 
-  test('omitting opts calls tool.execute with opts undefined — existing ~30 tool impls with single-arg execute(args) remain valid', async () => {
+  test('omitting opts calls tool.execute with opts undefined: existing ~30 tool impls with single-arg execute(args) remain valid', async () => {
     const calls: unknown[] = [];
     const tool: Tool = {
       definition: { name: 'legacy', description: 'legacy single-arg tool', parameters: {} },
@@ -121,7 +121,7 @@ describe('ToolRegistry.execute — additive signal forwarding', () => {
   });
 });
 
-describe('fetch tool — cooperative cancellation via opts.signal', () => {
+describe('fetch tool: cooperative cancellation via opts.signal', () => {
   test('opts.signal is threaded into the runtime dependency the fetch tool calls', async () => {
     let capturedDeps: { signal?: AbortSignal } | undefined;
     const stubRuntime = {

@@ -190,7 +190,7 @@ function makeAgentManagerHarness(bus: RuntimeEventBus): {
   return { agentManager, completeAgent, spawnedTemplates };
 }
 
-describe('createWorkstreamServices — real engine wiring', () => {
+describe('createWorkstreamServices: real engine wiring', () => {
   const tempDirs: string[] = [];
 
   afterEach(() => {

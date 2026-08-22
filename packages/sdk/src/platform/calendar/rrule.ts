@@ -288,7 +288,7 @@ function stepMonthlyOrYearly(
     const isRealDate = candidate.getUTCFullYear() === year
       && candidate.getUTCMonth() === month
       && candidate.getUTCDate() === seedDay;
-    if (!isRealDate) continue; // invalid calendar date — skipped, does not consume COUNT
+    if (!isRealDate) continue; // invalid calendar date, skipped, does not consume COUNT
     if (!emit(candidateMs)) return;
   }
 }

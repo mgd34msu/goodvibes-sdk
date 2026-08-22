@@ -76,7 +76,7 @@ async function callFleetList(registry: FleetQueryOnlyRegistry, body: Record<stri
   return (await handler(invoke(body))) as FleetListResult;
 }
 
-describe('fleet.list pagination — sort key and recovery key must agree (Finding 3)', () => {
+describe('fleet.list pagination: sort key and recovery key must agree (Finding 3)', () => {
   test('sorts newest-first by startedAt (not alphabetically by id)', async () => {
     // ids deliberately scrambled vs startedAt order, so an id-sorted array
     // would disagree with a startedAt-sorted array, proves which key is

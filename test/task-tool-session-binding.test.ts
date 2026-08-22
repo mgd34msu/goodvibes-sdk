@@ -96,7 +96,7 @@ describe('writes are owned by the real session, never by the tool input', () => 
     }
   });
 
-  test('the identity is re-read per call — a session id that changes mid-run is followed', async () => {
+  test('the identity is re-read per call: a session id that changes mid-run is followed', async () => {
     // Accepting a crash-recovery snapshot reassigns runtime.sessionId in place.
     // An id captured at registration time would keep writing refs under the boot
     // session the user just left behind.
@@ -117,7 +117,7 @@ describe('writes are owned by the real session, never by the tool input', () => 
   });
 });
 
-describe('reads may still name another session — reading is not owning', () => {
+describe('reads may still name another session: reading is not owning', () => {
   test('list and show accept a sessionId selector', async () => {
     const registry = makeRegistry();
     try {

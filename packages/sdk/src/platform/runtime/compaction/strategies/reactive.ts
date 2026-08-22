@@ -58,7 +58,7 @@ export function runReactive(input: StrategyInput): StrategyOutput {
   }
 
   const handoffLines: string[] = [
-    '[Reactive Compaction — Context Overflow Recovery]',
+    '[Reactive Compaction: Context Overflow Recovery]',
     `Provider returned prompt-too-long${providerLimit !== null ? ` (limit: ${providerLimit} tokens)` : ''}.`,
     `${droppedCount} message(s) dropped to recover from overflow.`,
     `Estimated tokens before: ${tokensBefore}, target: ≤${targetTokens}.`,

@@ -18,7 +18,7 @@ describe('RestoreTokenStore', () => {
     expect(store.consume(token, 'wcp_abc')).toBe(true);
   });
 
-  test('a token is single-use — a second consume of the same token fails', () => {
+  test('a token is single-use: a second consume of the same token fails', () => {
     const store = new RestoreTokenStore();
     const { token } = store.issue('wcp_abc');
     expect(store.consume(token, 'wcp_abc')).toBe(true);

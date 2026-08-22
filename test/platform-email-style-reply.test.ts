@@ -218,7 +218,7 @@ describe('replySubject', () => {
 // extractStyleProfile, empty corpus
 // ---------------------------------------------------------------------------
 
-describe('extractStyleProfile — empty corpus', () => {
+describe('extractStyleProfile: empty corpus', () => {
   it('returns default profile when corpus is empty', () => {
     const profile = extractStyleProfile([]);
     expect(profile.isDefault).toBe(true);
@@ -233,7 +233,7 @@ describe('extractStyleProfile — empty corpus', () => {
 // extractStyleProfile, corpus with bodies
 // ---------------------------------------------------------------------------
 
-describe('extractStyleProfile — corpus with bodies', () => {
+describe('extractStyleProfile: corpus with bodies', () => {
   it('detects casual greeting from corpus', () => {
     const sent = [
       makeSummary({ bodyPreview: 'Hey Bob,\nJust checking in.\nCheers' }),
@@ -345,7 +345,7 @@ describe('composeDraftReply', () => {
     ).toThrow(/secret-like text/);
   });
 
-  it('is deterministic — same inputs produce identical output', () => {
+  it('is deterministic: same inputs produce identical output', () => {
     const a = composeDraftReply(inbound, defaultProfile, 'some context', testContainsSecretLikeText);
     const b = composeDraftReply(inbound, defaultProfile, 'some context', testContainsSecretLikeText);
     expect(a.body).toBe(b.body);
@@ -411,7 +411,7 @@ describe('styleReplyWorkflow', () => {
     expect(wf.runBoundary.toLowerCase()).toContain('confirmed');
   });
 
-  it('is deterministic — same capability produces identical descriptor', () => {
+  it('is deterministic: same capability produces identical descriptor', () => {
     const a = styleReplyWorkflow(true);
     const b = styleReplyWorkflow(true);
     expect(a).toEqual(b);
@@ -473,7 +473,7 @@ describe('buildStyleReplyLaneAdditions', () => {
     expect(additions.liveRecord.status).toBe(additions.workflow.status);
   });
 
-  it('is deterministic — two calls with same arg produce equal results', () => {
+  it('is deterministic: two calls with same arg produce equal results', () => {
     const a = buildStyleReplyLaneAdditions(false);
     const b = buildStyleReplyLaneAdditions(false);
     expect(a).toEqual(b);

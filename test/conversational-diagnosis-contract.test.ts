@@ -64,7 +64,7 @@ describe('where the contract is issued', () => {
     expect(prompt).toContain(CONVERSATIONAL_DIAGNOSIS_SECTION);
   });
 
-  test('an autonomous spawn does not — a working agent runs under its own contract', () => {
+  test('an autonomous spawn does not: a working agent runs under its own contract', () => {
     const prompt = buildOrchestratorSystemPrompt(record());
     expect(prompt).not.toContain(CONVERSATIONAL_DIAGNOSIS_SECTION);
   });

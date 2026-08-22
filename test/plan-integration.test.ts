@@ -59,7 +59,7 @@ function buildProposal() {
 }
 
 describe('proposal -> planning-state approval seam (readiness gate)', () => {
-  test('needs-user-input (unapproved) before approval, executable after — mirrors /plan approve', async () => {
+  test('needs-user-input (unapproved) before approval, executable after: mirrors /plan approve', async () => {
     const service = createPlanningService();
     const projectId = 'planning-project';
     const proposal = buildProposal();

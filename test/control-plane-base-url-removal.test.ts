@@ -51,7 +51,7 @@ describe('migrateControlPlaneBaseUrlRemoval (pure function)', () => {
     expect(result.config).toHaveProperty('display');
   });
 
-  test('is idempotent — a file with no legacy key is returned untouched', () => {
+  test('is idempotent: a file with no legacy key is returned untouched', () => {
     const input = { controlPlane: { hostMode: 'local', port: 3421 } };
     const result = migrateControlPlaneBaseUrlRemoval(input);
     expect(result.migrated).toBe(false);
@@ -115,7 +115,7 @@ describe('describeDerivedBindMismatch', () => {
     expect(describeDerivedBindMismatch({ host: '0.0.0.0', port: 8443 }, binding)).toBeNull();
   });
 
-  test('a port disagreement is reported — the 8443-vs-3421 case', () => {
+  test('a port disagreement is reported: the 8443-vs-3421 case', () => {
     const binding = bindingOf({
       'controlPlane.hostMode': 'local',
       'controlPlane.host': '127.0.0.1',

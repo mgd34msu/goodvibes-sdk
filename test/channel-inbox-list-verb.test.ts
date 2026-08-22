@@ -233,7 +233,7 @@ describe('a host-attached handler is reachable over both transports', () => {
     expect(host.seen[0]!.query).toMatchObject({ provider: 'slack', limit: '1' });
   });
 
-  test('the two transports answer identically for identical params — one handler, not two', async () => {
+  test('the two transports answer identically for identical params: one handler, not two', async () => {
     const host = fixtureHost();
     const helper = helperFor(host.catalog);
 

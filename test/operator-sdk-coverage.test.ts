@@ -50,7 +50,7 @@ function makeTransport(fetch: (input: string | URL | Request, init?: RequestInit
 // createOperatorRemoteClient, contract/manifest inspection
 // ---------------------------------------------------------------------------
 
-describe('createOperatorRemoteClient — listOperations / getOperation', () => {
+describe('createOperatorRemoteClient: listOperations / getOperation', () => {
   test('listOperations returns all methods from contract', () => {
     const transport = makeTransport(async () => createJsonResponse({ ok: true }));
     const contract = getOperatorContract();
@@ -86,7 +86,7 @@ describe('createOperatorRemoteClient — listOperations / getOperation', () => {
   });
 });
 
-describe('createOperatorRemoteClient — invoke throws for missing HTTP binding', () => {
+describe('createOperatorRemoteClient: invoke throws for missing HTTP binding', () => {
   test('invoke throws GoodVibesSdkError with category contract when method has no http', () => {
     const transport = makeTransport(async () => createJsonResponse({ ok: true }));
     // Build a minimal fake contract with a method that has no http binding
@@ -110,7 +110,7 @@ describe('createOperatorRemoteClient — invoke throws for missing HTTP binding'
 // createOperatorRemoteClient, shorthand method coverage
 // ---------------------------------------------------------------------------
 
-describe('createOperatorRemoteClient — shorthand methods', () => {
+describe('createOperatorRemoteClient: shorthand methods', () => {
   test('sessions.get builds path from sessionId', async () => {
     const calls: string[] = [];
     const sdk = createOperatorSdk({
@@ -342,7 +342,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
 // createOperatorSdk, validateResponses option
 // ---------------------------------------------------------------------------
 
-describe('createOperatorSdk — validateResponses option', () => {
+describe('createOperatorSdk: validateResponses option', () => {
   test('validateResponses: false skips Zod validation and returns base client', async () => {
     const sdk = createOperatorSdk({
       baseUrl: 'http://127.0.0.1:3210',
@@ -381,7 +381,7 @@ describe('createOperatorSdk — validateResponses option', () => {
 // These cover the arrow-function method bindings in client-core.ts
 // ---------------------------------------------------------------------------
 
-describe('createOperatorRemoteClient (src) — shorthand method bindings', () => {
+describe('createOperatorRemoteClient (src): shorthand method bindings', () => {
   function makeSrcClient(fetch: (input: string | URL | Request, init?: RequestInit) => Promise<Response>) {
     const transport = makeTransport(fetch);
     const contract = getOperatorContract();

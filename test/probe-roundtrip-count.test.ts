@@ -42,7 +42,7 @@ async function fetchCommandsForConnect(
   return server.commands.filter((line) => /FETCH/i.test(line));
 }
 
-describe('connect-time body probe — round-trip cost', () => {
+describe('connect-time body probe: round-trip cost', () => {
   test('a non-empty mailbox costs exactly two FETCH round trips, one per form', async () => {
     const commands = await fetchCommandsForConnect([{
       uid: 101,

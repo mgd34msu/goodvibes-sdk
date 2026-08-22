@@ -82,7 +82,7 @@ function parseHeaderFields(rawHeaders: string): HeaderField[] {
     if (/^[\t ]/.test(line)) {
       // Continuation of the previous field (RFC 5322 §2.2.3 unfolding).
       const owner = unfolded.length - 1;
-      if (owner < 0) continue; // continuation with no owner — malformed, drop
+      if (owner < 0) continue; // continuation with no owner, malformed, drop
       const merged = `${unfolded[owner] ?? ''} ${line.trim()}`;
       unfolded[owner] = merged.slice(0, MAX_HEADER_VALUE_CHARS);
       continue;
@@ -92,7 +92,7 @@ function parseHeaderFields(rawHeaders: string): HeaderField[] {
 
   for (const entry of unfolded) {
     const colon = entry.indexOf(':');
-    if (colon <= 0) continue; // no field name — malformed, drop
+    if (colon <= 0) continue; // no field name, malformed, drop
     const name = entry.slice(0, colon).trim().toLowerCase();
     // RFC 5322 field names are printable US-ASCII excluding ':'.
     if (name.length === 0 || /[^\x21-\x39\x3b-\x7e]/.test(name)) continue;

@@ -218,7 +218,7 @@ describe('the sweep records the reader version its rewrite requires', () => {
     expect(recorded).toEqual([{ version: SWEPT_CREDENTIAL_READER_FLOOR, setBy: 'credential-sweep' }]);
   });
 
-  test('a sweep that rewrote nothing records nothing — a floor describes a rewrite', async () => {
+  test('a sweep that rewrote nothing records nothing: a floor describes a rewrite', async () => {
     const config = fakeConfig({});
     const recorded: string[] = [];
     await sweepPlaintextCredentials(config, fakeSecrets(), [], (version) => { recorded.push(version); });
@@ -271,7 +271,7 @@ describe('raiseReaderFloorInFile', () => {
     expect((JSON.parse(readFileSync(path, 'utf-8')) as { display: { theme: string } }).display.theme).toBe('dark');
   });
 
-  test('a file that does not exist gets no marker — nothing was rewritten there', () => {
+  test('a file that does not exist gets no marker: nothing was rewritten there', () => {
     const dir = mkdtempSync(join(tmpdir(), 'gv-floor-absent-'));
     const path = join(dir, 'settings.json');
     expect(raiseReaderFloorInFile(path, '1.20.0', 'credential-sweep')).toBe(false);

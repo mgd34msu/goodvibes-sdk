@@ -42,7 +42,7 @@ export function runCollapse(input: StrategyInput): StrategyOutput {
   }
 
   const handoffLines: string[] = [
-    `[Session Collapse — ${new Date().toISOString()}]`,
+    `[Session Collapse: ${new Date().toISOString()}]`,
     `Session: ${sessionId}`,
     `${messages.length} message(s) collapsed to reduce context from ~${tokensBefore} tokens.`,
     '',

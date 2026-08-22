@@ -85,7 +85,7 @@ describe('acquireCrossProcessLock: the primitive', () => {
     expect(existsSync(lockPath)).toBe(false);
   });
 
-  test('a second acquire attempt waits for the first to release — never runs concurrently', async () => {
+  test('a second acquire attempt waits for the first to release: never runs concurrently', async () => {
     const dir = tempDir('gv-lock-concurrent-');
     const lockPath = join(dir, '.gv-lock');
     const events: string[] = [];
@@ -139,7 +139,7 @@ describe('acquireCrossProcessLock: the primitive', () => {
     release();
   });
 
-  test('a fresh lock held by a live pid is NOT taken over — the waiter times out honestly', async () => {
+  test('a fresh lock held by a live pid is NOT taken over: the waiter times out honestly', async () => {
     const dir = tempDir('gv-lock-fresh-held-');
     const lockPath = join(dir, '.gv-lock');
     const fd = openSync(lockPath, 'w');
@@ -151,7 +151,7 @@ describe('acquireCrossProcessLock: the primitive', () => {
     ).rejects.toThrow(/timed out/);
   });
 
-  test('a legitimately LONG operation keeps its lock past staleMs — a live holder is never taken over mid-flight', async () => {
+  test('a legitimately LONG operation keeps its lock past staleMs: a live holder is never taken over mid-flight', async () => {
     // Defect class: staleness was judged purely on the lock file's creation
     // mtime, so any operation that outran staleMs (a large first snapshot, a
     // slow restore) had its lock stolen while it was still running, two
@@ -258,10 +258,10 @@ describe('acquireCrossProcessLock: the primitive', () => {
           const past = Date.now() / 1000 - 600;
           try {
             utimesSync(lockPath, past, past);
-          } catch { /* momentarily absent mid-takeover — retry */ }
+          } catch { /* momentarily absent mid-takeover, retry */ }
           try {
             return await acquireCrossProcessLock(lockPath, { staleMs: 1000, totalTimeoutMs: 250, initialBackoffMs: 5, maxBackoffMs: 20 });
-          } catch { /* holder refreshed first — age it again */ }
+          } catch { /* holder refreshed first, age it again */ }
         }
       })();
       const releaseWinner = await winnerPromise;

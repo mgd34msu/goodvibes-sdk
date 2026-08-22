@@ -95,7 +95,7 @@ try {
 
   await run(['cmake', '-B', 'build',
     '-DCMAKE_BUILD_TYPE=Release',
-    '-DBUILD_SHARED_LIBS=OFF',   // static ggml/whisper — the bundle is one binary
+    '-DBUILD_SHARED_LIBS=OFF',   // static ggml/whisper, the bundle is one binary
     '-DGGML_NATIVE=OFF',         // portable codegen, no -march=native
     '-DWHISPER_BUILD_TESTS=OFF',
     '-DWHISPER_BUILD_EXAMPLES=ON',

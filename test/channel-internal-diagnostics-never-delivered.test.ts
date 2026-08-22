@@ -134,7 +134,7 @@ describe('the exact leak the owner saw', () => {
     expect(h.bodies().join('\n')).not.toContain('registry — gmail');
   });
 
-  test('owner-facing progress still gets through — the fix is not a blanket mute', async () => {
+  test('owner-facing progress still gets through: the fix is not a blanket mute', async () => {
     const h = harness('telegram');
     h.track('agent-owner-progress');
     // Past MIN_PROGRESS_NOTIFICATION_AGE_MS (30s), so a progress update is

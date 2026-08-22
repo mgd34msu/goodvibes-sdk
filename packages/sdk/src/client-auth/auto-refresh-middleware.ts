@@ -113,7 +113,7 @@ export function createAutoRefreshMiddleware(
     }
 
     if (nextSucceeded) {
-      return; // success — nothing more to do
+      return; // success, nothing more to do
     }
 
     if (!is401Error(caughtErr)) {

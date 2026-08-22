@@ -67,7 +67,7 @@ afterAll(async () => {
   rmSync(work, { recursive: true, force: true });
 });
 
-describe('W6-C1 — credentials.get admin-scoped secret-free read', () => {
+describe('W6-C1: credentials.get admin-scoped secret-free read', () => {
   test('cross-surface provider visibility: config.get carries provider config', async () => {
     const res = await fetch(`${daemon.url}/config`, { headers: auth() });
     expect(res.status).toBe(200);
@@ -136,7 +136,7 @@ describe('W6-C1 — credentials.get admin-scoped secret-free read', () => {
     expect(probe.credentials[0]!.key).toBe('SHARED_CHANNEL_TOKEN');
   });
 
-  test('enumeration is over stored keys only — no process.env dump', async () => {
+  test('enumeration is over stored keys only: no process.env dump', async () => {
     const res = await fetch(`${daemon.url}/config/credentials`, { headers: auth() });
     const body = await res.json() as { credentials: Array<Record<string, unknown>> };
     const keys = body.credentials.map((c) => c.key);

@@ -153,7 +153,7 @@ export function decisionToSpan(entry: DecisionLogEntry, ctx: DecisionOtlpContext
     startTimeUnixNano: nanos,
     endTimeUnixNano: nanos,
     attributes: decisionAttributes(entry, ctx),
-    status: { code: 0 }, // STATUS_CODE_UNSET — export-only, no error semantics
+    status: { code: 0 }, // STATUS_CODE_UNSET, export-only, no error semantics
   };
 }
 

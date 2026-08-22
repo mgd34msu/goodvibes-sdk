@@ -296,7 +296,7 @@ describe('collectHistoryDelta on a metadata-only grant', () => {
     expect(metadataFetches).toBe(0);
   });
 
-  test("with 'refuse' passed explicitly it refuses too — the same answer, said out loud", async () => {
+  test("with 'refuse' passed explicitly it refuses too: the same answer, said out loud", async () => {
     const deps = historyDeps({ scopes: [METADATA_SCOPE], historyId: '101', ids: ['msg-1'] });
     const result = await collectHistoryDelta(deps, {
       startHistoryId: '100',

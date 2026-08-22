@@ -39,7 +39,7 @@ function record(overrides: Partial<SharedSessionRecord> = {}): SharedSessionReco
     status: 'active',
     createdAt: NOW - IDLE_EMPTY_MS * 2,
     updatedAt: NOW - IDLE_EMPTY_MS * 2,
-    lastActivityAt: NOW - IDLE_EMPTY_MS * 2, // stale — would trip idle-empty on its own
+    lastActivityAt: NOW - IDLE_EMPTY_MS * 2, // stale, would trip idle-empty on its own
     messageCount: 0,
     pendingInputCount: 0,
     routeIds: [],
@@ -75,7 +75,7 @@ function sweepSharedSessionsAt(
   }
 }
 
-describe('idle-empty reaper — live surface exemption', () => {
+describe('idle-empty reaper: live surface exemption', () => {
   test('a message-less session with a FRESH participant survives the sweep', () => {
     // lastActivityAt is stale, but the surface heartbeat (participant.lastSeenAt=NOW)
     // means a surface is holding the session open, it must NOT be reaped.
@@ -94,7 +94,7 @@ describe('idle-empty reaper — live surface exemption', () => {
   });
 });
 
-describe('D7b — reaper is per-session among many', () => {
+describe('D7b: reaper is per-session among many', () => {
   test('one idle-dead session among live ones: only the dead one is reaped', () => {
     // Five sessions share one store; four have a fresh participant heartbeat, one
     // (the 3rd) went stale. The sweep must reap EXACTLY the stale one.

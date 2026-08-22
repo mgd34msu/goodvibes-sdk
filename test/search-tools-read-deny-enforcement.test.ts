@@ -65,7 +65,7 @@ function makeManager(mode: PermissionMode): PermissionManager {
 const CREDENTIAL_PATH = '/home/someone/.ssh/id_rsa';
 const NORMAL_PATH = '/home/someone/project/src/index.ts';
 
-describe('previewReadAccess — the read decision search tools reuse', () => {
+describe('previewReadAccess: the read decision search tools reuse', () => {
   test('prompt mode restricts a shipped-credential path but allows a normal file', () => {
     const manager = makeManager('prompt');
     expect(manager.previewReadAccess(CREDENTIAL_PATH)).toBe('restricted');
@@ -102,7 +102,7 @@ async function runFind(tool: ReturnType<typeof createFindTool>, query: Record<st
   return parsed['q'] as Record<string, unknown>;
 }
 
-describe('find content mode (grep) — restricted file content is excluded', () => {
+describe('find content mode (grep): restricted file content is excluded', () => {
   test('a restricted file contributes no match text and the withheld count is surfaced', async () => {
     const tool = createFindTool(work, null, undefined, restrictSecret);
     const result = await runFind(tool, { mode: 'content', pattern: 'SECRETMARK', path: '.' });
@@ -123,7 +123,7 @@ describe('find content mode (grep) — restricted file content is excluded', () 
   });
 });
 
-describe('find files mode (glob) — restricted path is listed but flagged', () => {
+describe('find files mode (glob): restricted path is listed but flagged', () => {
   test('the restricted path is present and marked access_restricted, with a withheld count', async () => {
     const tool = createFindTool(work, null, undefined, restrictSecret);
     const result = await runFind(tool, { mode: 'files', patterns: ['**/*.txt'], path: '.' });
@@ -145,7 +145,7 @@ describe('find files mode (glob) — restricted path is listed but flagged', () 
 
 // ── repo_map ─────────────────────────────────────────────────────────────────
 
-describe('repo_map — restricted file keeps its path but withholds exports', () => {
+describe('repo_map: restricted file keeps its path but withholds exports', () => {
   let mapRoot: string;
 
   beforeAll(() => {

@@ -22,7 +22,7 @@ import type { FeatureFlag, FlagState } from './types.js';
  * - `graduated`        , the flag's default flipped ON (it graduated).
  * - `dark`             , default OFF, no graduation evidence gathered.
  * - `soaking`          , default OFF, an owner has it accumulating evidence.
- * - `graduate-candidate`— judged ready to flip, awaiting a release decision.
+ * - `graduate-candidate`: judged ready to flip, awaiting a release decision.
  *   THIS is the only release-blocking state: it must resolve to `graduated`
  *   (flip it) or `blocked` (record a dated reason) every release.
  * - `blocked`          , held OFF on purpose, with a dated recorded reason.

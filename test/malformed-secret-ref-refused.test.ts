@@ -63,7 +63,7 @@ describe('a reference that does not parse is never used as the credential', () =
     expect(value).toBe('the-real-token');
   });
 
-  test('an ordinary literal secret is untouched — this is not a blanket refusal', async () => {
+  test('an ordinary literal secret is untouched: this is not a blanket refusal', async () => {
     for (const literal of ['xoxb-a-real-looking-token', 'sk-abc123', 'hunter2', 'https://example.com/hook']) {
       expect(await resolveSecretInput(literal, NEVER_RESOLVES)).toBe(literal);
     }

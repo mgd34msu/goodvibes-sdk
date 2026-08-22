@@ -188,7 +188,7 @@ describe('cross-session task graph housekeeping', () => {
     }
   });
 
-  test('a RECENT ref whose session is unknown survives — a transient false answer is not data loss', () => {
+  test('a RECENT ref whose session is unknown survives: a transient false answer is not data loss', () => {
     // The case the grace floor exists for: a sweep lands during startup, before
     // the session broker has registered the session that owns these refs, and
     // sessionExists truthfully answers "no" for a session that is about to

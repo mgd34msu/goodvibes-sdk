@@ -83,7 +83,7 @@ describe('PushService.attachCompletionSource', () => {
     expect(delivered[1]).toMatchObject({ title: 'Run finished', body: 'long task n2 was killed.' });
   });
 
-  test('the class toggle silences it — and is read LIVE, never a working prerequisite', async () => {
+  test('the class toggle silences it: and is read LIVE, never a working prerequisite', async () => {
     let completionOn = true;
     const { service, delivered } = makeService((category) => (category === 'completion' ? completionOn : true));
     const { source, push } = fakeSource();
@@ -100,7 +100,7 @@ describe('PushService.attachCompletionSource', () => {
     expect(delivered).toHaveLength(1); // re-enabled live, no re-wiring needed
   });
 
-  test('one push per node id — a re-published terminal event does not re-notify', async () => {
+  test('one push per node id: a re-published terminal event does not re-notify', async () => {
     const { service, delivered } = makeService();
     const { source, push } = fakeSource();
     service.attachCompletionSource(source);

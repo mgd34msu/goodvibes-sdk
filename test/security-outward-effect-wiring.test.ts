@@ -58,7 +58,7 @@ import type { TurnInputOrigin } from '../packages/sdk/src/events/turn.ts';
 
 const ACTION = 'email.send';
 
-describe('inputOriginIsOwnerDirect — the predicate the turn reset trusts', () => {
+describe('inputOriginIsOwnerDirect: the predicate the turn reset trusts', () => {
   test('no origin at all is the owner: the surface took this text off its own input widget', () => {
     expect(inputOriginIsOwnerDirect(undefined)).toBe(true);
   });
@@ -68,7 +68,7 @@ describe('inputOriginIsOwnerDirect — the predicate the turn reset trusts', () 
     expect(OWNER_DIRECT_INPUT_SOURCES).toContain('operator');
   });
 
-  test('a companion or channel source, and anything unrecognised, is NOT the owner — unknown fails closed', () => {
+  test('a companion or channel source, and anything unrecognised, is NOT the owner: unknown fails closed', () => {
     expect(inputOriginIsOwnerDirect({ source: 'ntfy-chat' })).toBe(false);
     // Reads like the owner and sometimes is, but the same emit path serves
     // anything that can inject into the operator's live conversation, so it
@@ -85,7 +85,7 @@ describe('inputOriginIsOwnerDirect — the predicate the turn reset trusts', () 
   });
 });
 
-describe('startTurnForOwnerInput — the caller that was missing entirely', () => {
+describe('startTurnForOwnerInput: the caller that was missing entirely', () => {
   test('an owner origin resets the watermark: an ingest that was in scope drops out of it', () => {
     const ledger = new UntrustedContentLedger();
     ledger.record({ surface: 'email', origin: 'email:someone.example', at: new Date().toISOString() });
@@ -108,7 +108,7 @@ describe('startTurnForOwnerInput — the caller that was missing entirely', () =
   });
 });
 
-describe('evaluateOutwardEffect — the allowed case the whole mechanism exists to protect', () => {
+describe('evaluateOutwardEffect: the allowed case the whole mechanism exists to protect', () => {
   test('exposure in the turn, but the outward content shares nothing with it, proceeds silently', () => {
     const ledger = new UntrustedContentLedger();
     ledger.record({
@@ -193,7 +193,7 @@ describe('evaluateOutwardEffect — the allowed case the whole mechanism exists 
     expect(decision.reason).toContain('this action did not say which of its fields are about to leave');
   });
 
-  test('an empty ledger allows regardless — there is nothing to have derived from', () => {
+  test('an empty ledger allows regardless: there is nothing to have derived from', () => {
     const ledger = new UntrustedContentLedger();
 
     const decision = evaluateOutwardEffect({
@@ -207,7 +207,7 @@ describe('evaluateOutwardEffect — the allowed case the whole mechanism exists 
   });
 });
 
-describe('wording — naming the surface right, and never asking the owner to authorize himself', () => {
+describe('wording: naming the surface right, and never asking the owner to authorize himself', () => {
   test('an email exposure reads "mailbox", never the browser\'s "those pages" sentence', () => {
     const ledger = new UntrustedContentLedger();
     ledger.record({ surface: 'email', origin: 'email:someone.example', at: new Date().toISOString() });
@@ -248,7 +248,7 @@ describe('wording — naming the surface right, and never asking the owner to au
     expect(description).toContain('email:legal.example');
   });
 
-  test('requestedBy owner-direct drops "Tell the owner" — he IS the owner and already asked', () => {
+  test('requestedBy owner-direct drops "Tell the owner": he IS the owner and already asked', () => {
     const ledger = new UntrustedContentLedger();
     ledger.record({ surface: 'email', origin: 'email:someone.example', at: new Date().toISOString() });
 
@@ -304,7 +304,7 @@ describe('wording — naming the surface right, and never asking the owner to au
   });
 });
 
-describe('grantOwnerApproval — only owner-direct can mint one', () => {
+describe('grantOwnerApproval: only owner-direct can mint one', () => {
   test('every untrusted surface is refused; only owner-direct produces an approval', () => {
     const untrustedSurfaces: readonly ApprovalSurface[] = ['web-page', 'email', 'channel-message', 'document'];
     for (const surface of untrustedSurfaces) {
@@ -314,7 +314,7 @@ describe('grantOwnerApproval — only owner-direct can mint one', () => {
   });
 });
 
-describe('checkOwnerApproval — bound to the payload, the window, and spent once', () => {
+describe('checkOwnerApproval: bound to the payload, the window, and spent once', () => {
   const contentA = { to: 'a@example.com', subject: 'A', body: 'the message the owner actually looked at' };
   const contentB = { to: 'a@example.com', subject: 'A', body: 'a completely different message he never saw' };
 
@@ -397,7 +397,7 @@ describe('checkOwnerApproval — bound to the payload, the window, and spent onc
   });
 });
 
-describe('OwnerApprovalStore — single use, enforced by removal', () => {
+describe('OwnerApprovalStore: single use, enforced by removal', () => {
   test('take() removes what it returns; a second take for the same action and content finds nothing', () => {
     const store = new OwnerApprovalStore();
     const content = { to: 'a@example.com', body: 'the exact message that was approved' };
@@ -412,7 +412,7 @@ describe('OwnerApprovalStore — single use, enforced by removal', () => {
   });
 });
 
-describe('fingerprintOutwardContent — a digest of the fields, not just their bag of characters', () => {
+describe('fingerprintOutwardContent: a digest of the fields, not just their bag of characters', () => {
   test('is insensitive to the order fields are supplied in', () => {
     const first = fingerprintOutwardContent({ a: 'xy', b: 'zz' });
     const second = fingerprintOutwardContent({ b: 'zz', a: 'xy' });
@@ -426,7 +426,7 @@ describe('fingerprintOutwardContent — a digest of the fields, not just their b
   });
 });
 
-describe('checkOwnerApproval — content binding is the default, not flag-gated', () => {
+describe('checkOwnerApproval: content binding is the default, not flag-gated', () => {
   const ACTION_ID = 'channels.send';
   const SHOWN = { body: 'the message the owner actually read' };
   const SWAPPED = { body: 'a different message swapped in afterwards' };

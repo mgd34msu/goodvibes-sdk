@@ -104,7 +104,7 @@ interface SourcesFileShape extends Record<string, unknown> {
   readonly sources: readonly { readonly id: string }[];
 }
 
-describe('AutomationRunStore — a completed run does not read back as running', () => {
+describe('AutomationRunStore: a completed run does not read back as running', () => {
   test("a concurrent run's slower write cannot restore the earlier status", async () => {
     const { store, path, cleanup } = makeControllableStore<RunsFileShape>('automation-runs-order', 'automation-runs.json');
     try {
@@ -135,7 +135,7 @@ describe('AutomationRunStore — a completed run does not read back as running',
   });
 });
 
-describe('AutomationJobStore — a disabled job does not come back enabled', () => {
+describe('AutomationJobStore: a disabled job does not come back enabled', () => {
   test("a neighbouring run's slower write cannot re-enable the job", async () => {
     const { store, path, cleanup } = makeControllableStore<JobsFileShape>('automation-jobs-order', 'automation-jobs.json');
     try {
@@ -162,7 +162,7 @@ describe('AutomationJobStore — a disabled job does not come back enabled', () 
   });
 });
 
-describe('AutomationRouteStore — a removed route binding does not come back', () => {
+describe('AutomationRouteStore: a removed route binding does not come back', () => {
   test('a slower upsert cannot restore a binding removed after it', async () => {
     const { store, path, cleanup } = makeControllableStore<RoutesFileShape>('automation-routes-order', 'automation-routes.json');
     try {
@@ -196,7 +196,7 @@ describe('AutomationRouteStore — a removed route binding does not come back', 
   });
 });
 
-describe('AutomationSourceStore — a removed source does not come back', () => {
+describe('AutomationSourceStore: a removed source does not come back', () => {
   test('a slower upsert cannot restore a source removed after it', async () => {
     const { store, path, cleanup } = makeControllableStore<SourcesFileShape>('automation-sources-order', 'automation-sources.json');
     try {
@@ -234,7 +234,7 @@ describe('AutomationSourceStore — a removed source does not come back', () => 
 // WorkspaceRegistrationStore, read-modify-write, and cross-process.
 // ---------------------------------------------------------------------------
 
-describe('WorkspaceRegistrationStore — no registration is lost', () => {
+describe('WorkspaceRegistrationStore: no registration is lost', () => {
   test('two registrations at once both survive (the in-process chain)', async () => {
     const dir = tempDir('workspace-order');
     try {
@@ -302,7 +302,7 @@ interface SchedulerFileShape extends Record<string, unknown> {
   readonly tasks: readonly { readonly id: string }[];
 }
 
-describe('TaskScheduler — a removed task does not come back', () => {
+describe('TaskScheduler: a removed task does not come back', () => {
   test('an earlier unawaited save cannot restore a task deleted after it', async () => {
     const { store, path, cleanup } = makeControllableStore<SchedulerFileShape>('scheduler-order', 'scheduler.json');
     try {
@@ -338,7 +338,7 @@ interface CiWatchFileShape extends Record<string, unknown> {
   readonly subscriptions: readonly { readonly id: string }[];
 }
 
-describe('CiWatchService — a deleted watch does not come back', () => {
+describe('CiWatchService: a deleted watch does not come back', () => {
   test('a poll already in flight cannot restore the watch deleted while it ran', async () => {
     const { store, path, cleanup } = makeControllableStore<CiWatchFileShape>('ci-watch-order', 'ci-watches.json');
     try {
@@ -373,7 +373,7 @@ describe('CiWatchService — a deleted watch does not come back', () => {
 // PrincipalRegistry, a deleted principal stops resolving.
 // ---------------------------------------------------------------------------
 
-describe('PrincipalRegistry — a deleted principal does not come back', () => {
+describe('PrincipalRegistry: a deleted principal does not come back', () => {
   test('a slower create cannot restore a principal deleted after it', async () => {
     const { store, path, cleanup } = makeControllableStore<Record<string, unknown>>('principals-order', 'principals.json');
     try {
@@ -411,7 +411,7 @@ describe('PrincipalRegistry — a deleted principal does not come back', () => {
 // ChannelProfileRegistry, a deleted binding stops resolving.
 // ---------------------------------------------------------------------------
 
-describe('ChannelProfileRegistry — a deleted binding does not come back', () => {
+describe('ChannelProfileRegistry: a deleted binding does not come back', () => {
   test('a slower set cannot restore a binding deleted after it', async () => {
     const { store, path, cleanup } = makeControllableStore<Record<string, unknown>>('channel-profiles-order', 'channel-profiles.json');
     try {

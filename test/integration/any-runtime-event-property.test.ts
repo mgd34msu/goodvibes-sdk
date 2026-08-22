@@ -104,7 +104,7 @@ function roundTrip(event: Record<string, unknown>): unknown {
 // Property: round-trip, parse(serialize(event)) ≡ event (structural equality)
 // ---------------------------------------------------------------------------
 
-describe('AnyRuntimeEvent — JSON round-trip property', () => {
+describe('AnyRuntimeEvent: JSON round-trip property', () => {
   test('every fixture event survives JSON serialize → parse with structural equality', () => {
     for (const event of FIXTURE_EVENTS) {
       const restored = roundTrip(event);
@@ -154,7 +154,7 @@ describe('AnyRuntimeEvent — JSON round-trip property', () => {
 // Property: malformed events, wrong type or missing required field → error
 // ---------------------------------------------------------------------------
 
-describe('AnyRuntimeEvent — validation rejects malformed events', () => {
+describe('AnyRuntimeEvent: validation rejects malformed events', () => {
   test('null input → validation error', () => {
     const result = validateAnyRuntimeEvent(null);
     expect(result.ok).toBe(false);
@@ -234,7 +234,7 @@ describe('AnyRuntimeEvent — validation rejects malformed events', () => {
 // Domain coverage: verify KNOWN_EVENT_TYPES covers every fixture event
 // ---------------------------------------------------------------------------
 
-describe('AnyRuntimeEvent — coverage invariant', () => {
+describe('AnyRuntimeEvent: coverage invariant', () => {
   test('every fixture event type is in KNOWN_EVENT_TYPES', () => {
     for (const event of FIXTURE_EVENTS) {
       expect(KNOWN_EVENT_TYPES.has(event.type)).toBe(true);

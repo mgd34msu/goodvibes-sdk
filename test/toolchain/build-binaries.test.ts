@@ -186,7 +186,7 @@ describe('build-binaries optional-dependency screen', () => {
     expect(screened.missingRequired).toEqual([]);
   });
 
-  test('no manifests supplied means no screen — existing callers are untouched', () => {
+  test('no manifests supplied means no screen: existing callers are untouched', () => {
     const calls: string[][] = [];
     const exec = scriptedExec((_c, args) => { calls.push([...args]); return { status: 0 }; });
     runBuildBinaries({
@@ -299,7 +299,7 @@ describe('the screened compile survives a genuinely absent optional package', ()
     expect(run.stdout).toContain(ABSENT_OPTIONAL);
   });
 
-  test('without the external the same source does not compile at all — the control', () => {
+  test('without the external the same source does not compile at all: the control', () => {
     const dir = scratch();
     const entry = join(dir, 'entry.ts');
     // Static, which is the shape that shipped, and unresolvable.

@@ -2,7 +2,7 @@ import type { OperatorMethodInput, OperatorMethodOutput } from './foundation-cli
 import type { OperatorMethodId } from './operator-method-ids.js';
 
 /**
- * GENERATED — do not edit. Regenerate with `bun run refresh:contracts`.
+ * GENERATED. Do not edit. Regenerate with `bun run refresh:contracts`.
  *
  * The mechanical transport layer for the webui facade (src/lib/goodvibes.ts),
  * emitted from the operator contract by scripts/generate-webui-facade.ts. The
@@ -1780,7 +1780,7 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
 
 /**
  * Methods reachable ONLY through the generic gateway-method invoke endpoint
- * (transport ['ws'], no http binding) — the webui posts these to
+ * (transport ['ws'], no http binding). The webui posts these to
  * /api/control-plane/methods/{methodId}/invoke.
  */
 export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [

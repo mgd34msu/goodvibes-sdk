@@ -106,7 +106,7 @@ describe('attachConfigEmitBridge', () => {
     detach();
   });
 
-  test('a credential-bearing key travels by NAME ONLY — no value property at all', async () => {
+  test('a credential-bearing key travels by NAME ONLY: no value property at all', async () => {
     const bus = new RuntimeEventBus();
     const seen = collector(bus);
     const config = fakeConfig();

@@ -83,7 +83,7 @@ export async function refreshOpenAISubscriptionAfterRejection(
  * Interaction-free freshness maintenance, called before a send: a token at
  * or near its expiry is refreshed silently with the rotating refresh token,
  * so the ordinary expiry case never even produces a rejected request, let
- * alone a user-visible error. `unavailable` falls back to the stored token —
+ * alone a user-visible error. `unavailable` falls back to the stored token;
  * the send may still work, and the rejection path backstops it if not.
  */
 export async function resolveFreshOpenAIAccessToken(

@@ -329,7 +329,7 @@ export function createWorktreeIsolationManager(deps: WorktreeIsolationManagerDep
       const branchLine = lines.find((l) => l.startsWith('branch '));
       const branch = branchLine ? branchLine.slice('branch '.length).replace(/^refs\/heads\//, '') : '';
       if (!path || !branch.startsWith(prefix)) continue;
-      if (knownPaths.has(path)) continue; // already tracked by an item's recorded worktreePath — not an orphan
+      if (knownPaths.has(path)) continue; // already tracked by an item's recorded worktreePath, not an orphan
       const itemShort = branch.slice(prefix.length);
       const item = workstream.items.find((i) => shortId(i.id) === itemShort);
       const unresolved = !!item && (
