@@ -1,5 +1,38 @@
 # Changelog
 
+## [2.0.22] - 2026-08-22
+
+### Fixed
+
+- **A dead subscription login shows dead everywhere.** When the
+  authorization server refuses a subscription grant (an answered 4xx on
+  refresh), the stored record is stamped; the provider-health posture then
+  reports the session as ended with a sign-in-again repair hint instead of
+  deriving "healthy" from an expiry timestamp that no longer means anything,
+  and later turns fail fast with the honest message instead of re-spending a
+  refresh attempt per turn.
+- **An ordinary token expiry never surfaces at all.** A near-expiry
+  subscription token refreshes silently before the send through the same
+  shared, coalesced, time-bounded path the rejection recovery uses; the
+  expiring token is never even offered to the backend. No user interaction,
+  no failover, no message.
+- **A machine with no microphone is an environment state, not a detector
+  crash.** The wake listener used to burn its restart budget against
+  "no target node available" in seconds and latch off with crash wording.
+  It now announces once, in plain words, that no microphone is available,
+  re-probes every minute outside the crash-latch budget, and recovers only
+  when audio actually arrives — a recorder that merely spawns on a
+  deviceless machine dies a beat later and proves nothing. The
+  silent-recorder case (opens, delivers nothing) keeps its prompt
+  excluded-backend restart under the new `no-audio` failure reason.
+- **Surfaces adopt their daemon again.** The adoption gate band-checked the
+  daemon's artifact version (1.28.x) against the surface's SDK version
+  (2.x), so every 2.x surface refused the daemon it was released alongside
+  and silently ran local-only since sdk 2.0.0. The identity probe now reads
+  the `platformVersion` the daemon's `/status` already serves and
+  band-checks platform build against platform build; a daemon too old to
+  report one is still judged by its artifact version.
+
 ## [2.0.21] - 2026-08-21
 
 ### Fixed

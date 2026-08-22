@@ -89,7 +89,11 @@ function classifyRecorderFailure(stderrText: string): AudioCaptureError | null {
     text.includes('no such device')
     || text.includes('no target node available')
     || text.includes('unknown pcm')
-    || text.includes('device or resource busy')
+  ) {
+    return new AudioCaptureError('device-missing', `the capture device could not be opened: ${stderrText.trim()}`);
+  }
+  if (
+    text.includes('device or resource busy')
     || text.includes('audio open error')
   ) {
     return new AudioCaptureError('device-unavailable', `the capture device could not be opened: ${stderrText.trim()}`);

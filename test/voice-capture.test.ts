@@ -798,6 +798,18 @@ describe('the recorder capture stream', () => {
     });
     child.emitStderr('stream node 56 error: no target node available');
     child.close(1);
+    expect(captured?.reason).toBe('device-missing');
+  });
+
+  test('a busy device classifies as unavailable, not missing: contention gets prompt retries', async () => {
+    const child = fakeProcess();
+    let captured: AudioCaptureError | undefined;
+    await opener(child)(request, {
+      onFrame: () => {},
+      onStopped: (_reason, error) => { captured = error; },
+    });
+    child.emitStderr('open failed: device or resource busy');
+    child.close(1);
     expect(captured?.reason).toBe('device-unavailable');
   });
 

@@ -338,7 +338,7 @@ export class WakeListener {
       // Already paused on a missing device and it is still missing: stay in
       // the quiet wait instead of dropping to idle and spamming a fresh
       // could-not-start line per probe.
-      if (captureError.reason === 'device-unavailable' && this.#waitingForDevice && !this.#stopping) {
+      if (captureError.reason === 'device-missing' && this.#waitingForDevice && !this.#stopping) {
         this.#setPhase('restarting');
         this.#restartTimer = this.#setTimer(() => {
           this.#restartTimer = null;
@@ -709,7 +709,7 @@ export class WakeListener {
     this.#clearFirstFrameWatchdog();
     const captureError = error ?? new AudioCaptureError('stream-ended', 'the capture stream ended');
     this.#lastError = captureError.message;
-    if (captureError.reason === 'device-unavailable') {
+    if (captureError.reason === 'device-missing') {
       const firstNotice = !this.#waitingForDevice;
       this.#waitingForDevice = true;
       this.#setPhase('restarting');

@@ -88,8 +88,17 @@ export type AudioCaptureFailureReason =
   | 'no-recorder'
   /** The user or the OS refused microphone access. */
   | 'permission-denied'
-  /** The named device does not exist, or is held by something else. */
+  /** A device exists but could not be opened: held by something else, or a generic open failure. */
   | 'device-unavailable'
+  /**
+   * No capture device exists at all ("no such device", pipewire's "no target
+   * node available", an unknown PCM). Distinct from `device-unavailable`
+   * (present but contended, worth prompt retries and an eventual latch):
+   * a missing device is an environment state that only a plugged-in
+   * microphone ends, so the wake listener waits quietly and re-probes
+   * gently instead of burning its crash budget.
+   */
+  | 'device-missing'
   /** A browser tab on a plain-http origin: `getUserMedia` does not exist there. */
   | 'insecure-origin'
   /**
