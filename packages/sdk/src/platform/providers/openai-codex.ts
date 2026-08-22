@@ -11,7 +11,7 @@ import type {
 import type { ToolCall, ToolDefinition } from '../types/tools.js';
 import { ProviderError } from '../types/errors.js';
 import { withRetry } from '../utils/retry.js';
-import { resolveSubscriptionAccessToken } from '../config/subscription-auth.js';
+import { refreshOpenAISubscriptionAfterRejection, resolveSubscriptionAccessToken } from '../config/subscription-auth.js';
 import { arch, platform, release } from 'node:os';
 import type { SubscriptionManager } from '../config/subscriptions.js';
 import { toProviderError } from '../utils/error-display.js';
@@ -48,6 +48,16 @@ export const OPENAI_CODEX_DATED_STATIC_MODELS_AS_OF = '2026-07-12';
 
 function getOpenAICodexUserAgent(): string {
   return `pi (${platform()} ${release()}; ${arch()})`;
+}
+
+/**
+ * Whether the responses surface refused the credential. 401 is the observed
+ * form; 403 is included because this codebase already maps provider 403s to
+ * the authorization category, and a 403 for a lost entitlement would
+ * otherwise skip recovery entirely.
+ */
+function isAuthRejection(error: unknown): error is ProviderError {
+  return error instanceof ProviderError && (error.statusCode === 401 || error.statusCode === 403);
 }
 
 function normalizeOpenAIModel(model: string): string {
@@ -459,10 +469,45 @@ export class OpenAICodexProvider implements LLMProvider {
         phase: 'auth',
       });
     }
-    return (await instrumentedLlmCall(
-      () => chatWithOpenAICodex(accessToken, params),
-      { provider: this.name, model: params.model ?? '' },
-    )).result;
+    return (await instrumentedLlmCall(async () => {
+      try {
+        return await chatWithOpenAICodex(accessToken, params);
+      } catch (error) {
+        if (!isAuthRejection(error)) throw error;
+        // The backend rejected the stored token: expired past its timestamp,
+        // or revoked mid-lifetime (a Codex login elsewhere, a password
+        // change). Both recover the same way: one shared refresh attempt,
+        // then one retry.
+        const outcome = await refreshOpenAISubscriptionAfterRejection(this.subscriptionManager, accessToken);
+        if (outcome.kind === 'session-dead') throw this.subscriptionEndedError();
+        // Refresh unjudgeable (token endpoint unreachable or broken): the
+        // session may be fine, so surface the original rejection rather than
+        // telling the user to sign in again.
+        if (outcome.kind === 'unavailable') throw error;
+        params.onRetry?.(1, 1, 0, error instanceof Error ? error : new Error(String(error)));
+        try {
+          return await chatWithOpenAICodex(outcome.accessToken, params);
+        } catch (retryError) {
+          // A fresh token the responses surface still refuses: the account
+          // has lost the entitlement (plan lapsed, suspension). Still a
+          // subscription problem, never an API-key one.
+          if (isAuthRejection(retryError)) throw this.subscriptionEndedError();
+          throw retryError;
+        }
+      }
+    }, { provider: this.name, model: params.model ?? '' })).result;
+  }
+
+  private subscriptionEndedError(): ProviderError {
+    return new ProviderError(
+      'Your OpenAI subscription session has ended and could not be refreshed. Sign in to OpenAI again to keep using the subscription.',
+      {
+        statusCode: 401,
+        provider: this.name,
+        operation: 'chat',
+        phase: 'auth',
+      },
+    );
   }
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {

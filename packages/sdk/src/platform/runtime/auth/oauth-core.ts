@@ -2,7 +2,7 @@ import type { OAuthProviderConfig } from '../../config/subscriptions.js';
 import { createSha256Hash, randomBytesBase64url } from './crypto-adapter.js';
 
 import type { OAuthStartState, OAuthTokenPayload } from '../../../client-auth/oauth-types.js';
-import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
+import { createTimeoutController, instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 export type { OAuthStartState, OAuthTokenPayload } from '../../../client-auth/oauth-types.js';
 
 export function createOAuthState(bytes = 24): string {
@@ -60,6 +60,24 @@ export async function buildOAuthAuthorizationStart(
   };
 }
 
+/**
+ * A token endpoint that ANSWERED, with a non-ok status. Distinguishable from
+ * transport failures (which throw plain fetch errors) so a caller can tell
+ * "the authorization server refused this grant" (4xx: the session is dead,
+ * re-login) from "the authorization server is unreachable or broken" (5xx or
+ * no answer: the session's state is unknown, do not tell the user to
+ * re-login).
+ */
+export class OAuthTokenExchangeError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = 'OAuthTokenExchangeError';
+  }
+}
+
+/** Bound on a token exchange: an authorization server that accepts the socket and hangs must not hang the caller's turn. */
+const OAUTH_EXCHANGE_TIMEOUT_MS = 30_000;
+
 async function exchangeOAuthRequest(
   url: string,
   encoding: 'form' | 'json',
@@ -68,16 +86,23 @@ async function exchangeOAuthRequest(
   const body = encoding === 'json'
     ? JSON.stringify(payload)
     : new URLSearchParams(Object.entries(payload).map(([key, value]) => [key, String(value)])).toString();
-  const response = await instrumentedFetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': encoding === 'json' ? 'application/json' : 'application/x-www-form-urlencoded',
-    },
-    body,
-  });
+  const timeout = createTimeoutController(OAUTH_EXCHANGE_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await instrumentedFetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': encoding === 'json' ? 'application/json' : 'application/x-www-form-urlencoded',
+      },
+      body,
+      signal: timeout.signal,
+    });
+  } finally {
+    timeout.dispose();
+  }
   if (!response.ok) {
     const text = await response.text().catch(() => '');
-    throw new Error(`OAuth token exchange failed (${response.status}): ${text}`);
+    throw new OAuthTokenExchangeError(`OAuth token exchange failed (${response.status}): ${text}`, response.status);
   }
   const json = await response.json() as {
     access_token?: unknown | undefined;
