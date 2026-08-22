@@ -37,10 +37,13 @@ export async function buildStandardProviderAuthRoutes(
   const subscription = deps.subscriptionManager.get(subscriptionProviderId);
   const pendingSubscription = deps.subscriptionManager.getPending(subscriptionProviderId);
   const hasSubscriptionRoute = builtinSubscriptions.has(subscriptionProviderId) || subscription != null || pendingSubscription != null;
+  // A revocation stamp overrides the timestamp: the authorization server
+  // refused this session's grant, so deriving "healthy" from expiresAt would
+  // show a green light over a login every send is going to fail.
   const subscriptionFreshness = pendingSubscription
     ? 'pending'
     : subscription
-      ? determineFreshness(subscription.expiresAt)
+      ? (subscription.revokedAt !== undefined ? 'expired' : determineFreshness(subscription.expiresAt))
       : 'unconfigured';
   const serviceNames = options.serviceNames && options.serviceNames.length > 0
     ? [...new Set(options.serviceNames)]
@@ -115,11 +118,15 @@ export async function buildStandardProviderAuthRoutes(
       freshness: subscriptionFreshness,
       detail: pendingSubscription
         ? 'Subscription OAuth login is pending completion.'
-        : subscription
-          ? 'A stored subscription OAuth session is available for this provider.'
-          : 'A built-in subscription OAuth adapter is available, but no session is stored yet.',
+        : subscription?.revokedAt !== undefined
+          ? 'The provider ended this subscription session; it must be signed in again.'
+          : subscription
+            ? 'A stored subscription OAuth session is available for this provider.'
+            : 'A built-in subscription OAuth adapter is available, but no session is stored yet.',
       providerId: subscriptionProviderId,
-      repairHints: [`Use /subscription login ${subscriptionProviderId} start or refresh the stored subscription session.`],
+      repairHints: subscription?.revokedAt !== undefined
+        ? [`Sign in again with /subscription login ${subscriptionProviderId} start; the stored session was ended by the provider.`]
+        : [`Use /subscription login ${subscriptionProviderId} start or refresh the stored subscription session.`],
     });
   }
 

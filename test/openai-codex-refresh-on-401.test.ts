@@ -121,7 +121,30 @@ describe('OpenAICodexProvider refresh-on-401', () => {
     // One send with the dead token, one refresh attempt, no blind resend.
     expect(log.filter((e) => e.url.includes('/codex/responses'))).toHaveLength(1);
     expect(log.filter((e) => e.url.includes('oauth/token'))).toHaveLength(1);
-    expect(saved).toHaveLength(0);
+    // The refusal is RECORDED: the store now carries the revocation stamp, so
+    // no status surface can derive "healthy" from the expiry timestamp, and
+    // the next turn fails fast instead of spending another refresh attempt.
+    expect(saved).toHaveLength(1);
+    expect(typeof saved[0]!.revokedAt).toBe('number');
+  });
+
+  test('a stamped-dead session fails fast without touching the token endpoint again', async () => {
+    const { manager } = makeManager({ ...liveRecord(), revokedAt: Date.now() - 1000 } as ProviderSubscription);
+    const log = stubFetch({
+      responses: () => revoked401(),
+      tokenExchange: () => { throw new Error('the token endpoint must not be called for a stamped session'); },
+    });
+
+    const provider = new OpenAICodexProvider(manager as SubscriptionManager);
+    const failure = await provider.chat(CHAT_PARAMS as never).then(
+      () => null,
+      (err: Error) => err,
+    );
+
+    expect(failure).not.toBeNull();
+    expect(String(failure!.message)).toMatch(/subscription session has ended/i);
+    // No send, no refresh: the stamp answers before any network happens.
+    expect(log).toHaveLength(0);
   });
 
   test('a revoked access token with a live refresh token recovers in one retry', async () => {
@@ -246,6 +269,31 @@ describe('OpenAICodexProvider refresh-on-401', () => {
     expect(saved).toHaveLength(0);
   });
 
+  test('a near-expiry token refreshes silently before the send, with no user-visible failure', async () => {
+    const record = { ...liveRecord(), expiresAt: Date.now() + 10_000 } as ProviderSubscription;
+    const { manager, saved } = makeManager(record);
+    const log = stubFetch({
+      responses: (bearer) => (bearer === TOKEN_B ? sseSuccess() : revoked401()),
+      tokenExchange: () => new Response(JSON.stringify({
+        access_token: TOKEN_B,
+        refresh_token: 'refresh-2',
+        token_type: 'Bearer',
+        expires_in: 3600,
+      }), { status: 200, headers: { 'content-type': 'application/json' } }),
+    });
+
+    const provider = new OpenAICodexProvider(manager as SubscriptionManager);
+    const response = await provider.chat(CHAT_PARAMS as never);
+
+    expect(response.content).toContain('ok');
+    // The expiring token was never even offered to the backend: one refresh,
+    // then one send with the fresh token.
+    const sends = log.filter((e) => e.url.includes('/codex/responses'));
+    expect(sends).toHaveLength(1);
+    expect(sends[0]!.bearer).toBe(TOKEN_B);
+    expect(saved).toHaveLength(1);
+  });
+
   test('a failed persist does not throw away a successful refresh', async () => {
     const base = makeManager(liveRecord());
     const manager = {
@@ -269,5 +317,31 @@ describe('OpenAICodexProvider refresh-on-401', () => {
     // away server-side; a full disk must not cost the user the session.
     expect(response.content).toContain('ok');
     expect(log.filter((e) => e.url.includes('/codex/responses'))).toHaveLength(2);
+  });
+});
+
+describe('a revoked session is never shown as healthy', () => {
+  test('the auth-route posture reports a revoked record as expired and says why', async () => {
+    const { buildStandardProviderAuthRoutes } = await import('../packages/sdk/src/platform/providers/runtime-metadata.js');
+    const record = { ...liveRecord(), revokedAt: Date.now() } as ProviderSubscription;
+    const routes = await buildStandardProviderAuthRoutes({
+      providerId: 'openai-subscriber',
+      subscriptionProviderId: 'openai',
+    }, {
+      subscriptionManager: {
+        get: (provider: string) => (provider === 'openai' ? record : null),
+        getPending: () => null,
+      },
+      serviceRegistry: { getAll: () => ({}), inspect: async () => null },
+      secretsManager: { get: async () => null, listDetailed: async () => [] },
+      env: {},
+    } as never);
+
+    const subscriptionRoute = routes.find((route) => route.route === 'subscription-oauth');
+    expect(subscriptionRoute).toBeTruthy();
+    expect(subscriptionRoute!.freshness).toBe('expired');
+    expect(subscriptionRoute!.usable).toBe(false);
+    expect(subscriptionRoute!.detail).toMatch(/ended this subscription session/i);
+    expect(subscriptionRoute!.repairHints?.join(' ')).toMatch(/sign in again/i);
   });
 });

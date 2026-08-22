@@ -106,6 +106,14 @@ const DROPPED_FRAME_REPORT_INTERVAL_MS = 30_000;
  * audio stack in a loop. Only armed while capture is on the fallback.
  */
 const DEVICE_RECHECK_INTERVAL_MS = 30_000;
+/**
+ * Retry cadence while the machine has NO usable capture device at all (the
+ * recorder answers "no target node available" or its equivalent). A missing
+ * microphone is an environment state, not a detector crash: it is not counted
+ * against the crash-latch budget, it is announced once instead of per attempt,
+ * and it is re-probed gently until a device appears.
+ */
+const DEVICE_WAIT_RETRY_MS = 60_000;
 
 /** Runs wake detection over one capture stream, per resolved settings. */
 export class WakeListener {
@@ -126,6 +134,8 @@ export class WakeListener {
   #queued = 0;
   #chain: Promise<void> = Promise.resolve();
   #restartTimer: unknown = null;
+  /** True while paused on a machine with no capture device; gates the announce-once and the gentle retry. */
+  #waitingForDevice = false;
   #lastWakeAt: number | null = null;
   #lastError: string | null = null;
   #stopping = false;
@@ -325,6 +335,18 @@ export class WakeListener {
         ? error
         : new AudioCaptureError('unsupported', error instanceof Error ? error.message : String(error));
       this.#lastError = captureError.message;
+      // Already paused on a missing device and it is still missing: stay in
+      // the quiet wait instead of dropping to idle and spamming a fresh
+      // could-not-start line per probe.
+      if (captureError.reason === 'device-unavailable' && this.#waitingForDevice && !this.#stopping) {
+        this.#setPhase('restarting');
+        this.#restartTimer = this.#setTimer(() => {
+          this.#restartTimer = null;
+          if (this.#stopping) return;
+          void this.#open();
+        }, DEVICE_WAIT_RETRY_MS);
+        return { started: false, refusal: 'capture-unavailable', detail: captureError.message };
+      }
       this.#setPhase('idle');
       // Reported, not just returned: a boot-time start reaches nobody's return
       // value, so a failure that only travelled that way was invisible.
@@ -388,8 +410,11 @@ export class WakeListener {
         backend: backend ?? 'unknown',
       });
       // Routed through the normal stream-failure path so the supervisor retries
-      // and the surface is told, exactly as for a recorder that exited.
-      this.#onStreamStopped('failed', new AudioCaptureError('device-unavailable', detail));
+      // and the surface is told, exactly as for a recorder that exited. The
+      // reason is `no-audio`, NOT `device-unavailable`: the stream opened, so
+      // the prompt supervisor restart (with this backend excluded under
+      // `auto`) is the right response, never the quiet no-device wait.
+      this.#onStreamStopped('failed', new AudioCaptureError('no-audio', detail));
     }, timeout);
   }
 
@@ -488,7 +513,10 @@ export class WakeListener {
   #onFrame(frame: Float32Array): void {
     // Audio arrived. This is the ONLY evidence that capture works, and it is
     // recorded before anything else so a status surface can be honest even
-    // while an utterance is being recorded.
+    // while an utterance is being recorded. It is also the only place the
+    // no-device wait may end: a recorder that merely SPAWNED on a deviceless
+    // machine dies a beat later, so open-success proves nothing.
+    this.#waitingForDevice = false;
     this.#framesSeen += 1;
     this.#lastFrameAt = this.#now();
     if (this.#firstFrameTimer !== null) this.#clearFirstFrameWatchdog();
@@ -681,6 +709,24 @@ export class WakeListener {
     this.#clearFirstFrameWatchdog();
     const captureError = error ?? new AudioCaptureError('stream-ended', 'the capture stream ended');
     this.#lastError = captureError.message;
+    if (captureError.reason === 'device-unavailable') {
+      const firstNotice = !this.#waitingForDevice;
+      this.#waitingForDevice = true;
+      this.#setPhase('restarting');
+      if (firstNotice) {
+        this.#options.handlers?.onFailure?.(
+          captureError,
+          true,
+          `no microphone is available on this machine (${captureError.message}); wake listening is paused and retries every ${Math.round(DEVICE_WAIT_RETRY_MS / 1000)} s until a device appears`,
+        );
+      }
+      this.#restartTimer = this.#setTimer(() => {
+        this.#restartTimer = null;
+        if (this.#stopping) return;
+        void this.#open();
+      }, DEVICE_WAIT_RETRY_MS);
+      return;
+    }
     const decision = this.#supervisor.noteCrashed(this.#now());
     if (decision.kind === 'latched') {
       this.#setPhase('latched');

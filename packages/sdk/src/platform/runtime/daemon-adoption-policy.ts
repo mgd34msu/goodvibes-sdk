@@ -24,7 +24,16 @@
 export interface DaemonIdentityProbeResult {
   readonly kind: 'goodvibes' | 'unauthorized' | 'unknown';
   readonly status?: string | undefined;
+  /** The daemon artifact's own release version (its package version, e.g. 1.28.x). */
   readonly version?: string | undefined;
+  /**
+   * The SDK build the daemon is composed from (`/status` serves it as
+   * `platformVersion`). THIS is the wire-compatibility axis: a surface and a
+   * daemon are wire-compatible when their platform builds share a band, and
+   * comparing the artifact version instead put the daemon's 1.x package
+   * number against a surface's 2.x SDK number and refused every adoption.
+   */
+  readonly platformVersion?: string | undefined;
   readonly reason?: string | undefined;
 }
 
@@ -51,7 +60,13 @@ export interface DaemonProbeClassificationInput {
  */
 export function classifyDaemonProbe(input: DaemonProbeClassificationInput): DaemonProbeClassification {
   if (input.identity.kind !== 'goodvibes') return 'blocked';
-  return input.versionCompatible(input.localVersion, input.identity.version) ? 'adopt' : 'incompatible';
+  // Band-check the PLATFORM build when the daemon reports one: wire
+  // compatibility is an SDK-contract property, and the artifact's own release
+  // number lives on a different axis (daemon 1.28.x carries sdk 2.x). A
+  // daemon old enough not to report platformVersion is judged by its
+  // artifact version, which for such builds is the only signal there is.
+  const remoteWireVersion = input.identity.platformVersion ?? input.identity.version;
+  return input.versionCompatible(input.localVersion, remoteWireVersion) ? 'adopt' : 'incompatible';
 }
 
 /** The action the adopt-or-spawn policy selects. */

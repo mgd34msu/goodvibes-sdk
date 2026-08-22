@@ -350,9 +350,9 @@ async function probeGoodVibesDaemonIdentity(
     if (!response.ok) {
       return { kind: 'unknown', reason: `Identity probe returned HTTP ${response.status}` };
     }
-    let body: { status?: unknown; version?: unknown } | null = null;
+    let body: { status?: unknown; version?: unknown; platformVersion?: unknown } | null = null;
     try {
-      body = await response.json() as { status?: unknown; version?: unknown };
+      body = await response.json() as { status?: unknown; version?: unknown; platformVersion?: unknown };
     } catch (error) {
       return {
         kind: 'unknown',
@@ -360,7 +360,14 @@ async function probeGoodVibesDaemonIdentity(
       };
     }
     if (body?.status === 'running' && typeof body.version === 'string') {
-      return { kind: 'goodvibes', status: body.status, version: body.version };
+      return {
+        kind: 'goodvibes',
+        status: body.status,
+        version: body.version,
+        ...(typeof body.platformVersion === 'string' && body.platformVersion.trim()
+          ? { platformVersion: body.platformVersion }
+          : {}),
+      };
     }
     return { kind: 'unknown', reason: 'Identity probe response did not match GoodVibes daemon status shape' };
   } catch (error) {
@@ -461,7 +468,7 @@ export async function startHostServices(
         reason: reasonAdopted,
       });
     }
-    const reason = describeVersionIncompatibility(daemonHost, daemonPort, localDaemonVersion, identity.version);
+    const reason = describeVersionIncompatibility(daemonHost, daemonPort, localDaemonVersion, identity.platformVersion ?? identity.version);
     logger.warn('Daemon on configured port reports an incompatible version; refusing to adopt or start a competing daemon', {
       host: daemonHost,
       port: daemonPort,

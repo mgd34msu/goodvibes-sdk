@@ -71,8 +71,42 @@ export async function refreshOpenAISubscriptionAfterRejection(
   if (existing.accessToken !== rejectedAccessToken) {
     return { kind: 'refreshed', accessToken: existing.accessToken };
   }
+  // A session already stamped dead is not retried: hammering the token
+  // endpoint with a refresh token the server already refused cannot help,
+  // and only a new sign-in replaces the record.
+  if (existing.revokedAt !== undefined) return { kind: 'session-dead' };
   if (!existing.refreshToken) return { kind: 'session-dead' };
+  return runSharedOpenAIRefresh(manager, existing);
+}
 
+/**
+ * Interaction-free freshness maintenance, called before a send: a token at
+ * or near its expiry is refreshed silently with the rotating refresh token,
+ * so the ordinary expiry case never even produces a rejected request, let
+ * alone a user-visible error. `unavailable` falls back to the stored token —
+ * the send may still work, and the rejection path backstops it if not.
+ */
+export async function resolveFreshOpenAIAccessToken(
+  manager: Pick<SubscriptionManager, 'get' | 'saveSubscription'>,
+): Promise<SubscriptionRefreshOutcome | { kind: 'unconfigured' }> {
+  const existing = manager.get('openai');
+  if (!existing) return { kind: 'unconfigured' };
+  if (existing.revokedAt !== undefined) return { kind: 'session-dead' };
+  const nearExpiry = typeof existing.expiresAt === 'number' && Date.now() + 60_000 >= existing.expiresAt;
+  if (!nearExpiry || !existing.refreshToken) {
+    return { kind: 'refreshed', accessToken: existing.accessToken };
+  }
+  const outcome = await runSharedOpenAIRefresh(manager, existing);
+  if (outcome.kind === 'unavailable') {
+    return { kind: 'refreshed', accessToken: existing.accessToken };
+  }
+  return outcome;
+}
+
+function runSharedOpenAIRefresh(
+  manager: Pick<SubscriptionManager, 'get' | 'saveSubscription'>,
+  existing: NonNullable<ReturnType<SubscriptionManager['get']>>,
+): Promise<SubscriptionRefreshOutcome> {
   if (inFlightOpenAIRefresh) return inFlightOpenAIRefresh;
   const attempt = (async (): Promise<SubscriptionRefreshOutcome> => {
     let refreshed;
@@ -83,13 +117,21 @@ export async function refreshOpenAISubscriptionAfterRejection(
       // Anything else (transport, 5xx, malformed 200) leaves the session's
       // state unknown.
       if (error instanceof OAuthTokenExchangeError && error.status >= 400 && error.status < 500) {
+        try {
+          manager.saveSubscription({ ...existing, revokedAt: Date.now(), updatedAt: Date.now() });
+        } catch (saveError) {
+          logger.warn('[subscription-auth] could not record the revoked OpenAI session', {
+            error: saveError instanceof Error ? saveError.message : String(saveError),
+          });
+        }
         return { kind: 'session-dead' };
       }
       return { kind: 'unavailable', error };
     }
     try {
+      const { revokedAt: _cleared, ...rest } = existing;
       manager.saveSubscription({
-        ...existing,
+        ...rest,
         accessToken: refreshed.accessToken,
         refreshToken: refreshed.refreshToken,
         tokenType: refreshed.tokenType,
@@ -109,9 +151,7 @@ export async function refreshOpenAISubscriptionAfterRejection(
     return { kind: 'refreshed', accessToken: refreshed.accessToken };
   })();
   inFlightOpenAIRefresh = attempt;
-  try {
-    return await attempt;
-  } finally {
+  return attempt.finally(() => {
     inFlightOpenAIRefresh = null;
-  }
+  });
 }

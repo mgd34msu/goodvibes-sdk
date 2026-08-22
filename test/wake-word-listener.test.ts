@@ -72,22 +72,25 @@ function replayClassifier(scores: readonly number[]): WakeInferenceSession & { c
 
 function fakeProcess(): CaptureChildProcess & {
   emit(bytes: Uint8Array): void;
+  emitStderr(text: string): void;
   close(code: number | null): void;
   readonly signals: string[];
 } {
   const data: Array<(chunk: Uint8Array) => void> = [];
+  const stderrListeners: Array<(chunk: Uint8Array) => void> = [];
   const closed: Array<(code: number | null, signal: string | null) => void> = [];
   const signals: string[] = [];
   return {
     signals,
     stdout: { on: (_e: 'data', l: (chunk: Uint8Array) => void) => data.push(l) },
-    stderr: { on: () => undefined },
+    stderr: { on: (_e: 'data', l: (chunk: Uint8Array) => void) => stderrListeners.push(l) },
     on(event: 'error' | 'close', listener: never) {
       if (event === 'close') closed.push(listener as unknown as (c: number | null, s: string | null) => void);
       return this;
     },
     kill(signal?: string) { signals.push(signal ?? 'SIGTERM'); return true; },
     emit: (bytes) => { for (const l of data) l(bytes); },
+    emitStderr: (text) => { const bytes = new TextEncoder().encode(text); for (const l of stderrListeners) l(bytes); },
     close: (code) => { for (const l of closed) l(code, null); },
   };
 }
@@ -414,6 +417,46 @@ describe('a stream that dies is a restart decision, not a silent stop', () => {
     const refused = await h.listener.start();
     expect(refused.started).toBe(false);
     h.listener.clearLatch();
+    expect(h.listener.state().latchReason).toBeNull();
+  });
+
+  test('a machine with no capture device pauses and re-probes; it never crash-latches', async () => {
+    // The shipped failure: pipewire answers "no target node available" because
+    // the machine has no microphone at all. That is an environment state, not
+    // a detector crash: announced once, retried gently, never latched.
+    const children = [fakeProcess(), fakeProcess(), fakeProcess()];
+    const h = harness(
+      { 'voice.wake.enabled': true, 'voice.wake.maxRestarts': 1, 'voice.wake.restartBackoffMs': 10 },
+      { children },
+    );
+    await h.listener.start();
+    children[0]!.emitStderr('stream node 81 error: no target node available');
+    children[0]!.close(1);
+    await settle();
+    expect(h.failures).toHaveLength(1);
+    expect(h.failures[0]?.restarting).toBe(true);
+    expect(h.failures[0]?.detail).toContain('no microphone is available');
+    expect(h.listener.state().phase).toBe('restarting');
+    const deviceWaits = () => h.timers.filter((t) => t.ms === 60_000);
+    expect(deviceWaits()).toHaveLength(1);
+
+    deviceWaits().at(-1)?.handler();
+    await settle();
+    await settle();
+    children[1]!.emitStderr('stream node 82 error: no target node available');
+    children[1]!.close(1);
+    await settle();
+    // Still missing: silent re-arm, no second notice, and no progress toward
+    // the crash latch even with maxRestarts at 1.
+    expect(h.failures.filter((f) => f.detail?.includes('no microphone is available'))).toHaveLength(1);
+    expect(h.listener.state().phase).toBe('restarting');
+    expect(deviceWaits()).toHaveLength(2);
+
+    deviceWaits().at(-1)?.handler();
+    await settle();
+    await settle();
+    expect(h.spawns).toHaveLength(3);
+    expect(h.listener.state().phase).toBe('listening');
     expect(h.listener.state().latchReason).toBeNull();
   });
 

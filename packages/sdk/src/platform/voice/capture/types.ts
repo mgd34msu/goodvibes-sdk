@@ -101,6 +101,14 @@ export type AudioCaptureFailureReason =
   | 'noise-suppression-unavailable'
   /** The surface has no capture mechanism at all. */
   | 'unsupported'
+  /**
+   * The stream OPENED and delivered no audio. Distinct from
+   * `device-unavailable` (nothing to open at all): this recorder cannot
+   * capture on this host, and under an `auto` backend the right response is
+   * to exclude it and promptly try the next recorder, not to wait for a
+   * device to appear.
+   */
+  | 'no-audio'
   /** The stream ended on its own, recorder exited, or the track was revoked. */
   | 'stream-ended';
 

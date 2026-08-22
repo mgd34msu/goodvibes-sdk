@@ -11,7 +11,7 @@ import type {
 import type { ToolCall, ToolDefinition } from '../types/tools.js';
 import { ProviderError } from '../types/errors.js';
 import { withRetry } from '../utils/retry.js';
-import { refreshOpenAISubscriptionAfterRejection, resolveSubscriptionAccessToken } from '../config/subscription-auth.js';
+import { refreshOpenAISubscriptionAfterRejection, resolveFreshOpenAIAccessToken } from '../config/subscription-auth.js';
 import { arch, platform, release } from 'node:os';
 import type { SubscriptionManager } from '../config/subscriptions.js';
 import { toProviderError } from '../utils/error-display.js';
@@ -460,8 +460,10 @@ export class OpenAICodexProvider implements LLMProvider {
   ) {}
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
-    const accessToken = await resolveSubscriptionAccessToken('openai', this.subscriptionManager);
-    if (!accessToken) {
+    // Interaction-free freshness first: a near-expiry token refreshes
+    // silently here, so the ordinary expiry case never surfaces anything.
+    const resolved = await resolveFreshOpenAIAccessToken(this.subscriptionManager);
+    if (resolved.kind === 'unconfigured') {
       throw new ProviderError('No active OpenAI subscription token found. Run /subscription login openai start.', {
         statusCode: 401,
         provider: this.name,
@@ -469,6 +471,8 @@ export class OpenAICodexProvider implements LLMProvider {
         phase: 'auth',
       });
     }
+    if (resolved.kind !== 'refreshed') throw this.subscriptionEndedError();
+    const accessToken = resolved.accessToken;
     return (await instrumentedLlmCall(async () => {
       try {
         return await chatWithOpenAICodex(accessToken, params);

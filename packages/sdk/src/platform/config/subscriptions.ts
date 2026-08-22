@@ -88,6 +88,14 @@ export interface ProviderSubscription {
   readonly overrideAmbientApiKeys: boolean;
   readonly createdAt: number;
   readonly updatedAt: number;
+  /**
+   * Set when the authorization server REFUSED this session's grant (an
+   * answered 4xx on refresh): the session is over regardless of what
+   * `expiresAt` says, and every surface must show it as signed-out instead
+   * of deriving "healthy" from the timestamp. Cleared by a successful
+   * refresh; a completed login replaces the whole record.
+   */
+  readonly revokedAt?: number | undefined;
 }
 
 interface SubscriptionStore {
