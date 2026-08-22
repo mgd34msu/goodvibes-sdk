@@ -1,5 +1,37 @@
 # Changelog
 
+## [2.0.21] - 2026-08-21
+
+### Fixed
+
+- **A rejected OpenAI subscription token recovers instead of failing the
+  turn.** The Codex backend refusing a stored token (expired past its
+  timestamp, revoked mid-lifetime by a login elsewhere or a password change,
+  or entitlement lost) now takes one recovery path: a single process-wide
+  refresh attempt with the rotating refresh token, coalesced across
+  concurrent callers so a revocation storm spends the refresh token exactly
+  once, skipped entirely when another caller or process already refreshed,
+  and bounded to a 30-second token exchange. On success the turn retries
+  once and narrates the retry; on an answered 4xx — the authorization server
+  refusing the grant — the error says the subscription session has ended and
+  to sign in again; on a transport failure or 5xx the original rejection
+  surfaces, because telling a user to re-login over a token-endpoint blip is
+  a lie. A persist failure after a successful refresh keeps the refreshed
+  session in memory rather than discarding it.
+- **The subscription-auth wording never mentions an API key.** Every path
+  by which a subscription dies previously funneled into surfaces as "the
+  provider rejected your API key", which read as "your subscription is not
+  there" to a logged-in subscriber.
+
+### Changed
+
+- `resolveSubscriptionAccessToken` no longer proactively refreshes a
+  near-expiry OpenAI token; the provider's rejection path owns refresh
+  uniformly. An expired token costs one rejected request and recovers
+  through the same code as a revocation.
+- `exchangeOAuthRequest` failures carry a typed `OAuthTokenExchangeError`
+  with the answered status, and every token exchange is time-bounded.
+
 ## [2.0.20] - 2026-08-21
 
 ### Breaking
