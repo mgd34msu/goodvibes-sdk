@@ -627,8 +627,8 @@
     "rationale": "measured 241 B gzip @ v2.0.8 release verification (shared workspace register path resolver); headroom max(ceil(241*1.2)=290, 241+50=291) -> 291 (+50 B floor dominates)"
   },
   "./react-native": {
-    "gzip_bytes": 1601,
-    "rationale": "RN/Hermes companion surface; measured 1334 B gzip @ commit c0e5910; headroom max(ceil(1334*1.2)=1601, 1334+50=1384) \u2192 1601 (1.2x dominates by 217 B)"
+    "gzip_bytes": 1936,
+    "rationale": "RN/Hermes companion surface; measured 1613 B gzip @ commit 2b74b5c7 (authorized-websocket upgrade example in the entry JSDoc, kept in dist); headroom max(ceil(1613*1.2)=1936, 1613+50=1663) -> 1936 (1.2x dominates by 273 B)"
   },
   "./transport-core": {
     "gzip_bytes": 118,
