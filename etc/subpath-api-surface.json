@@ -576,7 +576,7 @@
     {
       "name": "FOUNDATION_METADATA",
       "kind": "const",
-      "text": "FOUNDATION_METADATA: { readonly productId: \"goodvibes\"; readonly productVersion: \"2.0.22\"; readonly operatorMethodCount: 507; readonly operatorEventCount: 35; readonly peerEndpointCount: 6; }"
+      "text": "FOUNDATION_METADATA: { readonly productId: \"goodvibes\"; readonly productVersion: \"2.0.23\"; readonly operatorMethodCount: 507; readonly operatorEventCount: 35; readonly peerEndpointCount: 6; }"
     },
     {
       "name": "FieldKind",
@@ -3328,7 +3328,7 @@
     {
       "name": "FOUNDATION_METADATA",
       "kind": "const",
-      "text": "FOUNDATION_METADATA: { readonly productId: \"goodvibes\"; readonly productVersion: \"2.0.22\"; readonly operatorMethodCount: 507; readonly operatorEventCount: 35; readonly peerEndpointCount: 6; }"
+      "text": "FOUNDATION_METADATA: { readonly productId: \"goodvibes\"; readonly productVersion: \"2.0.23\"; readonly operatorMethodCount: 507; readonly operatorEventCount: 35; readonly peerEndpointCount: 6; }"
     },
     {
       "name": "GatewayEventTransport",

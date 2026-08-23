@@ -1,5 +1,37 @@
 # Changelog
 
+## [2.0.23] - 2026-08-23
+
+### Fixed
+
+- **An expired or revoked Google refresh token reads as an auth failure.**
+  Calendar callers now receive CALENDAR_AUTH_FAILED with a 401 instead of
+  CALENDAR_REQUEST_FAILED with a 400, mapped from the token manager's
+  structured grant-invalid verdict, never from message text. Surfaces that
+  render auth failures as a calm re-authorize prompt now do so here too.
+- **The error envelope stops telling non-model callers to check their model
+  id.** The bad_request and not_found fallback hints describe an LLM request
+  and are now attached only to provider-attributed errors. A calendar 400
+  keeps its own problem-and-fix wording.
+- **A provider with any usable auth route reports configured.** The aggregate
+  auth summary folds in its routes, so a healthy subscription sign-in no
+  longer sits under a summary claiming the API key env var is missing; the
+  detail names the winning route.
+- **Catalog providers with no declared auth metadata gain real routes.** The
+  conventional env name is derived from the provider id (abacusai reads
+  ABACUSAI_API_KEY), so api-key and secret-ref credentials can actually
+  register instead of hitting a dead-end "none" route.
+
+### Added
+
+- **A reasoning-effort surface on the model verbs.** models.list reports
+  per-model reasoningOptions (the levels the model really offers and which
+  source resolved them); models.current.set accepts an optional effort level
+  validated against the severity ladder, persisted beside the model
+  selection, cleared by an explicit null; models.current.get reports the
+  persisted level. Turns already resolve the persisted level per model with
+  snap-down semantics.
+
 ## [2.0.22] - 2026-08-22
 
 ### Fixed
