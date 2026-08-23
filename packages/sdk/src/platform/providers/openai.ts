@@ -330,18 +330,22 @@ export class OpenAIProvider implements LLMProvider {
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {
     const configured = Boolean(process.env.OPENAI_API_KEY || process.env.OPENAI_KEY);
-    const { buildStandardProviderAuthRoutes } = await import('./runtime-metadata.js');
+    const { buildStandardProviderAuthRoutes, summarizeProviderAuth } = await import('./runtime-metadata.js');
     const authRoutes = await buildStandardProviderAuthRoutes({
       providerId: 'openai',
       apiKeyEnvVars: ['OPENAI_API_KEY', 'OPENAI_KEY'],
       serviceNames: ['openai'],
       subscriptionProviderId: 'openai',
     }, deps);
+    const auth = summarizeProviderAuth({
+      configured,
+      detail: configured ? 'OpenAI API key available' : 'OPENAI_API_KEY or OPENAI_KEY not set',
+    }, authRoutes);
     return {
       auth: {
         mode: 'api-key',
-        configured,
-        detail: configured ? 'OpenAI API key available' : 'OPENAI_API_KEY or OPENAI_KEY not set',
+        configured: auth.configured,
+        detail: auth.detail,
         envVars: ['OPENAI_API_KEY', 'OPENAI_KEY'],
         routes: authRoutes,
       },

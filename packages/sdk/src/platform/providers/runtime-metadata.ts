@@ -12,11 +12,51 @@ export interface StandardProviderAuthOptions {
   readonly anonymousDetail?: string | undefined;
 }
 
+/**
+ * The conventional API-key env var for a provider that declared none:
+ * uppercase, runs of non-alphanumerics to a single underscore, `_API_KEY`
+ * suffix. `abacusai` derives `ABACUSAI_API_KEY`.
+ */
+export function deriveProviderApiKeyEnvVar(providerId: string): string {
+  const stem = providerId.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return `${stem}_API_KEY`;
+}
+
 function determineFreshness(expiresAt?: number): 'healthy' | 'expiring' | 'expired' {
   if (typeof expiresAt !== 'number' || !Number.isFinite(expiresAt)) return 'healthy';
   if (expiresAt <= Date.now()) return 'expired';
   if (expiresAt <= Date.now() + 24 * 60 * 60 * 1000) return 'expiring';
   return 'healthy';
+}
+
+/**
+ * Fold the per-route truth into the aggregate `auth.configured` / `auth.detail`
+ * pair a provider reports.
+ *
+ * The aggregate used to be computed from the provider's own local signal alone
+ * (usually "is the API key env var set"), while the routes array right next to
+ * it reported a usable subscription-oauth session. A caller reading only the
+ * aggregate then saw `configured: false` with "OPENAI_API_KEY or OPENAI_KEY not
+ * set" on a provider whose subscription route was healthy and serving turns.
+ *
+ * When the local signal says configured, it stands. Otherwise the first route
+ * that is usable, or failing that the first route that is configured with a
+ * real credential behind it (`freshness` not `'unconfigured'`, so a built-in
+ * adapter with no stored session does not count), makes the aggregate
+ * configured and the detail names that route instead of a missing env key.
+ */
+export function summarizeProviderAuth(
+  base: { readonly configured: boolean; readonly detail: string },
+  routes: readonly ProviderAuthRouteDescriptor[],
+): { readonly configured: boolean; readonly detail: string } {
+  if (base.configured) return base;
+  const winner = routes.find((route) => route.usable === true)
+    ?? routes.find((route) => route.configured && route.freshness !== 'unconfigured');
+  if (winner === undefined) return base;
+  return {
+    configured: true,
+    detail: winner.detail === undefined ? winner.label : `${winner.label}: ${winner.detail}`,
+  };
 }
 
 export async function buildStandardProviderAuthRoutes(
@@ -25,13 +65,6 @@ export async function buildStandardProviderAuthRoutes(
 ): Promise<readonly ProviderAuthRouteDescriptor[]> {
   const secretKeys = [...new Set([...(options.secretKeys ?? []), ...(options.apiKeyEnvVars ?? [])])];
   const detailedSecrets = await deps.secretsManager.listDetailed();
-  const matchingSecretRecords = detailedSecrets.filter((record) => secretKeys.includes(record.key) && record.source !== 'env');
-  const hasSecretRef = matchingSecretRecords.some((record) => Boolean(record.refSource));
-  const hasStoredDirectSecret = matchingSecretRecords.some((record) => !record.refSource);
-  const hasEnv = (options.apiKeyEnvVars ?? []).some((envVar) => {
-    const value = process.env[envVar]!;
-    return typeof value === 'string' && value.length > 0;
-  });
   const builtinSubscriptions = new Set(listBuiltinSubscriptionProviders().map((entry) => entry.provider));
   const subscriptionProviderId = options.subscriptionProviderId ?? options.providerId;
   const subscription = deps.subscriptionManager.get(subscriptionProviderId);
@@ -58,7 +91,14 @@ export async function buildStandardProviderAuthRoutes(
   const hasUsableServiceOauth = serviceInspections.some(({ inspection }) => Boolean(inspection?.hasPrimaryCredential));
 
   const routes: ProviderAuthRouteDescriptor[] = [];
-  if ((options.apiKeyEnvVars?.length ?? 0) > 0 || secretKeys.length > 0) {
+  const pushApiKeyRoutes = (envVars: readonly string[], keys: readonly string[]): void => {
+    const matchingSecretRecords = detailedSecrets.filter((record) => keys.includes(record.key) && record.source !== 'env');
+    const hasSecretRef = matchingSecretRecords.some((record) => Boolean(record.refSource));
+    const hasStoredDirectSecret = matchingSecretRecords.some((record) => !record.refSource);
+    const hasEnv = envVars.some((envVar) => {
+      const value = process.env[envVar]!;
+      return typeof value === 'string' && value.length > 0;
+    });
     routes.push({
       route: 'api-key',
       label: 'Ambient API key',
@@ -70,11 +110,11 @@ export async function buildStandardProviderAuthRoutes(
         : hasStoredDirectSecret
           ? 'GoodVibes secret store contains a direct API key value.'
           : 'No direct API key is configured.',
-      ...(options.apiKeyEnvVars?.length ? { envVars: options.apiKeyEnvVars } : {}),
-      ...(secretKeys.length > 0 ? { secretKeys } : {}),
+      ...(envVars.length > 0 ? { envVars } : {}),
+      ...(keys.length > 0 ? { secretKeys: keys } : {}),
       repairHints: [
-        ...(options.apiKeyEnvVars?.length
-          ? [`Set ${options.apiKeyEnvVars.join(' or ')} or store one of those keys in /secrets.`]
+        ...(envVars.length > 0
+          ? [`Set ${envVars.join(' or ')} or store one of those keys in /secrets.`]
           : ['Store the provider API key in /secrets or the process environment.']),
       ],
     });
@@ -87,11 +127,14 @@ export async function buildStandardProviderAuthRoutes(
       detail: hasSecretRef
         ? 'A GoodVibes SecretRef is configured for this provider.'
         : 'No SecretRef-backed credential is configured.',
-      ...(secretKeys.length > 0 ? { secretKeys } : {}),
+      ...(keys.length > 0 ? { secretKeys: keys } : {}),
       repairHints: [
         'Use /secrets link <KEY> <secret-ref> to attach Bitwarden, Vaultwarden, BWS, or another supported SecretRef.',
       ],
     });
+  };
+  if ((options.apiKeyEnvVars?.length ?? 0) > 0 || secretKeys.length > 0) {
+    pushApiKeyRoutes(options.apiKeyEnvVars ?? [], secretKeys);
   }
 
   if (hasServiceConfig || serviceNames.length > 0) {
@@ -142,14 +185,17 @@ export async function buildStandardProviderAuthRoutes(
   }
 
   if (routes.length === 0) {
-    return [{
-      route: 'none',
-      label: 'No auth route declared',
-      configured: false,
-      usable: false,
-      freshness: 'unconfigured',
-      detail: 'The provider did not declare any runtime auth routes.',
-    }];
+    // A catalog-derived provider can arrive with no declared auth metadata at
+    // all: no env vars, no secret keys, no service, no subscription, no
+    // anonymous access. The old answer was a single dead-end 'none' route,
+    // which meant a stored key under the provider's conventional env name
+    // could never register anywhere. Such a provider now gets the api-key and
+    // secret-ref routes under the derived convention, so it can be
+    // credentialed and reported like any other. A provider that DOES declare
+    // an auth surface (openai-codex is subscription-only by design) never
+    // reaches this branch.
+    const derivedEnvVar = deriveProviderApiKeyEnvVar(options.providerId);
+    pushApiKeyRoutes([derivedEnvVar], [derivedEnvVar]);
   }
 
   return routes;

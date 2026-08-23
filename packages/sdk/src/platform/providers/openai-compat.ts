@@ -584,7 +584,7 @@ export class OpenAICompatProvider implements LLMProvider {
   }
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {
-    const { buildStandardProviderAuthRoutes } = await import('./runtime-metadata.js');
+    const { buildStandardProviderAuthRoutes, summarizeProviderAuth } = await import('./runtime-metadata.js');
     const authRoutes = await buildStandardProviderAuthRoutes({
       providerId: this.name,
       apiKeyEnvVars: this.authEnvVars,
@@ -595,15 +595,19 @@ export class OpenAICompatProvider implements LLMProvider {
       anonymousConfigured: this.anonymousConfigured,
       anonymousDetail: this.anonymousDetail,
     }, deps);
+    const auth = summarizeProviderAuth({
+      configured: this.configured || this.anonymousConfigured,
+      detail: this.configured
+        ? `${this.name} API key available`
+        : this.allowAnonymous
+          ? (this.anonymousDetail ?? `${this.name} can be used without a stored API key`)
+          : `API key for ${this.name} is not configured`,
+    }, authRoutes);
     return {
       auth: {
         mode: this.allowAnonymous && !this.configured ? 'anonymous' : 'api-key',
-        configured: this.configured || this.anonymousConfigured,
-        detail: this.configured
-          ? `${this.name} API key available`
-          : this.allowAnonymous
-            ? (this.anonymousDetail ?? `${this.name} can be used without a stored API key`)
-            : `API key for ${this.name} is not configured`,
+        configured: auth.configured,
+        detail: auth.detail,
         ...(this.authEnvVars.length > 0 ? { envVars: this.authEnvVars } : {}),
         routes: authRoutes,
       },

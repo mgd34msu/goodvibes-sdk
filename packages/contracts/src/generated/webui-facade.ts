@@ -17312,12 +17312,14 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "sample"
           ]
         }
-      ]
+      ],
+      "effort": "sample"
     }
   },
   "models.current.set": {
     "input": {
-      "registryKey": "sample"
+      "registryKey": "sample",
+      "effort": "sample"
     },
     "output": {
       "model": {
@@ -17350,6 +17352,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           ]
         }
       ],
+      "effort": "sample",
       "persisted": false
     }
   },
@@ -17394,7 +17397,13 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
               "registryKey": "sample",
               "provider": "sample",
               "label": "sample",
-              "contextWindow": 0
+              "contextWindow": 0,
+              "reasoningOptions": {
+                "levels": [
+                  "sample"
+                ],
+                "source": "catalog"
+              }
             }
           ]
         }

@@ -40,12 +40,24 @@ const PROVIDER_MODEL_REF_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
 }, ['registryKey', 'provider', 'id']);
 
+/**
+ * The reasoning levels one model actually offers, resolved by the same
+ * precedence the turn path uses (live catalog, then a declaration on the exact
+ * model, then the curated family table, then a labelled best guess). Absent on
+ * a model that does not reason at all.
+ */
+const MODEL_REASONING_OPTIONS_SCHEMA = objectSchema({
+  levels: arraySchema(STRING_SCHEMA),
+  source: { type: 'string', enum: ['catalog', 'declared', 'family', 'fallback'] },
+}, ['levels', 'source']);
+
 const PROVIDER_MODEL_ENTRY_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   registryKey: STRING_SCHEMA,
   provider: STRING_SCHEMA,
   label: STRING_SCHEMA,
   contextWindow: NUMBER_SCHEMA,
+  reasoningOptions: MODEL_REASONING_OPTIONS_SCHEMA,
 }, ['id', 'registryKey', 'provider']);
 
 /** One way a provider can be authenticated, and whether it currently is. */
@@ -78,13 +90,14 @@ const CURRENT_MODEL_SCHEMA = objectSchema({
   configured: BOOLEAN_SCHEMA,
   configuredVia: CONFIGURED_VIA_SCHEMA,
   routes: arraySchema(PROVIDER_AUTH_ROUTE_SCHEMA),
+  effort: { anyOf: [STRING_SCHEMA, { type: 'null' }] },
 }, ['model', 'configured']);
 
 export const builtinGatewayModelMethodDescriptors: readonly GatewayMethodDescriptor[] = [
   methodDescriptor({
     id: 'models.list',
     title: 'Model Catalog',
-    description: 'Every provider this daemon knows about with the models it offers, whether it is configured, and how it was configured. A GET also triggers the TTL-respecting live-discovery re-check that the terminal\'s model picker triggers on open, so a locally served model that appeared since the last read shows up on the next one. `currentModel` is the daemon\'s current selection, or null when nothing is selected. `secretsResolutionSkipped` is true when secret-backed credentials were not resolved for this read, so a caller can tell "not configured" from "not checked".',
+    description: 'Every provider this daemon knows about with the models it offers, whether it is configured, and how it was configured. A GET also triggers the TTL-respecting live-discovery re-check that the terminal\'s model picker triggers on open, so a locally served model that appeared since the last read shows up on the next one. `currentModel` is the daemon\'s current selection, or null when nothing is selected. `secretsResolutionSkipped` is true when secret-backed credentials were not resolved for this read, so a caller can tell "not configured" from "not checked". Each model that reasons carries `reasoningOptions`: the levels it actually offers and which source resolved them; a model with no entry does not reason at all.',
     category: 'providers',
     scopes: ['read:providers'],
     http: { method: 'GET', path: '/api/models' },
@@ -98,7 +111,7 @@ export const builtinGatewayModelMethodDescriptors: readonly GatewayMethodDescrip
   methodDescriptor({
     id: 'models.current.get',
     title: 'Current Model',
-    description: 'The model this daemon would use for a turn right now, with whether its provider is actually configured and by which authentication route. `model` is null when nothing is selected, which is a real state, not an error, and a caller rendering a picker needs to tell it from a selection whose provider has lost its credentials.',
+    description: 'The model this daemon would use for a turn right now, with whether its provider is actually configured and by which authentication route. `model` is null when nothing is selected, which is a real state, not an error, and a caller rendering a picker needs to tell it from a selection whose provider has lost its credentials. `effort` is the persisted reasoning level, null when none has been set explicitly.',
     category: 'providers',
     scopes: ['read:providers'],
     http: { method: 'GET', path: '/api/models/current' },
@@ -108,17 +121,18 @@ export const builtinGatewayModelMethodDescriptors: readonly GatewayMethodDescrip
   methodDescriptor({
     id: 'models.current.set',
     title: 'Switch the Current Model',
-    description: 'Switch the daemon\'s current model live, by the registry key `models.list` returns. The switch applies to the next turn on every surface this daemon serves and is persisted, so it survives a restart; `persisted` says whether the write to settings succeeded. An unknown key is refused with MODEL_NOT_FOUND and a provider with no usable credentials with PROVIDER_NOT_CONFIGURED, naming the environment variables it looked for, a caller must not have to guess which of the two happened.',
+    description: 'Switch the daemon\'s current model live, by the registry key `models.list` returns. The switch applies to the next turn on every surface this daemon serves and is persisted, so it survives a restart; `persisted` says whether the write to settings succeeded. An unknown key is refused with MODEL_NOT_FOUND and a provider with no usable credentials with PROVIDER_NOT_CONFIGURED, naming the environment variables it looked for, a caller must not have to guess which of the two happened. An optional `effort` persists a reasoning level with the selection: it is validated against the known severity ladder here, and each turn maps it onto the active model\'s real options, snapping down and never promoting.',
     category: 'providers',
     scopes: ['write:providers'],
     dangerous: true,
     http: { method: 'PATCH', path: '/api/models/current' },
-    inputSchema: objectSchema({ registryKey: STRING_SCHEMA }, ['registryKey']),
+    inputSchema: objectSchema({ registryKey: STRING_SCHEMA, effort: { anyOf: [STRING_SCHEMA, { type: 'null' }] } }, ['registryKey']),
     outputSchema: objectSchema({
       model: { anyOf: [PROVIDER_MODEL_REF_SCHEMA, { type: 'null' }] },
       configured: BOOLEAN_SCHEMA,
       configuredVia: CONFIGURED_VIA_SCHEMA,
       routes: arraySchema(PROVIDER_AUTH_ROUTE_SCHEMA),
+      effort: { anyOf: [STRING_SCHEMA, { type: 'null' }] },
       persisted: BOOLEAN_SCHEMA,
     }, ['model', 'configured', 'persisted']),
   }),

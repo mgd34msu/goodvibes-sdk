@@ -16,12 +16,21 @@ export const ProviderModelRefSchema = z.object({
 }).strict();
 export type ProviderModelRef = z.infer<typeof ProviderModelRefSchema>;
 
+/** The reasoning levels one model actually offers, and which source resolved them. */
+export const ModelReasoningOptionsSchema = z.object({
+  levels: z.array(z.string()),
+  source: z.enum(['catalog', 'declared', 'family', 'fallback']),
+}).strict();
+export type ModelReasoningOptions = z.infer<typeof ModelReasoningOptionsSchema>;
+
 export const ProviderModelEntrySchema = z.object({
   id: z.string(),
   registryKey: z.string(),
   provider: z.string(),
   label: z.string().optional(),
   contextWindow: z.number().optional(),
+  /** Absent when the model does not reason at all. */
+  reasoningOptions: ModelReasoningOptionsSchema.optional(),
 }).strict();
 export type ProviderModelEntry = z.infer<typeof ProviderModelEntrySchema>;
 
@@ -66,11 +75,15 @@ export const CurrentModelResponseSchema = z.object({
   configured: z.boolean(),
   configuredVia: ConfiguredViaSchema.optional(),
   routes: z.array(ProviderAuthRouteDescriptorSchema).optional(),
+  /** The persisted reasoning level, null (or absent from an older daemon) when unset. */
+  effort: z.string().nullable().optional(),
 }).strict();
 export type CurrentModelResponse = z.infer<typeof CurrentModelResponseSchema>;
 
 export const PatchCurrentModelBodySchema = z.object({
   registryKey: z.string().min(1),
+  /** Optional reasoning level persisted with the selection; null clears it back to the provider default. */
+  effort: z.string().min(1).nullable().optional(),
 }).strict();
 export type PatchCurrentModelBody = z.infer<typeof PatchCurrentModelBodySchema>;
 

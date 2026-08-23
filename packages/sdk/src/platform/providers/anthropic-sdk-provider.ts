@@ -19,7 +19,7 @@ import { assembleAnthropicContentBlocks } from './anthropic-sse-assembler.js';
 import { resolveCompletedStopReason, withProviderStopReason } from './provider-stop-reason.js';
 import { ProviderError } from '../types/errors.js';
 import { withRetry } from '../utils/retry.js';
-import { buildStandardProviderAuthRoutes } from './runtime-metadata.js';
+import { buildStandardProviderAuthRoutes, summarizeProviderAuth } from './runtime-metadata.js';
 import { toProviderError } from '../utils/error-display.js';
 import { parseRateLimitHeaders } from './rate-limit-headers.js';
 
@@ -215,11 +215,15 @@ export class AnthropicSdkProvider implements LLMProvider {
       anonymousConfigured: this.options.auth.anonymousConfigured,
       anonymousDetail: this.options.auth.anonymousDetail,
     }, deps);
+    const auth = summarizeProviderAuth({
+      configured: this.options.auth.configured,
+      detail: this.options.auth.detail,
+    }, authRoutes);
     return {
       auth: {
         mode: this.options.auth.mode,
-        configured: this.options.auth.configured,
-        detail: this.options.auth.detail,
+        configured: auth.configured,
+        detail: auth.detail,
         ...(this.options.auth.envVars ? { envVars: this.options.auth.envVars } : {}),
         routes: authRoutes,
       },

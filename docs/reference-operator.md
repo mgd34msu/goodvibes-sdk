@@ -79634,7 +79634,7 @@ Promote a field's most recent superseded value back to the active line, so a wro
 
 #### `models.current.get`
 
-The model this daemon would use for a turn right now, with whether its provider is actually configured and by which authentication route. `model` is null when nothing is selected, which is a real state, not an error, and a caller rendering a picker needs to tell it from a selection whose provider has lost its credentials.
+The model this daemon would use for a turn right now, with whether its provider is actually configured and by which authentication route. `model` is null when nothing is selected, which is a real state, not an error, and a caller rendering a picker needs to tell it from a selection whose provider has lost its credentials. `effort` is the persisted reasoning level, null when none has been set explicitly.
 
 - Title: `Current Model`
 - Source: `builtin`
@@ -79774,6 +79774,16 @@ The model this daemon would use for a turn right now, with whether its provider 
         ],
         "additionalProperties": false
       }
+    },
+    "effort": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [
@@ -79786,7 +79796,7 @@ The model this daemon would use for a turn right now, with whether its provider 
 
 #### `models.current.set`
 
-Switch the daemon's current model live, by the registry key `models.list` returns. The switch applies to the next turn on every surface this daemon serves and is persisted, so it survives a restart; `persisted` says whether the write to settings succeeded. An unknown key is refused with MODEL_NOT_FOUND and a provider with no usable credentials with PROVIDER_NOT_CONFIGURED, naming the environment variables it looked for, a caller must not have to guess which of the two happened.
+Switch the daemon's current model live, by the registry key `models.list` returns. The switch applies to the next turn on every surface this daemon serves and is persisted, so it survives a restart; `persisted` says whether the write to settings succeeded. An unknown key is refused with MODEL_NOT_FOUND and a provider with no usable credentials with PROVIDER_NOT_CONFIGURED, naming the environment variables it looked for, a caller must not have to guess which of the two happened. An optional `effort` persists a reasoning level with the selection: it is validated against the known severity ladder here, and each turn maps it onto the active model's real options, snapping down and never promoting.
 
 - Title: `Switch the Current Model`
 - Source: `builtin`
@@ -79806,6 +79816,16 @@ Switch the daemon's current model live, by the registry key `models.list` return
   "properties": {
     "registryKey": {
       "type": "string"
+    },
+    "effort": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [
@@ -79934,6 +79954,16 @@ Switch the daemon's current model live, by the registry key `models.list` return
         "additionalProperties": false
       }
     },
+    "effort": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "persisted": {
       "type": "boolean"
     }
@@ -79949,7 +79979,7 @@ Switch the daemon's current model live, by the registry key `models.list` return
 
 #### `models.list`
 
-Every provider this daemon knows about with the models it offers, whether it is configured, and how it was configured. A GET also triggers the TTL-respecting live-discovery re-check that the terminal's model picker triggers on open, so a locally served model that appeared since the last read shows up on the next one. `currentModel` is the daemon's current selection, or null when nothing is selected. `secretsResolutionSkipped` is true when secret-backed credentials were not resolved for this read, so a caller can tell "not configured" from "not checked".
+Every provider this daemon knows about with the models it offers, whether it is configured, and how it was configured. A GET also triggers the TTL-respecting live-discovery re-check that the terminal's model picker triggers on open, so a locally served model that appeared since the last read shows up on the next one. `currentModel` is the daemon's current selection, or null when nothing is selected. `secretsResolutionSkipped` is true when secret-backed credentials were not resolved for this read, so a caller can tell "not configured" from "not checked". Each model that reasons carries `reasoningOptions`: the levels it actually offers and which source resolved them; a model with no entry does not reason at all.
 
 - Title: `Model Catalog`
 - Source: `builtin`
@@ -80099,6 +80129,31 @@ Every provider this daemon knows about with the models it offers, whether it is 
                 },
                 "contextWindow": {
                   "type": "number"
+                },
+                "reasoningOptions": {
+                  "type": "object",
+                  "properties": {
+                    "levels": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "catalog",
+                        "declared",
+                        "family",
+                        "fallback"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "levels",
+                    "source"
+                  ],
+                  "additionalProperties": false
                 }
               },
               "required": [

@@ -547,17 +547,21 @@ export class GeminiProvider implements LLMProvider {
   }
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {
-    const { buildStandardProviderAuthRoutes } = await import('./runtime-metadata.js');
+    const { buildStandardProviderAuthRoutes, summarizeProviderAuth } = await import('./runtime-metadata.js');
     const authRoutes = await buildStandardProviderAuthRoutes({
       providerId: 'gemini',
       apiKeyEnvVars: ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'GOOGLE_GEMINI_API_KEY'],
       serviceNames: ['gemini'],
     }, deps);
+    const auth = summarizeProviderAuth({
+      configured: Boolean(this.apiKey),
+      detail: this.apiKey ? 'Gemini API key available' : 'Gemini API key is not configured',
+    }, authRoutes);
     return {
       auth: {
         mode: 'api-key',
-        configured: Boolean(this.apiKey),
-        detail: this.apiKey ? 'Gemini API key available' : 'Gemini API key is not configured',
+        configured: auth.configured,
+        detail: auth.detail,
         envVars: ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'GOOGLE_GEMINI_API_KEY'],
         routes: authRoutes,
       },

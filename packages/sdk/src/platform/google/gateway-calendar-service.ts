@@ -76,6 +76,10 @@ const NOT_CONNECTED = [
  * exist"; collapsing all three into 500 would throw that away.
  */
 function statusFor(failure: GoogleApiFailure): number {
+  // A dead grant carries no HTTP status of its own (the refusal came from the
+  // token refresh, not the calendar call), so the status is stated here: 401,
+  // the same status the CalDAV service reports CALENDAR_AUTH_FAILED under.
+  if (failure.reason === 'grant-invalid') return 401;
   if (failure.status === 401) return 401;
   if (failure.status === 403) return 403;
   if (failure.status === 404) return 404;
@@ -85,6 +89,10 @@ function statusFor(failure: GoogleApiFailure): number {
 }
 
 function codeFor(failure: GoogleApiFailure): string {
+  // An expired or revoked refresh token is an authentication failure a person
+  // must act on, and the webui renders CALENDAR_AUTH_FAILED as a re-authorize
+  // prompt. Mapped by the structured verdict, never by sniffing problem text.
+  if (failure.reason === 'grant-invalid') return 'CALENDAR_AUTH_FAILED';
   if (failure.status === 403) return 'PERMISSION_DENIED';
   if (failure.status === 404) return 'NOT_FOUND';
   if (failure.status === 429) return 'RATE_LIMITED';

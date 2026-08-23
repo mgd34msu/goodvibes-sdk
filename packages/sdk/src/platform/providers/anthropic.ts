@@ -415,17 +415,21 @@ export class AnthropicProvider implements LLMProvider {
   }
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {
-    const { buildStandardProviderAuthRoutes } = await import('./runtime-metadata.js');
+    const { buildStandardProviderAuthRoutes, summarizeProviderAuth } = await import('./runtime-metadata.js');
     const authRoutes = await buildStandardProviderAuthRoutes({
       providerId: 'anthropic',
       apiKeyEnvVars: ['ANTHROPIC_API_KEY', 'CLAUDE_API_KEY'],
       serviceNames: ['anthropic'],
     }, deps);
+    const auth = summarizeProviderAuth({
+      configured: Boolean(this.apiKey),
+      detail: this.apiKey ? 'Anthropic API key available' : 'Anthropic API key is not configured',
+    }, authRoutes);
     return {
       auth: {
         mode: 'api-key',
-        configured: Boolean(this.apiKey),
-        detail: this.apiKey ? 'Anthropic API key available' : 'Anthropic API key is not configured',
+        configured: auth.configured,
+        detail: auth.detail,
         envVars: ['ANTHROPIC_API_KEY', 'CLAUDE_API_KEY'],
         routes: authRoutes,
       },

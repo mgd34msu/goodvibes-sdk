@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import type { ChatRequest, ChatResponse, LLMProvider, ProviderModelSource, ProviderRuntimeMetadata, ProviderRuntimeMetadataDeps } from './interface.js';
 import { OpenAICompatProvider } from './openai-compat.js';
 import { AnthropicCompatProvider } from './anthropic-compat.js';
-import { buildStandardProviderAuthRoutes } from './runtime-metadata.js';
+import { buildStandardProviderAuthRoutes, summarizeProviderAuth } from './runtime-metadata.js';
 import { runLiveModelRefresh, type LiveModelDiscoveryResult } from './live-model-discovery.js';
 import { summarizeError, toProviderError } from '../utils/error-display.js';
 import { instrumentedLlmCall } from '../runtime/llm-observability.js';
@@ -377,13 +377,17 @@ export class GitHubCopilotProvider implements LLMProvider {
       secretKeys: COPILOT_TOKEN_ENV_VARS,
       serviceNames: ['github-copilot'],
     }, deps);
+    const auth = summarizeProviderAuth({
+      configured,
+      detail: configured
+        ? 'GitHub token is available for Copilot token exchange.'
+        : 'Set COPILOT_GITHUB_TOKEN, GH_TOKEN, or GITHUB_TOKEN to use GitHub Copilot.',
+    }, authRoutes);
     return {
       auth: {
         mode: 'api-key',
-        configured,
-        detail: configured
-          ? 'GitHub token is available for Copilot token exchange.'
-          : 'Set COPILOT_GITHUB_TOKEN, GH_TOKEN, or GITHUB_TOKEN to use GitHub Copilot.',
+        configured: auth.configured,
+        detail: auth.detail,
         envVars: COPILOT_TOKEN_ENV_VARS,
         routes: authRoutes,
       },

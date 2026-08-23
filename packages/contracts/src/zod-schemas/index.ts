@@ -35,6 +35,7 @@ export type {
 
 export {
   ProviderModelRefSchema,
+  ModelReasoningOptionsSchema,
   ProviderModelEntrySchema,
   ConfiguredViaSchema,
   ProviderAuthRouteDescriptorSchema,
@@ -48,6 +49,7 @@ export {
 } from './providers.js';
 export type {
   ProviderModelRef,
+  ModelReasoningOptions,
   ProviderModelEntry,
   ConfiguredVia,
   ProviderAuthRouteDescriptor,

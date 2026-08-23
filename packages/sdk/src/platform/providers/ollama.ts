@@ -143,7 +143,7 @@ export class OllamaProvider implements LLMProvider {
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {
     const local = !/^https?:\/\/ollama\.com\b/i.test(this.baseURL);
-    const { buildStandardProviderAuthRoutes } = await import('./runtime-metadata.js');
+    const { buildStandardProviderAuthRoutes, summarizeProviderAuth } = await import('./runtime-metadata.js');
     const authRoutes = await buildStandardProviderAuthRoutes({
       providerId: this.name,
       apiKeyEnvVars: ['OLLAMA_API_KEY', 'OLLAMA_CLOUD_API_KEY'],
@@ -153,13 +153,17 @@ export class OllamaProvider implements LLMProvider {
       anonymousConfigured: local,
       anonymousDetail: 'Local Ollama endpoints can be used without an API key.',
     }, deps);
+    const auth = summarizeProviderAuth({
+      configured: local || Boolean(process.env.OLLAMA_API_KEY || process.env.OLLAMA_CLOUD_API_KEY),
+      detail: local
+        ? 'Local Ollama endpoint does not require an API key'
+        : 'Ollama Cloud API key is required',
+    }, authRoutes);
     return {
       auth: {
         mode: local ? 'anonymous' : 'api-key',
-        configured: local || Boolean(process.env.OLLAMA_API_KEY || process.env.OLLAMA_CLOUD_API_KEY),
-        detail: local
-          ? 'Local Ollama endpoint does not require an API key'
-          : 'Ollama Cloud API key is required',
+        configured: auth.configured,
+        detail: auth.detail,
         envVars: ['OLLAMA_API_KEY', 'OLLAMA_CLOUD_API_KEY'],
         routes: authRoutes,
       },

@@ -14732,7 +14732,8 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "sample"
           ]
         }
-      ]
+      ],
+      "effort": "sample"
     }
   },
   "models.current.set": {
@@ -14773,6 +14774,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           ]
         }
       ],
+      "effort": "sample",
       "persisted": false
     }
   },
@@ -14822,7 +14824,13 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
               "registryKey": "sample",
               "provider": "sample",
               "label": "sample",
-              "contextWindow": 0
+              "contextWindow": 0,
+              "reasoningOptions": {
+                "levels": [
+                  "sample"
+                ],
+                "source": "catalog"
+              }
             }
           ]
         }

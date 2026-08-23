@@ -208,7 +208,38 @@ function inferCategoryFromMessage(message: string): DaemonErrorCategory {
   return DaemonErrorCategory.UNKNOWN;
 }
 
-function inferHint(category: DaemonErrorCategory, status?: number): string | undefined {
+/**
+ * Whether an inferred hint may talk about model ids and tool schemas.
+ *
+ * The `bad_request` and `not_found` hints below describe an LLM request and
+ * nothing else. They used to be attached to every 400/404 that reached this
+ * module, so a calendar verb refusing a malformed range told the caller to
+ * "check model id, parameters, message format, and tool schema". Hints for
+ * those two categories are now only inferred when the error itself says it
+ * came from a provider; other errors keep their own message (which for
+ * gateway verbs already carries the problem and the fix) and get no
+ * borrowed hint.
+ */
+function isProviderAttributed(fields: {
+  readonly source?: string | undefined;
+  readonly provider?: string | undefined;
+  readonly providerCode?: string | undefined;
+  readonly providerType?: string | undefined;
+}): boolean {
+  return fields.source === 'provider'
+    || fields.provider !== undefined
+    || fields.providerCode !== undefined
+    || fields.providerType !== undefined;
+}
+
+function inferHint(
+  category: DaemonErrorCategory,
+  status: number | undefined,
+  providerAttributed: boolean,
+): string | undefined {
+  if (!providerAttributed && (category === 'bad_request' || category === 'not_found')) {
+    return undefined;
+  }
   switch (category) {
     case 'rate_limit':
       return 'The caller may retry automatically. If this persists, wait, lower request volume, or switch models/providers.';
@@ -349,7 +380,14 @@ export function buildErrorResponseBody(
       ? inferCategoryFromMessage(message)
       : inferred;
     const category = normalizeCategory(error.category) ?? network?.category ?? messageCategory;
-    const hint = (error instanceof GoodVibesSdkError ? error.hint : error.hint ?? error.guidance) ?? inferHint(category, status);
+    const providerAttributed = isProviderAttributed({
+      source: normalizeSource(error.source),
+      provider,
+      providerCode,
+      providerType: error.providerType,
+    });
+    const hint = (error instanceof GoodVibesSdkError ? error.hint : error.hint ?? error.guidance)
+      ?? inferHint(category, status, providerAttributed);
     const summary = buildSummary(network?.summary ?? message, {
       requestId,
       providerCode,
@@ -395,7 +433,10 @@ export function buildErrorResponseBody(
       ? inferCategoryFromMessage(message)
       : inferred;
     const category = normalizeCategory(readStringProperty(error.category)) ?? network?.category ?? messageCategory;
-    const hint = readStringProperty(error.hint) ?? readStringProperty(error.guidance) ?? inferHint(category, status);
+    const providerAttributed = isProviderAttributed({ source, provider, providerCode, providerType });
+    const hint = readStringProperty(error.hint)
+      ?? readStringProperty(error.guidance)
+      ?? inferHint(category, status, providerAttributed);
     return {
       error: buildSummary(network?.summary ?? message, { requestId, providerCode, phase }),
       ...(hint ? { hint } : {}),
@@ -421,7 +462,7 @@ export function buildErrorResponseBody(
     ? inferCategoryFromMessage(message)
     : inferred;
   const category = network?.category ?? messageCategory;
-  const hint = inferHint(category, options.status);
+  const hint = inferHint(category, options.status, options.source === 'provider');
   return {
     error: network?.summary ?? message,
     ...(hint ? { hint } : {}),

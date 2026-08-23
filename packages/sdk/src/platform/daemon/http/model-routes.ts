@@ -20,6 +20,12 @@ import type { ProviderAuthRouteDescriptor, ProviderRuntimeMetadata } from '../..
 import { findModelDefinition } from '../../providers/registry-models.js';
 import { resolveModelReference } from '../../providers/model-id-resolution.js';
 import { BUILTIN_COMPAT_PROVIDERS, BUILTIN_PROVIDER_ENV_KEYS } from '../../providers/builtin-catalog.js';
+import {
+  REASONING_EFFORT_SEVERITY,
+  readReasoningEffortLevel,
+  type ReasoningEffortSource,
+} from '../../providers/reasoning-effort.js';
+import { resolveReasoningEffortSpec } from '../../providers/reasoning-effort-families.js';
 import { logger } from '../../utils/logger.js';
 
 // ---------------------------------------------------------------------------
@@ -80,12 +86,20 @@ export interface ProviderModelRef {
   readonly id: string;
 }
 
+/** The reasoning levels one model actually offers, and which source resolved them. */
+export interface ModelReasoningOptions {
+  readonly levels: string[];
+  readonly source: ReasoningEffortSource;
+}
+
 export interface ProviderModelEntry {
   readonly id: string;
   readonly registryKey: string;
   readonly provider: string;
   readonly label?: string | undefined;
   readonly contextWindow?: number | undefined;
+  /** Absent when the model does not reason at all. */
+  readonly reasoningOptions?: ModelReasoningOptions | undefined;
 }
 
 export type ConfiguredVia = 'env' | 'secrets' | 'subscription' | 'anonymous';
@@ -115,6 +129,8 @@ export interface CurrentModelResponse {
   readonly configured: boolean;
   readonly configuredVia?: ConfiguredVia | undefined;
   readonly routes?: readonly ProviderAuthRouteDescriptor[] | undefined;
+  /** The persisted reasoning level, null when none has been set explicitly. */
+  readonly effort: string | null;
 }
 
 export interface PatchCurrentModelResponse extends CurrentModelResponse {
@@ -276,8 +292,25 @@ async function resolveProviderConfiguredStatus(
   };
 }
 
+/**
+ * The reasoning level `models.current.set` persisted, or null when the key
+ * still resolves from its schema default. The default is a real level
+ * ('medium'), so the tier report is the only honest way to tell "the operator
+ * chose this" from "nothing was ever set".
+ */
+function readPersistedEffort(configManager: ConfigManager): string | null {
+  try {
+    if (configManager.describeConfigKeySource('provider.reasoningEffort').tier === 'default') return null;
+    const value = configManager.get('provider.reasoningEffort');
+    return typeof value === 'string' && value.length > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 async function buildCurrentModelResponse(
   providerRegistry: ProviderRegistry,
+  configManager: ConfigManager,
   secretKeys?: ReadonlySet<string>,
 ): Promise<CurrentModelResponse> {
   let model: ProviderModelRef | null = null;
@@ -299,7 +332,13 @@ async function buildCurrentModelResponse(
     // No model configured
   }
 
-  return { model, configured, configuredVia, ...(routes ? { routes } : {}) };
+  return {
+    model,
+    configured,
+    configuredVia,
+    ...(routes ? { routes } : {}),
+    effort: readPersistedEffort(configManager),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -365,12 +404,25 @@ async function handleListProviderModels(context: ModelRouteContext): Promise<Res
   const byProvider = new Map<string, ProviderModelEntry[]>();
   for (const model of allModels) {
     if (!byProvider.has(model.provider)) byProvider.set(model.provider, []);
+    // Resolved the same way the turn path resolves it (resolveTurnReasoning in
+    // core/orchestrator-turn-loop.ts): a model that does not reason gets no
+    // reasoningOptions at all, everything else reports the levels its resolved
+    // spec actually offers and which source said so.
+    const reasoningSpec = model.capabilities.reasoning
+      ? resolveReasoningEffortSpec({
+          modelId: model.id,
+          ...(model.reasoningEffort ? { spec: model.reasoningEffort } : {}),
+        })
+      : undefined;
     byProvider.get(model.provider)?.push({
       id: model.id,
       registryKey: model.registryKey,
       provider: model.provider,
       label: model.displayName ?? model.id,
       contextWindow: model.contextWindow > 0 ? model.contextWindow : undefined,
+      ...(reasoningSpec
+        ? { reasoningOptions: { levels: [...reasoningSpec.values], source: reasoningSpec.source } }
+        : {}),
     });
   }
 
@@ -398,7 +450,7 @@ async function handleListProviderModels(context: ModelRouteContext): Promise<Res
     return a.id.localeCompare(b.id);
   });
 
-  const currentModel = (await buildCurrentModelResponse(providerRegistry, secretKeys)).model;
+  const currentModel = (await buildCurrentModelResponse(providerRegistry, context.configManager, secretKeys)).model;
 
   const body: ListProviderModelsResponse = {
     providers,
@@ -414,7 +466,7 @@ async function handleListProviderModels(context: ModelRouteContext): Promise<Res
 
 async function handleGetCurrentModel(context: ModelRouteContext): Promise<Response> {
   const secretKeys = await resolveSecretKeys(context.secretsManager);
-  return Response.json(await buildCurrentModelResponse(context.providerRegistry, secretKeys));
+  return Response.json(await buildCurrentModelResponse(context.providerRegistry, context.configManager, secretKeys));
 }
 
 // ---------------------------------------------------------------------------
@@ -438,6 +490,29 @@ async function handlePatchCurrentModel(
       { error: 'Missing required field: registryKey', code: 'INVALID_REQUEST' },
       { status: 400 },
     );
+  }
+
+  // Optional reasoning level, persisted with the selection. Validated against
+  // the known severity ladder here; which levels the chosen model actually
+  // accepts is settled per turn by resolveEffortForModel, which only ever
+  // snaps down. An explicit null CLEARS the persisted level back to the
+  // provider default; omission leaves it untouched. Without the null arm a
+  // level, once set, could never be undone.
+  const rawEffort = body['effort'];
+  let effort: string | null | undefined;
+  if (rawEffort === null) {
+    effort = null;
+  } else if (rawEffort !== undefined) {
+    effort = readReasoningEffortLevel(rawEffort);
+    if (effort === undefined) {
+      return Response.json(
+        {
+          error: `Invalid effort '${String(rawEffort)}': expected one of [${REASONING_EFFORT_SEVERITY.join(', ')}], or null to restore the provider default`,
+          code: 'INVALID_REQUEST',
+        },
+        { status: 400 },
+      );
+    }
   }
 
   // Accepts either a provider-qualified registryKey or a bare model id, bare
@@ -501,8 +576,18 @@ async function handlePatchCurrentModel(
     const msg = persistErr instanceof Error ? persistErr.message : String(persistErr);
     logger.warn(`[model-routes] Failed to persist model selection to config: ${msg}`);
   }
+  if (effort !== undefined) {
+    try {
+      if (effort === null) configManager.reset('provider.reasoningEffort');
+      else configManager.set('provider.reasoningEffort', effort);
+    } catch (persistErr: unknown) {
+      persisted = false;
+      const msg = persistErr instanceof Error ? persistErr.message : String(persistErr);
+      logger.warn(`[model-routes] Failed to persist reasoning effort to config: ${msg}`);
+    }
+  }
 
   // setCurrentModel emits MODEL_CHANGED synchronously on the same runtimeBus,
   // no second emission needed here.
-  return Response.json({ ...(await buildCurrentModelResponse(providerRegistry, secretKeys)), persisted });
+  return Response.json({ ...(await buildCurrentModelResponse(providerRegistry, configManager, secretKeys)), persisted });
 }

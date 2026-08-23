@@ -62,6 +62,14 @@ export interface GoogleApiFetchPort {
 export interface GoogleApiFailure {
   readonly ok: false;
   readonly status: number | null;
+  /**
+   * Set when the failure is the token manager's dead-grant verdict: the
+   * refresh token is expired, revoked or otherwise invalid, and only a person
+   * re-authorizing can fix it. Carried as a field because the verdict is
+   * structured at its source (`GoogleRefreshFailure`), and a downstream mapper
+   * that had only `problem` prose to look at was left guessing from text.
+   */
+  readonly reason?: 'grant-invalid' | undefined;
   readonly problem: string;
   readonly fix: string;
 }
@@ -343,7 +351,13 @@ export class GoogleApiClient {
   ): Promise<GoogleApiResult<unknown>> {
     const tokenOutcome = await this.tokens.accessToken();
     if (!tokenOutcome.ok) {
-      return { ok: false, status: null, problem: tokenOutcome.problem, fix: tokenOutcome.fix };
+      return {
+        ok: false,
+        status: null,
+        ...(tokenOutcome.failure === 'grant-invalid' ? { reason: 'grant-invalid' as const } : {}),
+        problem: tokenOutcome.problem,
+        fix: tokenOutcome.fix,
+      };
     }
 
     let response: Response;
@@ -368,7 +382,13 @@ export class GoogleApiClient {
     if (response.status === 401 && retryOnUnauthorized) {
       const refreshed = await this.tokens.forceRefresh();
       if (refreshed.ok) return this.request(url, init, false);
-      return { ok: false, status: 401, problem: refreshed.problem, fix: refreshed.fix };
+      return {
+        ok: false,
+        status: 401,
+        ...(refreshed.failure === 'grant-invalid' ? { reason: 'grant-invalid' as const } : {}),
+        problem: refreshed.problem,
+        fix: refreshed.fix,
+      };
     }
 
     const raw = await response.text().catch(() => '');

@@ -1014,6 +1014,7 @@ export const CurrentModelResponseSchema: z.ZodObject<{
         providerId: z.ZodOptional<z.ZodString>;
         repairHints: z.ZodOptional<z.ZodArray<z.ZodString>>;
     }, z.core.$strict>>>;
+    effort: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, z.core.$strict>;
 
 // @public (undocumented)
@@ -1989,6 +1990,15 @@ export const ListProviderModelsResponseSchema: z.ZodObject<{
             provider: z.ZodString;
             label: z.ZodOptional<z.ZodString>;
             contextWindow: z.ZodOptional<z.ZodNumber>;
+            reasoningOptions: z.ZodOptional<z.ZodObject<{
+                levels: z.ZodArray<z.ZodString>;
+                source: z.ZodEnum<{
+                    catalog: "catalog";
+                    family: "family";
+                    declared: "declared";
+                    fallback: "fallback";
+                }>;
+            }, z.core.$strict>>;
         }, z.core.$strict>>;
     }, z.core.$strict>>;
     currentModel: z.ZodNullable<z.ZodObject<{
@@ -2145,6 +2155,20 @@ export const ModelChangedEventSchema: z.ZodObject<{
         registryKey: z.ZodString;
         provider: z.ZodString;
     }, z.core.$strict>>;
+}, z.core.$strict>;
+
+// @public (undocumented)
+export type ModelReasoningOptions = z.infer<typeof ModelReasoningOptionsSchema>;
+
+// @public
+export const ModelReasoningOptionsSchema: z.ZodObject<{
+    levels: z.ZodArray<z.ZodString>;
+    source: z.ZodEnum<{
+        catalog: "catalog";
+        family: "family";
+        declared: "declared";
+        fallback: "fallback";
+    }>;
 }, z.core.$strict>;
 
 // @public
@@ -5158,6 +5182,7 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "models.current.set": {
         registryKey: string;
+        effort?: null | string;
     };
     // (undocumented)
     "models.list": {};
@@ -17018,6 +17043,7 @@ export interface OperatorMethodOutputMap {
             providerId?: string;
             repairHints?: readonly string[];
         })[];
+        effort?: null | string;
     };
     // (undocumented)
     "models.current.set": {
@@ -17041,6 +17067,7 @@ export interface OperatorMethodOutputMap {
             providerId?: string;
             repairHints?: readonly string[];
         })[];
+        effort?: null | string;
         persisted: boolean;
     };
     // (undocumented)
@@ -17070,6 +17097,10 @@ export interface OperatorMethodOutputMap {
                 provider: string;
                 label?: string;
                 contextWindow?: number;
+                reasoningOptions?: {
+                    levels: readonly string[];
+                    source: "catalog" | "declared" | "fallback" | "family";
+                };
             })[];
         })[];
         currentModel: null | {
@@ -24621,6 +24652,7 @@ export type PatchCurrentModelBody = z.infer<typeof PatchCurrentModelBodySchema>;
 // @public (undocumented)
 export const PatchCurrentModelBodySchema: z.ZodObject<{
     registryKey: z.ZodString;
+    effort: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, z.core.$strict>;
 
 // @public (undocumented)
@@ -24681,6 +24713,7 @@ export const PatchCurrentModelResponseSchema: z.ZodObject<{
         providerId: z.ZodOptional<z.ZodString>;
         repairHints: z.ZodOptional<z.ZodArray<z.ZodString>>;
     }, z.core.$strict>>>;
+    effort: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     persisted: z.ZodBoolean;
 }, z.core.$strict>;
 
@@ -25669,6 +25702,15 @@ export const ProviderModelEntrySchema: z.ZodObject<{
     provider: z.ZodString;
     label: z.ZodOptional<z.ZodString>;
     contextWindow: z.ZodOptional<z.ZodNumber>;
+    reasoningOptions: z.ZodOptional<z.ZodObject<{
+        levels: z.ZodArray<z.ZodString>;
+        source: z.ZodEnum<{
+            catalog: "catalog";
+            family: "family";
+            declared: "declared";
+            fallback: "fallback";
+        }>;
+    }, z.core.$strict>>;
 }, z.core.$strict>;
 
 // @public (undocumented)
@@ -25718,6 +25760,15 @@ export const ProviderModelProviderSchema: z.ZodObject<{
         provider: z.ZodString;
         label: z.ZodOptional<z.ZodString>;
         contextWindow: z.ZodOptional<z.ZodNumber>;
+        reasoningOptions: z.ZodOptional<z.ZodObject<{
+            levels: z.ZodArray<z.ZodString>;
+            source: z.ZodEnum<{
+                catalog: "catalog";
+                family: "family";
+                declared: "declared";
+                fallback: "fallback";
+            }>;
+        }, z.core.$strict>>;
     }, z.core.$strict>>;
 }, z.core.$strict>;
 
