@@ -33,6 +33,13 @@ type AssistantMessage = {
   usage?: TokenUsage | undefined;
   model?: string | undefined;
   provider?: string | undefined;
+  /**
+   * Written by the follow-up acknowledgement request (orchestrator-follow-up-runtime.ts):
+   * the conversation sent without tool definitions and with a short output cap.
+   * Its usage is billed like any other, but its input is not the main session's
+   * context size, so context figures skip it.
+   */
+  followUp?: true | undefined;
 };
 
 export type ConversationMessageSnapshot =
@@ -219,6 +226,7 @@ export class ConversationManager {
       usage?: TokenUsage | undefined;
       model?: string | undefined;
       provider?: string | undefined;
+      followUp?: true | undefined;
     },
   ): void {
     const candidate: AssistantMessage = {
@@ -230,6 +238,7 @@ export class ConversationManager {
       usage: opts?.usage,
       model: opts?.model,
       provider: opts?.provider,
+      ...(opts?.followUp ? { followUp: true as const } : {}),
     };
     if (isRedeliveredAssistantMessage(this.messages[this.messages.length - 1], candidate)) {
       // Dropped on purpose, see isRedeliveredAssistantMessage. Recorded rather

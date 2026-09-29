@@ -553,7 +553,7 @@ describe('fleet registry: adapter mapping', () => {
     const byId = new Map(records.map((record) => [record.id, record]));
     const registry = createProcessRegistry(makeDeps({
       processManager: {
-        list: () => records.map((record) => ({ id: record.id, pid: record.pid, cmd: record.cmd, status: 'x' })),
+        list: () => records.map((record) => ({ id: record.id, pid: record.pid, cmd: record.cmd, status: 'x', done: record.done })),
         stop: () => false,
         getStatus: (id: string) => byId.get(id),
       },
@@ -1098,7 +1098,7 @@ describe('fleet registry: control dispatch', () => {
         },
       },
       processManager: {
-        list: () => [{ id: bg.id, pid: bg.pid, cmd: bg.cmd, status: 'running' }],
+        list: () => [{ id: bg.id, pid: bg.pid, cmd: bg.cmd, status: 'running', done: false }],
         getStatus: () => bg,
         stop: (id: string) => {
           calls.push(`process.stop:${id}`);

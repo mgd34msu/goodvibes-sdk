@@ -24,6 +24,11 @@ export interface OrchestratorFollowUpRuntimeOptions {
   readonly getProviderRegistry: () => ProviderRegistry;
   readonly getCurrentModel: () => ModelDefinition;
   readonly routeLowPriorityMessage: (message: string) => void;
+  /**
+   * Add a follow-up request's usage to the session totals. The request carries
+   * no tool definitions, so its input is smaller than the session's real
+   * context and must not replace the context figure.
+   */
   readonly applyUsage: (usage: ReturnType<typeof normalizeUsage>) => void;
 }
 
@@ -117,6 +122,7 @@ export class OrchestratorFollowUpRuntime {
           usage: response.usage,
           model: model.displayName,
           provider: model.provider,
+          followUp: true,
         });
         const normalizedUsage = normalizeUsage(response.usage);
         this.options.applyUsage(normalizedUsage);

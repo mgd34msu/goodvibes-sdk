@@ -1525,7 +1525,11 @@ export class WrfcController {
         }
       }
       const headHash = mergedCount > 0 && worktree.currentHead ? await worktree.currentHead() : commitResult.hash;
-      emitWrfcAutoCommitted(this.runtimeBus, this.sessionId, chain.id, headHash ?? undefined);
+      // Only a real commit is announced: a direct commit (a hash) or an agent
+      // branch merged with changes (merge() is true only then). An empty
+      // ledger with nothing merged commits nothing, and the chain's
+      // completion note says why.
+      if (headHash || mergedCount > 0) emitWrfcAutoCommitted(this.runtimeBus, this.sessionId, chain.id, headHash ?? undefined);
       const commitNote = describeCommitOutcome(headHash, commitResult.skippedIgnored, ledgerEmpty);
       this.completeChainAsPassed(chain, commitNote);
       logger.debug('WrfcController.autoCommit: success', {

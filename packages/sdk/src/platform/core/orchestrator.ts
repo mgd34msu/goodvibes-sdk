@@ -315,8 +315,6 @@ export class Orchestrator {
         this.usage.output += usage.outputTokens;
         this.usage.cacheRead += usage.cacheReadTokens ?? 0;
         this.usage.cacheWrite += usage.cacheWriteTokens ?? 0;
-        this.lastRequestInputTokens = usage.inputTokens;
-        this.lastInputTokens = usage.inputTokens + (usage.cacheReadTokens ?? 0) + (usage.cacheWriteTokens ?? 0);
       },
     });
   }

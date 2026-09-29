@@ -188,6 +188,8 @@ function createHarness(overrides?: {
   commitWorkingTreeResult?: CommitWorkingTreeResult;
   /** Make the fake worktree's commit throw, to exercise the non-fatal commit-failure path. */
   commitWorkingTreeError?: Error;
+  /** What the fake worktree's merge reports (true: it merged changes). Default true. */
+  mergeResult?: boolean;
 }): TestHarness {
   const bus = new RuntimeEventBus();
   const agentStore = new Map<string, AgentRecord>();
@@ -279,7 +281,7 @@ function createHarness(overrides?: {
     createWorktree: () => ({
       merge: async (agentId: string) => {
         mergedAgentIds.push(agentId);
-        return true;
+        return overrides?.mergeResult ?? true;
       },
       cleanup: async (agentId: string) => {
         cleanedAgentIds.push(agentId);
@@ -957,6 +959,31 @@ describe('WrfcController: wrfc.commitScope', () => {
     // to the legacy full-tree sweep, an empty ledger means skip the commit entirely.
     expect(h.directCommitMessages).toEqual([]);
     expect(h.directCommitPaths).toEqual([]);
+
+    h.controller.dispose();
+  });
+
+  test('a chain that commits nothing does not announce an auto-commit; its completion says why', async () => {
+    // The live-run case: a scoped chain whose engineer changed no files. No
+    // commit is made and no agent branch merges anything, so there is no hash
+    // and nothing may claim "Auto-committed".
+    const h = createHarness({ autoCommit: true, gitRepo: true, mergeResult: false });
+
+    const ownerRecord = h.addAgent('owner-nothing-to-commit-1', 'review the backoff logic, change no files');
+    const chain = h.controller.createChain(ownerRecord);
+    h.setOutput(chain.engineerAgentId!, 'I read both files and changed nothing.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(reviewerRecord.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('passed');
+    expect(h.directCommitMessages).toEqual([]);
+    expect(h.workflowEvents.map((e) => e.type)).not.toContain('WORKFLOW_AUTO_COMMITTED');
+    expect(h.workflowEvents.map((e) => e.type)).toContain('WORKFLOW_CHAIN_PASSED');
+    expect(h.agentStore.get(ownerRecord.id)?.progress ?? '').toContain('commit skipped: chain edit ledger empty');
 
     h.controller.dispose();
   });
