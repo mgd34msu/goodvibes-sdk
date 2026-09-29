@@ -11,8 +11,8 @@ import {
   cloneBranchMap,
   cloneMessages,
   deriveConversationTitle,
-  messagesToInternal,
   restoreBranchMap,
+  restoreKeptMessages,
 } from './conversation-utils.js';
 import { applyDiffContent, parseDiffForApply } from './conversation-diff.js';
 import { logger } from '../utils/logger.js';
@@ -366,9 +366,16 @@ export class ConversationManager {
     return buildTranscriptEventIndex(this.getMessageSnapshot());
   }
 
+  /**
+   * Replace the non-system messages with `newMessages` (a compaction's result),
+   * system messages kept at the front. Every kept message comes back whole,
+   * tool calls, model, provider, reasoning and usage included: see
+   * restoreKeptMessages.
+   */
   public replaceMessagesForLLM(newMessages: ProviderMessage[]): void {
     const systemMessages = this.messages.filter((message) => message.role === 'system');
-    this.messages = [...systemMessages, ...messagesToInternal(newMessages)];
+    const kept = restoreKeptMessages(newMessages, this.getMessagesForLLM(), this.messages);
+    this.messages = [...systemMessages, ...kept];
     this.streamingMessageIndex = -1;
     this._messagesRevision++;
   }

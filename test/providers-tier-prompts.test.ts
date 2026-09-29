@@ -53,6 +53,42 @@ describe('getTierPromptSupplement', () => {
   });
 });
 
+// A person's conversation never gets the agent-run completion demand. Live run:
+// an 8.2k-window model ('free' tier) in a TUI main session was told its final
+// message MUST end with the JSON completion block and ended a reply to a person
+// with {"status":"completed"}.
+const REPORT_DEMAND = /completion (block|report)|json block|```json|no human watching/i;
+const ALL_TIERS: ModelTier[] = ['free', 'standard', 'premium', 'subscription'];
+
+describe('getTierPromptSupplement audience', () => {
+  test('the default audience is the agent: every existing caller keeps its text', () => {
+    for (const tier of ALL_TIERS) {
+      expect(getTierPromptSupplement(tier, { audience: 'agent' })).toBe(getTierPromptSupplement(tier));
+      expect(getTierPromptSupplement(tier, {})).toBe(getTierPromptSupplement(tier));
+    }
+    expect(getTierPromptSupplement('free')).toMatch(REPORT_DEMAND);
+  });
+
+  test('no tier asks a conversation for a JSON completion block or unattended behavior', () => {
+    for (const tier of ALL_TIERS) {
+      expect(getTierPromptSupplement(tier, { audience: 'conversation' })).not.toMatch(REPORT_DEMAND);
+    }
+  });
+
+  test('the small-context conversation text keeps the tool-call guidance', () => {
+    const text = getTierPromptSupplement('free', { audience: 'conversation' });
+    expect(text).toContain('required parameters');
+    expect(text).toContain('spawn all of them before waiting');
+    expect(text).not.toBe(getTierPromptSupplement('free'));
+  });
+
+  test('larger tiers read the same for both audiences', () => {
+    for (const tier of ['standard', 'premium', 'subscription'] as const) {
+      expect(getTierPromptSupplement(tier, { audience: 'conversation' })).toBe(getTierPromptSupplement(tier));
+    }
+  });
+});
+
 describe('getTierForContextWindow', () => {
   test('small context (<32K) returns free tier', () => {
     expect(getTierForContextWindow(0)).toBe('free');

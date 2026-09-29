@@ -19184,6 +19184,11 @@
       "text": "export declare function restoreBranchMap(branches?: Record<string, Message[]>): Map<string, Message[]>; ;; via Map = interface Map<K, V> { clear(): void; delete(key: K): boolean; forEach(callbackfn: (value: V, key: K, map: Map<K, V>) => void, thisArg?: any): void; get(key: K): V | undefined; has(key: K): boolean; set(key: K, value: V): this; readonly size: number; } ;; Message = type Message = ConversationMessageSnapshot; ;; Record = type Record<K extends keyof any, T> = { [P in K]: T; };"
     },
     {
+      "name": "restoreKeptMessages",
+      "kind": "function",
+      "text": "export declare function restoreKeptMessages(kept: readonly ProviderMessage[], llm: readonly ProviderMessage[], stored: readonly Message[]): Message[]; ;; via Message = type Message = ConversationMessageSnapshot; ;; ProviderMessage = export type ProviderMessage = { role: 'user'; content: string | ContentPart[]; } | { role: 'assistant'; content: string; toolCalls?: ToolCall[]; } | { role: 'tool'; callId: string; content: string; name?: string | undefined; };"
+    },
+    {
       "name": "shouldAutoCompact",
       "kind": "function",
       "text": "export declare function shouldAutoCompact(opts: AutoCompactOptions): boolean;"
@@ -35938,6 +35943,16 @@
       "text": "export declare class TGIProvider extends DiscoveredCompatProvider { }"
     },
     {
+      "name": "TierPromptAudience",
+      "kind": "type",
+      "text": "export type TierPromptAudience = 'agent' | 'conversation';"
+    },
+    {
+      "name": "TierPromptSupplementOptions",
+      "kind": "interface",
+      "text": "export interface TierPromptSupplementOptions { readonly audience?: TierPromptAudience | undefined; }"
+    },
+    {
       "name": "TokenLimits",
       "kind": "interface",
       "text": "export interface TokenLimits { maxOutputTokens?: number | undefined; maxToolResultTokens?: number | undefined; maxToolCalls?: number | undefined; maxReasoningTokens?: number | undefined; }"
@@ -36234,7 +36249,7 @@
     {
       "name": "getTierPromptSupplement",
       "kind": "function",
-      "text": "export declare function getTierPromptSupplement(tier: ModelTier): string;"
+      "text": "export declare function getTierPromptSupplement(tier: ModelTier, options?: TierPromptSupplementOptions): string;"
     },
     {
       "name": "hasKeyForProvider",

@@ -26,19 +26,40 @@ export function getTierForContextWindow(contextWindow: number): ModelTier {
 }
 
 /**
+ * Who reads the supplement.
+ *
+ * - `'agent'`       , a spawned agent run with an orchestrator waiting on a
+ *                      structured completion report and nobody watching live.
+ * - `'conversation'`, a person's conversation (a TUI main session, a companion
+ *                      chat). It keeps the tool-call guidance and never asks for
+ *                      a JSON completion block or unattended behavior: a small
+ *                      model told its final message MUST end with that block
+ *                      obeys and ends a reply to a person with
+ *                      `{"status":"completed"}`.
+ */
+export type TierPromptAudience = 'agent' | 'conversation';
+
+export interface TierPromptSupplementOptions {
+  /** Defaults to `'agent'`, the supplement every caller received before the option existed. */
+  readonly audience?: TierPromptAudience | undefined;
+}
+
+/**
  * Returns supplemental system prompt content based on the model's capability
  * tier.  The returned string is appended to the base system prompt before
  * each LLM call.
  *
  * - free   , explicit tool-call examples, multi-agent reminders, structured
- *             output enforcement (~300 tokens)
+ *             output enforcement (~300 tokens); for the `'conversation'`
+ *             audience, tool-call guidance only
  * - standard, brief reminders about tool usage and plan adherence (~80 tokens)
  * - premium , empty; capable models need no extra hand-holding
  */
-export function getTierPromptSupplement(tier: ModelTier): string {
+export function getTierPromptSupplement(tier: ModelTier, options?: TierPromptSupplementOptions): string {
+  const audience = options?.audience ?? 'agent';
   switch (tier) {
     case 'free':
-      return FREE_SUPPLEMENT;
+      return audience === 'conversation' ? CONVERSATION_FREE_SUPPLEMENT : FREE_SUPPLEMENT;
     case 'standard':
       return STANDARD_SUPPLEMENT;
     case 'premium':
@@ -77,6 +98,15 @@ it causes the orchestrator to treat your run as failed.
 **Plan adherence:**
 Complete the full plan. Do not stop after the first step and ask for
 confirmation, there is no human watching. Make the best choice and continue.`;
+
+/** Small-context guidance for a conversation with a person: tool-call discipline only. */
+const CONVERSATION_FREE_SUPPLEMENT = `## Tool guidance
+
+Every tool call must include ALL required parameters. Missing parameters cause
+silent failures. When in doubt, check the tool's schema before calling it.
+
+When work needs several independent agents, spawn all of them before waiting
+for any result: parallel spawns run concurrently and finish sooner.`;
 
 const STANDARD_SUPPLEMENT = `## Reminders
 - Include all required parameters in every tool call.
