@@ -34341,14 +34341,55 @@
   ],
   "./platform/presentation": [
     {
+      "name": "BundledTheme",
+      "kind": "interface",
+      "required": [
+        "json",
+        "label",
+        "name",
+        "variants"
+      ],
+      "text": "export interface BundledTheme { readonly name: string; readonly label: string; readonly variants: readonly ThemeMode[]; readonly json: ThemeJson; }"
+    },
+    {
+      "name": "DEFAULT_THEME_NAME",
+      "kind": "const",
+      "text": "DEFAULT_THEME_NAME = \"goodvibes\""
+    },
+    {
       "name": "DIFF_TONES",
       "kind": "const",
       "text": "DIFF_TONES: { readonly add: \"#00ff88\"; readonly del: \"#ff4444\"; readonly hunk: \"#88aaff\"; }"
     },
     {
+      "name": "DiffToneTokens",
+      "kind": "interface",
+      "required": [
+        "add",
+        "del",
+        "hunk"
+      ],
+      "text": "export interface DiffToneTokens { readonly add: string; readonly del: string; readonly hunk: string; }"
+    },
+    {
       "name": "GLYPHS",
       "kind": "const",
       "text": "GLYPHS: { readonly frame: { readonly topLeft: \"┌\"; readonly topRight: \"┐\"; readonly bottomLeft: \"└\"; readonly bottomRight: \"┘\"; readonly horizontal: \"─\"; readonly vertical: \"│\"; readonly teeLeft: \"├\"; readonly teeRight: \"┤\"; readonly teeTop: \"┬\"; readonly teeBottom: \"┴\"; readonly cross: \"┼\"; }; readonly surface: { readonly top: \"▄\"; readonly bottom: \"▀\"; readonly cursor: \"█\"; readonly altCursor: \"▌\"; }; readonly navigation: { readonly selected: \"▸\"; readonly collapsed: \"▸\"; readonly expanded: \"▾\"; readonly up: \"↑\"; readonly down: \"↓\"; readonly moreAbove: \"▲\"; readonly moreBelow: \"▼\"; readonly next: \"→\"; readonly back: \"←\"; readonly pipeSeparator: \"│\"; }; readonly status: { readonly success: \"✓\"; readonly failure: \"✕\"; readonly pending: \"•\"; readonly active: \"●\"; readonly idle: \"◌\"; readonly info: \"○\"; readonly warn: \"⚠\"; readonly blocked: \"⊘\"; readonly skipped: \"◇\"; readonly review: \"◈\"; readonly retry: \"↻\"; readonly handoff: \"⇢\"; readonly reference: \"↗\"; readonly partial: \"◐\"; readonly dualPane: \"◆\"; readonly star: \"★\"; }; readonly meter: { readonly filled: \"█\"; readonly medium: \"▓\"; readonly light: \"▒\"; readonly empty: \"░\"; readonly spark: readonly [\"▁\", \"▂\", \"▃\", \"▄\", \"▅\", \"▆\", \"▇\", \"█\"]; }; }"
+    },
+    {
+      "name": "GoodVibesColorKey",
+      "kind": "type",
+      "text": "export type GoodVibesColorKey = 'textFaint' | 'textSecondary' | 'textPlaceholder' | 'backgroundBase' | 'backgroundTitle' | 'backgroundSection' | 'backgroundSummary' | 'backgroundSelected' | 'backgroundInput' | 'backgroundFooter' | 'backgroundCode' | 'backgroundWarning' | 'backgroundError' | 'backgroundSuccess' | 'brand' | 'brandEnd' | 'reasoning' | 'blocked' | 'remote' | 'active' | 'panelBrowser' | 'panelControl' | 'panelInspector' | 'panelWorkflow' | 'panelConversation' | 'syntaxProperty' | 'syntaxBuiltin' | 'searchMatchBg' | 'searchCurrentBg';"
+    },
+    {
+      "name": "OpencodeColorKey",
+      "kind": "type",
+      "text": "export type OpencodeColorKey = 'primary' | 'secondary' | 'accent' | 'error' | 'warning' | 'success' | 'info' | 'text' | 'textMuted' | 'selectedListItemText' | 'background' | 'backgroundPanel' | 'backgroundElement' | 'backgroundMenu' | 'border' | 'borderActive' | 'borderSubtle' | 'diffAdded' | 'diffRemoved' | 'diffContext' | 'diffHunkHeader' | 'diffHighlightAdded' | 'diffHighlightRemoved' | 'diffAddedBg' | 'diffRemovedBg' | 'diffContextBg' | 'diffLineNumber' | 'diffAddedLineNumberBg' | 'diffRemovedLineNumberBg' | 'markdownText' | 'markdownHeading' | 'markdownLink' | 'markdownLinkText' | 'markdownCode' | 'markdownBlockQuote' | 'markdownEmph' | 'markdownStrong' | 'markdownHorizontalRule' | 'markdownListItem' | 'markdownListEnumeration' | 'markdownImage' | 'markdownImageText' | 'markdownCodeBlock' | 'syntaxComment' | 'syntaxKeyword' | 'syntaxFunction' | 'syntaxVariable' | 'syntaxString' | 'syntaxNumber' | 'syntaxType' | 'syntaxOperator' | 'syntaxPunctuation';"
+    },
+    {
+      "name": "OptionalOpencodeColorKey",
+      "kind": "type",
+      "text": "export type OptionalOpencodeColorKey = 'selectedListItemText' | 'backgroundMenu';"
     },
     {
       "name": "SPINNER_FRAMES",
@@ -34359,6 +34400,11 @@
       "name": "STATE_GLYPHS",
       "kind": "const",
       "text": "STATE_GLYPHS: Record<StatusState, string> ;; via Record = type Record<K extends keyof any, T> = { [P in K]: T; };"
+    },
+    {
+      "name": "SYSTEM_THEME_NAME",
+      "kind": "const",
+      "text": "SYSTEM_THEME_NAME = \"system\""
     },
     {
       "name": "StatusState",
@@ -34376,9 +34422,62 @@
       "text": "TONE_TOKENS: { readonly fg: { readonly primary: \"#e2e8f0\"; readonly secondary: \"#cbd5e1\"; readonly muted: \"#94a3b8\"; readonly dim: \"#475569\"; readonly inverse: \"#0f172a\"; readonly empty: \"#334155\"; }; readonly bg: { readonly base: \"#11131a\"; readonly surface: \"#161a22\"; readonly title: \"#0f172a\"; readonly section: \"#18202b\"; readonly summary: \"#1b2430\"; readonly selected: \"#223049\"; readonly input: \"#1e293b\"; readonly warning: \"#2b2116\"; readonly error: \"#2a161b\"; readonly success: \"#14241b\"; readonly footer: \"#111827\"; }; readonly state: { readonly info: \"#38bdf8\"; readonly good: \"#22c55e\"; readonly warn: \"#f59e0b\"; readonly bad: \"#ef4444\"; readonly blocked: \"#f97316\"; readonly active: \"#60a5fa\"; readonly reasoning: \"#a855f7\"; }; readonly accent: { readonly browser: \"#7dd3fc\"; readonly control: \"#22d3ee\"; readonly inspector: \"#c4b5fd\"; readonly workflow: \"#fbbf24\"; readonly conversation: \"#93c5fd\"; readonly brand: \"#00ffff\"; readonly gradientStart: \"#00ffff\"; readonly gradientEnd: \"#d000ff\"; }; readonly border: \"#64748b\"; readonly chrome: { readonly label: \"#94a3b8\"; readonly faint: \"#475569\"; readonly warn: \"#f59e0b\"; readonly bad: \"#ef4444\"; readonly good: \"#22c55e\"; readonly remote: \"#a78bfa\"; }; }"
     },
     {
+      "name": "TerminalPalette",
+      "kind": "interface",
+      "required": [
+        "ansi"
+      ],
+      "text": "export interface TerminalPalette { readonly background?: string; readonly foreground?: string; readonly ansi: ReadonlyArray<string | undefined>; } ;; via ReadonlyArray = interface ReadonlyArray<T> { readonly length: number; toString(): string; toLocaleString(): string; concat(...items: ConcatArray<T>[]): T[]; concat(...items: (T | ConcatArray<T>)[]): T[]; join(separator?: string): string; slice(start?: number, end?: number): T[]; indexOf(searchElement: T, fromIndex?: number): number; lastIndexOf(searchElement: T, fromIndex?: number): number; every<S extends T>(predicate: (value: T, index: number, array: readonly T[]) => value is S, thisArg?: any): this is readonly S[]; every(predicate: (value: T, index: number, array: readonly T[]) => unknown, thisArg?: any): boolean; some(predicate: (value: T, index: number, array: readonly T[]) => unknown, thisArg?: any): boolean; forEach(callbackfn: (value: T, index: number, array: readonly T[]) => void, thisArg?: any): void; map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U, thisArg?: any): U[]; filter<S extends T>(predicate: (value: T, index: number, array: readonly T[]) => value is S, thisArg?: any): S[]; filter(predicate: (value: T, index: number, array: readonly T[]) => unknown, thisArg?: any): T[]; reduce(callbackfn: (previousValue: T, currentValue: T, currentIndex: number, array: readonly T[]) => T): T; reduce(callbackfn: (previousValue: T, currentValue: T, currentIndex: number, array: readonly T[]) => T, initialValue: T): T; reduce<U>(callbackfn: (previousValue: U, currentValue: T, currentIndex: number, array: readonly T[]) => U, initialValue: U): U; reduceRight(callbackfn: (previousValue: T, currentValue: T, currentIndex: number, array: readonly T[]) => T): T; reduceRight(callbackfn: (previousValue: T, currentValue: T, currentIndex: number, array: readonly T[]) => T, initialValue: T): T; reduceRight<U>(callbackfn: (previousValue: U, currentValue: T, currentIndex: number, array: readonly T[]) => U, initialValue: U): U; readonly [n: number]: T; }"
+    },
+    {
+      "name": "ThemeColorKey",
+      "kind": "type",
+      "text": "export type ThemeColorKey = OpencodeColorKey | GoodVibesColorKey;"
+    },
+    {
+      "name": "ThemeColorValue",
+      "kind": "type",
+      "text": "export type ThemeColorValue = string | number | ThemeVariantValue;"
+    },
+    {
+      "name": "ThemeJson",
+      "kind": "interface",
+      "required": [
+        "theme"
+      ],
+      "text": "export interface ThemeJson { readonly $schema?: string; readonly defs?: Readonly<Record<string, ThemeColorValue>>; readonly theme: ThemeJsonTokens; } ;; via Readonly = type Readonly<T> = { readonly [P in keyof T]: T[P]; }; ;; Record = type Record<K extends keyof any, T> = { [P in K]: T; };"
+    },
+    {
+      "name": "ThemeJsonTokens",
+      "kind": "type",
+      "text": "export type ThemeJsonTokens = { readonly [K in Exclude<OpencodeColorKey, OptionalOpencodeColorKey>]: ThemeColorValue; } & { readonly [K in OptionalOpencodeColorKey | GoodVibesColorKey]?: ThemeColorValue; } & { readonly lanes?: readonly ThemeColorValue[]; readonly thinkingOpacity?: number; }; ;; via Exclude = type Exclude<T, U> = T extends U ? never : T;"
+    },
+    {
       "name": "ThemeMode",
       "kind": "type",
       "text": "export type ThemeMode = 'dark' | 'light';"
+    },
+    {
+      "name": "ThemeResolveError",
+      "kind": "class",
+      "publicMembers": [
+        "constructor"
+      ],
+      "text": "export declare class ThemeResolveError extends Error { constructor(message: string); }"
+    },
+    {
+      "name": "ThemeTokens",
+      "kind": "type",
+      "text": "export type ThemeTokens = { readonly [K in ThemeColorKey]: string; } & { readonly lanes: readonly string[]; readonly thinkingOpacity: number; };"
+    },
+    {
+      "name": "ThemeVariantValue",
+      "kind": "interface",
+      "required": [
+        "dark",
+        "light"
+      ],
+      "text": "export interface ThemeVariantValue { readonly dark: string | number; readonly light: string | number; }"
     },
     {
       "name": "ToneTokens",
@@ -34396,9 +34495,94 @@
       "text": "export type WaitingState = 'approval' | 'reconnecting' | 'pre-first-token' | 'stalled' | 'thinking';"
     },
     {
+      "name": "ansiToHex",
+      "kind": "function",
+      "text": "export declare function ansiToHex(index: number): string;"
+    },
+    {
+      "name": "contrastRatio",
+      "kind": "function",
+      "text": "export declare function contrastRatio(a: string, b: string): number;"
+    },
+    {
+      "name": "ensureContrast",
+      "kind": "function",
+      "text": "export declare function ensureContrast(color: string, background: string, minRatio: number): string;"
+    },
+    {
+      "name": "generateSystemTheme",
+      "kind": "function",
+      "text": "export declare function generateSystemTheme(palette: TerminalPalette, mode: ThemeMode): ThemeJson;"
+    },
+    {
+      "name": "getBundledTheme",
+      "kind": "function",
+      "text": "export declare function getBundledTheme(name: string): BundledTheme | undefined;"
+    },
+    {
+      "name": "goodVibesColorKeys",
+      "kind": "function",
+      "text": "export declare function goodVibesColorKeys(): readonly GoodVibesColorKey[];"
+    },
+    {
+      "name": "isHexColor",
+      "kind": "function",
+      "text": "export declare function isHexColor(value: string): boolean;"
+    },
+    {
+      "name": "listBundledThemes",
+      "kind": "function",
+      "text": "export declare function listBundledThemes(): BundledTheme[];"
+    },
+    {
+      "name": "mixHex",
+      "kind": "function",
+      "text": "export declare function mixHex(a: string, b: string, t: number): string;"
+    },
+    {
+      "name": "normalizeHex",
+      "kind": "function",
+      "text": "export declare function normalizeHex(hex: string): string;"
+    },
+    {
+      "name": "opencodeColorKeys",
+      "kind": "function",
+      "text": "export declare function opencodeColorKeys(): readonly OpencodeColorKey[];"
+    },
+    {
+      "name": "relativeLuminance",
+      "kind": "function",
+      "text": "export declare function relativeLuminance(hex: string): number;"
+    },
+    {
+      "name": "resolveTheme",
+      "kind": "function",
+      "text": "export declare function resolveTheme(json: ThemeJson, mode: ThemeMode): ThemeTokens;"
+    },
+    {
       "name": "resolveTones",
       "kind": "function",
       "text": "export declare function resolveTones(mode: ThemeMode): Readonly<ToneTokens>; ;; via Readonly = type Readonly<T> = { readonly [P in keyof T]: T[P]; };"
+    },
+    {
+      "name": "themeColorKeys",
+      "kind": "function",
+      "text": "export declare function themeColorKeys(): readonly ThemeColorKey[];"
+    },
+    {
+      "name": "themeToDiffTones",
+      "kind": "function",
+      "text": "export declare function themeToDiffTones(tokens: ThemeTokens): DiffToneTokens;"
+    },
+    {
+      "name": "themeToTones",
+      "kind": "function",
+      "text": "export declare function themeToTones(tokens: ThemeTokens): ToneTokens;"
+    },
+    {
+      "name": "tint",
+      "kind": "function",
+      "text": "export declare function tint(base: string, overlay: string, alpha: number): string;"
     },
     {
       "name": "waitingPhrase",

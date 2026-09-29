@@ -40,3 +40,6 @@ export {
   type WaitingState,
   type WaitingPhraseContext,
 } from './waiting-wording.js';
+
+// The theme system (bundled themes, `system` theme, resolver, legacy bridge).
+export * from './theme/index.js';
