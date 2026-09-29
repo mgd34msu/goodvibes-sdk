@@ -161,7 +161,8 @@ export interface OrchestratorTurnLoopContext {
   readonly addStreamingOutputTokens: (value: number) => void;
   readonly setLastRequestInputTokens: (value: number) => void;
   readonly setLastInputTokens: (value: number) => void;
-  readonly markTurnFailed: () => void;
+  /** Mark the turn failed; `reason` names why, for the end-of-turn notification. */
+  readonly markTurnFailed: (reason?: string) => void;
   /**
    * The model/provider reported its context window filled (see
    * isContextOverflowSignal). The orchestrator must compact at the next
@@ -293,7 +294,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
           stopReason: 'context_overflow',
         });
       }
-      context.markTurnFailed();
+      context.markTurnFailed('The context window preflight failed');
       break;
     }
     if (context.runtimeBus) {
@@ -339,7 +340,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
             stopReason: 'hook_denied',
           });
         }
-        context.markTurnFailed();
+        context.markTurnFailed(preResult.reason ?? 'LLM call blocked by hook');
         break;
       }
     }
@@ -541,7 +542,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
             stopReason: 'provider_exhausted',
           });
         }
-        context.markTurnFailed();
+        context.markTurnFailed('All providers for the selected synthetic model are exhausted');
         context.requestRender();
         break;
       }
@@ -732,7 +733,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
               stopReason: 'tool_loop_circuit_breaker',
             });
           }
-          context.markTurnFailed();
+          context.markTurnFailed('Consecutive all-failed tool turns tripped the circuit breaker');
           break;
         } else if (breakerResult === 'warn') {
           context.conversation.addSystemMessage(

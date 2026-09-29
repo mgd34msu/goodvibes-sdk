@@ -66,6 +66,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'behavior.staleContextWarnings' ? boolean :
   K extends 'behavior.saveHistory' ? boolean :
   K extends 'behavior.notifyOnComplete' ? boolean :
+  K extends 'behavior.notificationsMetadataOnly' ? boolean :
   K extends 'behavior.suggestAlternativeOnProviderFail' ? boolean :
   K extends 'behavior.hitlMode' ? 'off' | 'quiet' | 'balanced' | 'operator' :
   K extends 'behavior.toolResultReconciliation' ? 'reconcile' | 'warn-only' :

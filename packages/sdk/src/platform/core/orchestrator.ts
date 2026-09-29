@@ -7,7 +7,7 @@ import type { HookEvent, HookResult } from '../hooks/types.js';
 import { formatError, summarizeError } from '../utils/error-display.js';
 import type { ModelDefinition } from '../providers/registry.js';
 import type { ContentPart } from '../providers/interface.js';
-import { notifyCompletion } from '../utils/notify.js';
+import { TurnEndNotice } from './turn-end-notice.js';
 import { logger } from '../utils/logger.js';
 import type { PermissionManager } from '../permissions/manager.js';
 import { startTurnForOwnerInput } from '../security/turn-boundary.js';
@@ -207,6 +207,8 @@ export class Orchestrator {
 
   /** True when the turn failed (set in catch; read in finally for markComplete vs markFailed). */
   private _turnFailed = false;
+  /** How the active turn ended, for the named end-of-turn popup (turn-end-notice.ts). */
+  private readonly turnEnd = new TurnEndNotice();
 
   /** Event replay queue, ensures model acknowledges significant events */
   private readonly replayQueue: EventReplayQueue;
@@ -647,7 +649,7 @@ export class Orchestrator {
     } catch (err: unknown) {
       this.handleTurnError(err, turnId, configManager, providerRegistry);
     } finally {
-      this.finalizeTurn(turnStartTime, submissionKey, turnId, configManager);
+      this.finalizeTurn(turnStartTime, submissionKey, turnId, configManager, text);
     }
   }
 
@@ -788,7 +790,7 @@ export class Orchestrator {
       addStreamingOutputTokens: (value) => { this.streamingOutputTokens += value; },
       setLastRequestInputTokens: (value) => { this.lastRequestInputTokens = value; },
       setLastInputTokens: (value) => { this.lastInputTokens = value; },
-      markTurnFailed: () => { this._turnFailed = true; },
+      markTurnFailed: (reason) => { this._turnFailed = true; this.turnEnd.markFailed(reason); },
       noteModelContextWindowWarning: (details) => {
         this.modelContextWarning = details;
         logger.warn('Orchestrator: model reported context window exhaustion - forcing compaction at next opportunity', details);
@@ -857,6 +859,7 @@ export class Orchestrator {
       this.conversation.removeMessagesAfter(this.turnStartMessageCount);
       this.conversation.markLastUserMessageCancelled();
       this.conversation.addSystemMessage('[Response cancelled]');
+      this.turnEnd.markCancelled();
       if (this.runtimeBus) {
         emitTurnCancel(this.runtimeBus, createEmitterContext(this.sessionId, turnId), {
           turnId,
@@ -885,6 +888,7 @@ export class Orchestrator {
       }
     }
     this._turnFailed = true;
+    this.turnEnd.markFailed(summarizeError(error));
     if (this.runtimeBus) {
       emitTurnError(this.runtimeBus, createEmitterContext(this.sessionId, turnId), {
         turnId,
@@ -900,7 +904,9 @@ export class Orchestrator {
     submissionKey: string,
     turnId: string,
     configManager: ReturnType<typeof requireConfigManager>,
+    turnText: string,
   ): void {
+    if (this._turnFailed) this.turnEnd.markFailed();
     // ── GC-ORCH-015: Terminal-state tool-call reconciliation ───────────────────
     // If the turn threw an exception between addAssistantMessage (which sets
     // _pendingToolCalls) and addToolResults (which clears it), there are
@@ -923,11 +929,8 @@ export class Orchestrator {
       this._turnFailed = false;
     }
     this.stopThinking();
-    const durationMs = Date.now() - turnStartTime;
-    const notifyEnabled = configManager.get('behavior.notifyOnComplete') as boolean | undefined;
-    if (notifyEnabled !== false) {
-      notifyCompletion('GoodVibes', `Response complete (${Math.round(durationMs / 1000)}s)`, durationMs);
-    }
+    const configGet = (key: string): unknown => configManager.get(key as Parameters<typeof configManager.get>[0]);
+    this.turnEnd.send({ configGet, conversation: this.conversation, turnText, sessionId: this.sessionId, durationMs: Date.now() - turnStartTime });
 
     // ── Event replay queue ────────────────────────────────────────────────
     // Inject unacknowledged events as system messages, then acknowledge them:

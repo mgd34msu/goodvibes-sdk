@@ -137,6 +137,7 @@ import { createProcessRegistry, withFleetArchive, attachFleetEmitBridge, type Ar
 import { attachConfigEmitBridge } from './config/index.js';
 import { ObservedAgentSource } from './fleet/observed/source.js';
 import { createOrchestrationEngine, createProviderBackedAttemptJudge, type OrchestrationEngine } from '../orchestration/index.js';
+import { readNotificationsMetadataOnly } from './turn-notification.js';
 import { createFixWorkstreamRunner } from '../orchestration/fix-workstream-runner.js';
 import { makeRuntimeFleetProbe } from './orchestration/fleet-count.js';
 import {
@@ -758,7 +759,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   const componentHealthMonitor = new ComponentHealthMonitor();
   const worktreeRegistry = new WorktreeRegistry(workingDirectory, { surfaceRoot });
-  const webhookNotifier = new WebhookNotifier();
+  const webhookNotifier = new WebhookNotifier([], {
+    metadataOnly: () => readNotificationsMetadataOnly((key) => configManager.get(key as Parameters<typeof configManager.get>[0])),
+  });
   const replayEngine = new DeterministicReplayEngine(workingDirectory);
   // Poll-free runtime event for permission-mode changes so surfaces can render a live mode pill.
   bindPermissionModeChangeEvent(configManager, options.runtimeBus, 'runtime');

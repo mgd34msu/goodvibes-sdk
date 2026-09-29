@@ -42,6 +42,12 @@ export const featureControlSettings: ConfigSetting[] = [
     enumValues: ['ast', 'flat'],
   },
   {
+    key: 'behavior.notificationsMetadataOnly',
+    type: 'boolean',
+    default: false,
+    description: 'Send metadata only in every notification (desktop, in-terminal, webhook): the outcome, elapsed time and counts, without the turn\'s name, failure reasons, commands or file paths. Off by default, so notifications name the work they are about; turn on when notifications leave this machine and should not carry what you typed.',
+  },
+  {
     key: 'behavior.toolResultReconciliation',
     type: 'enum',
     default: 'reconcile',

@@ -77,6 +77,7 @@ export interface GoodVibesConfig {
     staleContextWarnings: boolean; // default: true
     saveHistory: boolean;       // default: true
     notifyOnComplete: boolean;  // default: true
+    notificationsMetadataOnly: boolean; // default: false. Every notification channel sends metadata only (no turn name, reasons, commands or paths)
     suggestAlternativeOnProviderFail: boolean; // default: false
     hitlMode: 'off' | 'quiet' | 'balanced' | 'operator'; // default: 'balanced'. 'off' keeps the baseline notification policy
     toolResultReconciliation: 'reconcile' | 'warn-only'; // default: 'reconcile'. Inject synthetic results for dangling tool calls at turn end
@@ -271,6 +272,7 @@ export type ConfigKey =
   | 'behavior.staleContextWarnings'
   | 'behavior.saveHistory'
   | 'behavior.notifyOnComplete'
+  | 'behavior.notificationsMetadataOnly'
   | 'behavior.suggestAlternativeOnProviderFail'
   | 'behavior.hitlMode'
   | 'behavior.toolResultReconciliation'

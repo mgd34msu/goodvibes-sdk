@@ -29,6 +29,7 @@ export const coreConfigDefaults = {
     staleContextWarnings: true,
     saveHistory: true,
     notifyOnComplete: true,
+    notificationsMetadataOnly: false,
     suggestAlternativeOnProviderFail: false,
     hitlMode: 'balanced',
     toolResultReconciliation: 'reconcile',

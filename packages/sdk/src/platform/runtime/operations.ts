@@ -139,6 +139,33 @@ export {
   shouldFireAlert,
 } from './alert-gating.js';
 export type { ConfigGet } from './alert-gating.js';
+export {
+  NOTIFICATIONS_METADATA_ONLY_DEFAULT,
+  NOTIFICATIONS_METADATA_ONLY_KEY,
+  NOTIFICATION_TEXT_LIMITS,
+  TurnActivityTally,
+  buildApprovalNotification,
+  buildBudgetNotification,
+  buildTurnNotification,
+  buildTurnNotificationLine,
+  describeToolTarget,
+  describeTurnOutcome,
+  formatElapsed,
+  formatWebhookText,
+  joinNotificationLine,
+  readNotificationsMetadataOnly,
+  resolveTurnName,
+  trimAtWordBoundary,
+} from './turn-notification.js';
+export type {
+  ApprovalNotificationFacts,
+  BudgetNotificationFacts,
+  NotificationText,
+  NotificationTextOptions,
+  TurnNameSource,
+  TurnNotificationFacts,
+  TurnOutcome,
+} from './turn-notification.js';
 
 export {
   JOURNAL_ORPHAN_MAX_AGE_MS,
