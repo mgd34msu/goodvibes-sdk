@@ -166,7 +166,7 @@ export interface AgentOrchestratorRunContext {
   readonly permissionManager?: BackgroundPermissionManager | undefined;
   readonly getFullRegistry: () => ToolRegistry;
   readonly buildScopedRegistry: (allowedNames: string[], fullRegistry: ToolRegistry, captureAuthority?: import('../personal-capture/index.js').CaptureAuthorityDecision | undefined) => ToolRegistry;
-  readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'listModels' | 'getContextWindowForModel' | 'recordContextWindowRejection'>;
+  readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'listModels' | 'getContextWindowForModel' | 'getKnownContextWindowForModel' | 'recordContextWindowRejection'>;
   readonly providerOptimizer?: Pick<ProviderOptimizer, 'recordFallbackTransition'> | undefined;
   readonly resolveProviderForRecord: (
     providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'listModels'>,
@@ -550,7 +550,7 @@ export async function runAgentTask(
       let contextWindowForTurn = 0;
       if (contextWindowAwarenessEnabled || passiveKnowledgeInjectionEnabled) {
         const modelDef = resolveContextWindowModelDefinition(providerRegistry, activeRoute);
-        contextWindowForTurn = context.providerRegistry.getContextWindowForModel(modelDef);
+        contextWindowForTurn = context.providerRegistry.getKnownContextWindowForModel(modelDef) ?? 0; // 0: unknown, awareness skips
       }
 
       if (contextWindowAwarenessEnabled) {

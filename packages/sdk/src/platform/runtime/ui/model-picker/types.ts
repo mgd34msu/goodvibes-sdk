@@ -111,6 +111,8 @@ export interface ModelPickerEntry {
    * - `provider_api`  , reported by the provider's /v1/models endpoint
    * - `configured_cap`, set explicitly by the user (config file or /context window)
    * - `observed_limit`, learned from a provider rejecting a longer request
+   * - `accepted_floor`, the stated window was disproven by a larger accepted
+   *                     request; the real window is unknown
    * - `fallback`      , default constant (no config or API source)
    * - `openrouter`    , sourced from OpenRouter model data (built-in catalog models)
    * - `registry`      , static value in the built-in model registry
@@ -119,6 +121,7 @@ export interface ModelPickerEntry {
     | 'provider_api'
     | 'configured_cap'
     | 'observed_limit'
+    | 'accepted_floor'
     | 'fallback'
     | 'openrouter'
     | 'registry';

@@ -262,7 +262,10 @@ export class ModelLimitsService {
     const orMap = this.ensureOpenRouterMap();
     if (orMap) {
       const orMatch = findOpenRouterMatch(modelDef.id, modelDef.provider, orMap);
-      if (orMatch?.context_length != null && orMatch.context_length > 0) {
+      // A disproven window's floor is what the provider already accepted; an
+      // OpenRouter figure below it is contradicted the same way.
+      const floor = modelDef.contextWindowProvenance === 'accepted_floor' ? modelDef.contextWindow : 0;
+      if (orMatch?.context_length != null && orMatch.context_length > 0 && orMatch.context_length >= floor) {
         return orMatch.context_length;
       }
     }
@@ -273,6 +276,29 @@ export class ModelLimitsService {
     return Number.isFinite(cw) && cw > 0
       ? cw
       : inferFallbackContextWindow(modelDef.provider, modelDef.id);
+  }
+
+  /**
+   * The model's context window when something actually states it, or null
+   * when it is unknown. Unknown means the window is only a guess (provenance
+   * 'fallback') or was disproven by a larger accepted request
+   * ('accepted_floor'), and no OpenRouter entry for the model states a window
+   * at least as large as what the provider already accepted. Meters,
+   * compaction triggers and tier choice read this so they never act on a
+   * guessed number; budget math that needs some number keeps using
+   * getContextWindowForModel.
+   */
+  getKnownContextWindowForModel(modelDef: ModelDefinition): number | null {
+    const provenance = modelDef.contextWindowProvenance;
+    if (provenance !== 'fallback' && provenance !== 'accepted_floor') {
+      const window = this.getContextWindowForModel(modelDef);
+      return window > 0 ? window : null;
+    }
+    const orMap = this.ensureOpenRouterMap();
+    const orMatch = orMap ? findOpenRouterMatch(modelDef.id, modelDef.provider, orMap) : null;
+    const orWindow = orMatch?.context_length ?? 0;
+    const floor = provenance === 'accepted_floor' ? modelDef.contextWindow : 0;
+    return orWindow > 0 && orWindow >= floor ? orWindow : null;
   }
 
   getToolResultMaxCharsForModel(model: ModelDefinition | null | undefined): number {

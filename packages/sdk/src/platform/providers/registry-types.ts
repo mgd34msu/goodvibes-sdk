@@ -22,8 +22,18 @@ export interface TokenLimits {
   maxReasoningTokens?: number | undefined;
 }
 
-/** Provenance of a resolved context window value. */
-export type ContextWindowProvenance = 'provider_api' | 'configured_cap' | 'observed_limit' | 'fallback';
+/**
+ * Provenance of a resolved context window value.
+ *
+ * - `provider_api`  , reported by the provider's own models endpoint
+ * - `configured_cap`, set explicitly (a user override or a provider file value)
+ * - `observed_limit`, learned from a provider rejecting a longer request
+ * - `accepted_floor`, the stated window was disproven: the provider accepted a
+ *                     request larger than it. The real window is unknown;
+ *                     `contextWindow` holds the largest input seen accepted.
+ * - `fallback`      , nothing states the window; `contextWindow` is a guess
+ */
+export type ContextWindowProvenance = 'provider_api' | 'configured_cap' | 'observed_limit' | 'accepted_floor' | 'fallback';
 
 /** Describes a selectable model and its capabilities. */
 export interface ModelDefinition {

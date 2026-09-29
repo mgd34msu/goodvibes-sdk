@@ -115,6 +115,8 @@ export const DEFAULT_AUTO_COMPACT_THRESHOLD_PERCENT = 80;
  * instead of the full structured output, since there isn't enough room for extraction calls.
  */
 export const SMALL_WINDOW_THRESHOLD = 12_000;
+/** Messages small-window compaction keeps verbatim; a conversation this short has nothing it can remove. */
+export const SMALL_WINDOW_KEEP_RECENT = 10;
 
 // ---------------------------------------------------------------------------
 // Compaction event log (in-memory, session-scoped)
@@ -236,7 +238,7 @@ export function shouldAutoCompact(opts: AutoCompactOptions): boolean {
  */
 export function compactSmallWindow(
   messages: ProviderMessage[],
-  keepRecent = 10,
+  keepRecent = SMALL_WINDOW_KEEP_RECENT,
 ): ProviderMessage[] {
   if (messages.length <= keepRecent) return messages;
   const recentMessages = messages.slice(-keepRecent);

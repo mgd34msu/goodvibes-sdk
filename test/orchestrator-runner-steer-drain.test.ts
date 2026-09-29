@@ -68,12 +68,13 @@ const FAKE_MODEL: ModelDefinition = {
 
 function makeProviderRegistry(
   provider: LLMProvider,
-): Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'listModels' | 'getContextWindowForModel' | 'recordContextWindowRejection'> {
+): Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'listModels' | 'getContextWindowForModel' | 'getKnownContextWindowForModel' | 'recordContextWindowRejection'> {
   return {
     getCurrentModel: () => FAKE_MODEL,
     getForModel: () => provider,
     listModels: () => [FAKE_MODEL],
     getContextWindowForModel: () => 0,
+    getKnownContextWindowForModel: () => null,
     recordContextWindowRejection: () => {},
   };
 }

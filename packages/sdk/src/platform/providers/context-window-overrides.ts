@@ -17,6 +17,16 @@
  *   window. Self-correcting in both directions: another, smaller rejection
  *   lowers it; a successful request whose real billed input exceeds it
  *   raises it.
+ * - **Accepted floor**: a successful request whose real billed input exceeds
+ *   the window a model states (a provider file, a catalog, or a guess)
+ *   proves that window false. The largest accepted input is recorded and the
+ *   model's window becomes unknown (provenance 'accepted_floor') instead of
+ *   keeping a number the provider has already contradicted. A user override
+ *   is a deliberate budget, never disproven this way.
+ *
+ * The file stays at version 2 with `accepted` as an optional section, so an
+ * older reader still loads the file (it ignores the section) instead of
+ * setting the whole file aside.
  *
  * The file lives in the control-plane config dir, so both layers reach every
  * consumer of the same home (TUI, daemon, agent) without extra wiring.
@@ -38,6 +48,8 @@ interface ContextWindowOverridesFile {
   overrides: Record<string, number>;
   /** v2: learned provider limits (registryKey -> tokens). */
   observed?: Record<string, number>;
+  /** Largest real input a provider accepted, recorded when it disproved the stated window (registryKey -> tokens). */
+  accepted?: Record<string, number>;
 }
 
 export function getContextWindowOverridesPath(configDir: string): string {
@@ -64,6 +76,7 @@ function readValidEntries(source: Record<string, number> | undefined, label: str
 interface LoadedContextWindowState {
   overrides: Map<string, number>;
   observed: Map<string, number>;
+  accepted: Map<string, number>;
 }
 
 /**
@@ -72,7 +85,7 @@ interface LoadedContextWindowState {
  * window math with a bad value.
  */
 export function loadContextWindowOverrides(filePath: string): LoadedContextWindowState {
-  const empty: LoadedContextWindowState = { overrides: new Map(), observed: new Map() };
+  const empty: LoadedContextWindowState = { overrides: new Map(), observed: new Map(), accepted: new Map() };
   try {
     return (
       readJsonFileOrQuarantine<LoadedContextWindowState>(filePath, {
@@ -86,6 +99,7 @@ export function loadContextWindowOverrides(filePath: string): LoadedContextWindo
           return {
             overrides: readValidEntries(parsed.overrides, 'override'),
             observed: readValidEntries(parsed.observed, 'observed-limit'),
+            accepted: readValidEntries(parsed.accepted, 'accepted-floor'),
           };
         },
       }) ?? empty
@@ -107,6 +121,7 @@ export function saveContextWindowOverrides(filePath: string, state: LoadedContex
     version: 2,
     overrides: sorted(state.overrides),
     observed: sorted(state.observed),
+    ...(state.accepted.size > 0 ? { accepted: sorted(state.accepted) } : {}),
   };
   try {
     writeJsonFileAtomic(filePath, file);
@@ -164,8 +179,9 @@ export class ContextWindowOverrideStore {
     const state = this.load();
     const existed = state.overrides.delete(registryKey);
     const observedExisted = state.observed.delete(registryKey);
-    if (existed || observedExisted) this.persist();
-    return existed || observedExisted;
+    const acceptedExisted = state.accepted.delete(registryKey);
+    if (existed || observedExisted || acceptedExisted) this.persist();
+    return existed || observedExisted || acceptedExisted;
   }
 
   /**
@@ -205,6 +221,48 @@ export class ContextWindowOverrideStore {
   }
 
   /**
+   * A request with real billed input of `successfulInputTokens` succeeded.
+   * Raises a too-pessimistic learned ceiling; otherwise, when the input
+   * exceeds the window `model()` states (a provider file value, a catalog
+   * value, or a guess), records it as an accepted floor, so that window reads
+   * as unknown from then on. A user override is a deliberate budget and is
+   * left alone. Returns true when the stored knowledge changed.
+   */
+  reconcileSuccessfulInput(registryKey: string, successfulInputTokens: number, model: () => ModelDefinition | undefined): boolean {
+    const state = this.load();
+    const observed = state.observed.get(registryKey);
+    if (observed !== undefined) {
+      if (successfulInputTokens <= observed) return false;
+      this.reconcileSuccess(registryKey, successfulInputTokens);
+      return true;
+    }
+    if (state.overrides.has(registryKey)) return false;
+    const def = model();
+    if (!def || !(def.contextWindow > 0) || successfulInputTokens <= def.contextWindow) return false;
+    return this.recordAccepted(registryKey, successfulInputTokens);
+  }
+
+  /**
+   * A provider accepted `acceptedInputTokens` of real input although the
+   * model states a smaller window: record it (raise only). Returns true when
+   * the stored floor changed.
+   */
+  recordAccepted(registryKey: string, acceptedInputTokens: number): boolean {
+    const rounded = Math.floor(acceptedInputTokens);
+    if (!isValidContextWindowOverride(rounded)) return false;
+    const state = this.load();
+    const existing = state.accepted.get(registryKey);
+    if (existing !== undefined && existing >= rounded) return false;
+    state.accepted.set(registryKey, rounded);
+    this.persist();
+    logger.info('[context-window-overrides] Stated context window disproven by an accepted request', {
+      registryKey,
+      acceptedTokens: rounded,
+    });
+    return true;
+  }
+
+  /**
    * Overlay window knowledge onto a model definition. A user override wins
    * ('configured_cap', authoritative downstream); otherwise a learned limit
    * applies when it is smaller than the automatic window ('observed_limit',
@@ -216,10 +274,21 @@ export class ContextWindowOverrideStore {
     if (override !== undefined) {
       return { ...model, contextWindow: override, contextWindowProvenance: 'configured_cap' };
     }
+    let resolved = model;
     const observed = state.observed.get(model.registryKey);
     if (observed !== undefined && (model.contextWindow <= 0 || observed < model.contextWindow)) {
-      return { ...model, contextWindow: observed, contextWindowProvenance: 'observed_limit' };
+      resolved = { ...model, contextWindow: observed, contextWindowProvenance: 'observed_limit' };
     }
-    return model;
+    // A learned ceiling is the provider's own word and is kept; any other
+    // stated window smaller than what the provider already accepted is false.
+    const accepted = state.accepted.get(model.registryKey);
+    if (
+      accepted !== undefined &&
+      resolved.contextWindowProvenance !== 'observed_limit' &&
+      accepted > resolved.contextWindow
+    ) {
+      return { ...resolved, contextWindow: accepted, contextWindowProvenance: 'accepted_floor' };
+    }
+    return resolved;
   }
 }

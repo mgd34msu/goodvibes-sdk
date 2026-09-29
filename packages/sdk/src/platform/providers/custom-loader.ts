@@ -43,7 +43,12 @@ export interface CustomProviderConfig {
     id: string;
     displayName: string;
     description?: string | undefined;
-    contextWindow: number;
+    /**
+     * The model's context window in tokens. Omit it when the endpoint does
+     * not say: the model's window is then unknown (provenance 'fallback')
+     * rather than a guessed number stated as fact.
+     */
+    contextWindow?: number | undefined;
     selectable?: boolean | undefined;
     capabilities: {
       toolCalling: boolean;
@@ -153,8 +158,8 @@ function validateCustomProvider(data: unknown): { valid: boolean; errors: string
       if (typeof model['displayName'] !== 'string' || model['displayName'].trim() === '') {
         errors.push(`models[${i}]: "displayName" must be a non-empty string`);
       }
-      if (typeof model['contextWindow'] !== 'number' || model['contextWindow'] <= 0) {
-        errors.push(`models[${i}]: "contextWindow" must be a positive number`);
+      if (model['contextWindow'] !== undefined && (typeof model['contextWindow'] !== 'number' || model['contextWindow'] <= 0)) {
+        errors.push(`models[${i}]: "contextWindow", when given, must be a positive number`);
       }
       if (typeof model['capabilities'] !== 'object' || model['capabilities'] === null) {
         errors.push(`models[${i}]: "capabilities" must be an object`);
@@ -353,7 +358,7 @@ export async function loadCustomProviders(
 
     const modelDefs: ModelDefinition[] = cfg.models.map((m) => {
       const apiContextLength = apiContextMap?.get(m.id) ?? null;
-      const resolved = resolveContextWindow(m.id, apiContextLength, m.contextWindow);
+      const resolved = resolveContextWindow(m.id, apiContextLength, m.contextWindow ?? 0);
       return {
         id: m.id,
         provider: cfg.name,

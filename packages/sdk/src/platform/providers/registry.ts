@@ -467,6 +467,9 @@ export class ProviderRegistry {
     return this.modelLimitsService.getContextWindowForModel(modelDef);
   }
 
+  /** The window a source states, or null when unknown (a guess, or disproven by a larger accepted request): what meters and compaction use. */
+  getKnownContextWindowForModel(modelDef: ModelDefinition): number | null { return this.modelLimitsService.getKnownContextWindowForModel(modelDef); }
+
   getTokenLimitsForModel(modelDef: ModelDefinition): Required<TokenLimits> {
     return this.modelLimitsService.getTokenLimitsForModel(modelDef);
   }
@@ -628,12 +631,10 @@ export class ProviderRegistry {
     this._invalidateModelRegistry();
   }
 
-  /** A request with real billed input succeeded, raise a too-pessimistic learned ceiling. */
+  /** A request with real billed input succeeded (see ContextWindowOverrideStore.reconcileSuccessfulInput). */
   reconcileObservedContextWindow(registryKey: string, successfulInputTokens: number): void {
-    const before = this.contextWindowOverrideStore().getObserved(registryKey);
-    if (before === null || successfulInputTokens <= before) return;
-    this.contextWindowOverrideStore().reconcileSuccess(registryKey, successfulInputTokens);
-    this._invalidateModelRegistry();
+    const model = (): ModelDefinition | undefined => findModelDefinition(registryKey, this.getModelRegistry());
+    if (this.contextWindowOverrideStore().reconcileSuccessfulInput(registryKey, successfulInputTokens, model)) this._invalidateModelRegistry();
   }
 
   /** Switch to a different model. Accepts a registryKey or a bare model id (resolved via the shared resolver). */

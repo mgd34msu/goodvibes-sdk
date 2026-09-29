@@ -309,6 +309,10 @@ import {
 const ctx = inferFallbackContextWindow('openai', 'gpt-5.5'); // 400000
 ```
 
+### Known and unknown windows
+
+`ProviderRegistry.getKnownContextWindowForModel(model)` returns the window a source states (the provider API, the catalog, OpenRouter, a user override or a learned limit), or `null` when the window is unknown: only a guess (provenance `fallback`), or disproven because the provider accepted a request larger than the stated window (provenance `accepted_floor`, recorded by `reconcileObservedContextWindow` and kept in `context-window-overrides.json`). Meters, auto-compaction and `getTierForContextWindow` (which maps `null` to `standard`) use it; `getContextWindowForModel` still returns a number for budget math. A custom provider file may leave `contextWindow` out of a model to say it is unknown.
+
 ---
 
 ## Error handling pattern (companion app)

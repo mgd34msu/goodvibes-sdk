@@ -227,6 +227,7 @@ function makeRegistryStub(model: ModelDefinition) {
   return {
     getCurrentModel: () => model,
     getContextWindowForModel: () => model.contextWindow,
+    getKnownContextWindowForModel: () => model.contextWindow,
     listModels: () => [model],
   } as unknown as PreflightDeps['providerRegistry'];
 }

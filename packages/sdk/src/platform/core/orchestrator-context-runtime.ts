@@ -2,7 +2,7 @@ import type { ConversationManager } from './conversation.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { ModelDefinition, ProviderRegistry } from '../providers/registry.js';
 import { logger } from '../utils/logger.js';
-import { estimateConversationTokens, COMPACTION_BUFFER_TOKENS, SMALL_WINDOW_THRESHOLD, compactSmallWindow, getAutoCompactDecision } from './context-compaction.js';
+import { estimateConversationTokens, COMPACTION_BUFFER_TOKENS, SMALL_WINDOW_THRESHOLD, SMALL_WINDOW_KEEP_RECENT, compactSmallWindow, getAutoCompactDecision } from './context-compaction.js';
 import type { CompactionContext } from './context-compaction.js';
 import type { SessionMemoryStore } from './session-memory.js';
 import type { SessionLineageTracker } from './session-lineage.js';
@@ -184,10 +184,17 @@ export async function checkContextWindowPreflight(
   turnId: string,
   model: ModelDefinition,
 ): Promise<'ok' | 'compacted' | 'error'> {
-  const contextWindow = deps.providerRegistry.getContextWindowForModel(model);
+  // Only a window some source states is compared against: an unknown window
+  // (a guess, or one a larger accepted request disproved) has no percentage
+  // and no edge to overflow. A provider's own context warning still compacts.
+  const knownWindow = deps.providerRegistry.getKnownContextWindowForModel(model);
+  const modelWarning = deps.modelContextWarning ?? null;
+  const forcedByModelWarning = modelWarning !== null && !deps.isCompacting;
+  if (knownWindow === null && !forcedByModelWarning) return 'ok';
+  const contextWindow = knownWindow ?? 0;
   const tier = normalizeCatalogTier(model.tier);
 
-  if (contextWindow <= 0) return 'ok';
+  if (knownWindow !== null && contextWindow <= 0) return 'ok';
 
   const messages = deps.conversation.getMessagesForLLM();
   const estimatedTokens = estimateConversationTokens(messages);
@@ -199,8 +206,6 @@ export async function checkContextWindowPreflight(
     isCompacting: deps.isCompacting,
     thresholdPercent: threshold,
   });
-  const modelWarning = deps.modelContextWarning ?? null;
-  const forcedByModelWarning = modelWarning !== null && !deps.isCompacting;
   if (!forcedByModelWarning && !preflightDecision.shouldCompact && estimatedTokens <= contextWindow) return 'ok';
 
   if (forcedByModelWarning || (autoCompactEnabled && !deps.isCompacting && preflightDecision.shouldCompact)) {
@@ -221,7 +226,7 @@ export async function checkContextWindowPreflight(
     deps.setIsCompacting(true);
     deps.conversation.addSystemMessage(
       forcedByModelWarning && modelWarning
-        ? `${describeModelContextWarning(modelWarning)}. Auto-compacting before the next request, regardless of the ~${Math.round(preflightDecision.usagePct)}% estimated usage...`
+        ? `${describeModelContextWarning(modelWarning)}. Auto-compacting before the next request, regardless of ${knownWindow === null ? 'the unknown context window' : `the ~${Math.round(preflightDecision.usagePct)}% estimated usage`}...`
         : `Context pre-check: request is at ${Math.round(preflightDecision.usagePct)}% (${estimatedTokens}/${contextWindow} tokens), ${formatAutoCompactTrigger(preflightDecision)}. Auto-compacting...`
     );
     deps.requestRender();
@@ -319,7 +324,7 @@ export async function checkContextWindowPreflight(
     }
 
     const tokensAfter = estimateConversationTokens(deps.conversation.getMessagesForLLM());
-    if (tokensAfter <= contextWindow) {
+    if (knownWindow === null || tokensAfter <= contextWindow) {
       return 'compacted';
     }
 
@@ -413,8 +418,12 @@ export async function handlePostTurnContextMaintenance(
   totalTokens: number,
 ): Promise<void> {
   const currentModel = deps.providerRegistry.getCurrentModel();
-  const maxTokens = deps.providerRegistry.getContextWindowForModel(currentModel);
-  if (maxTokens <= 0) return;
+  // An unknown window (a guess, or one a larger accepted request disproved)
+  // gives no usage percentage, so the threshold trigger and its warnings stay
+  // quiet; a provider's own context warning still compacts below.
+  const knownWindow = deps.providerRegistry.getKnownContextWindowForModel(currentModel);
+  const maxTokens = knownWindow ?? 0;
+  if (knownWindow !== null && maxTokens <= 0) return;
 
   const configuredThreshold = readAutoCompactThreshold(deps.configManager);
   const warningsEnabled = deps.configManager.get('behavior.staleContextWarnings') as boolean;
@@ -429,6 +438,23 @@ export async function handlePostTurnContextMaintenance(
   const bracket = Math.floor(usagePct / 10) * 10;
   const modelWarning = deps.modelContextWarning ?? null;
   const forcedByModelWarning = modelWarning !== null && !deps.isCompacting;
+  if (knownWindow === null && !forcedByModelWarning) return;
+
+  // Small-window compaction keeps the last SMALL_WINDOW_KEEP_RECENT messages
+  // verbatim; a conversation no longer than that has nothing it can remove,
+  // so the trigger stays quiet instead of announcing a compaction that
+  // changes nothing (the input is then the system prompt and tool schemas,
+  // which no compaction touches).
+  const useSmallWindow = knownWindow !== null && maxTokens < SMALL_WINDOW_THRESHOLD;
+  if (useSmallWindow && deps.conversation.getMessagesForLLM().length <= SMALL_WINDOW_KEEP_RECENT) {
+    if (forcedByModelWarning) deps.clearModelContextWarning?.();
+    logger.debug('Orchestrator: small-window auto-compact skipped, nothing past the kept messages', {
+      modelId: currentModel.registryKey,
+      totalTokens,
+      maxTokens,
+    });
+    return;
+  }
 
   if (
     forcedByModelWarning ||
@@ -439,7 +465,7 @@ export async function handlePostTurnContextMaintenance(
     deps.setIsCompacting(true);
     deps.conversation.addSystemMessage(
       forcedByModelWarning && modelWarning
-        ? `${describeModelContextWarning(modelWarning)}. Auto-compacting now, regardless of the ~${usagePct}% estimated usage (${totalTokens}/${maxTokens} tokens)...`
+        ? `${describeModelContextWarning(modelWarning)}. Auto-compacting now, regardless of ${knownWindow === null ? `the unknown context window (${totalTokens} tokens in use)` : `the ~${usagePct}% estimated usage (${totalTokens}/${maxTokens} tokens)`}...`
         : `Context usage at ${usagePct}% (${totalTokens}/${maxTokens} tokens), ${formatAutoCompactTrigger(autoDecision)}. Auto-compacting conversation...`
     );
     if (deps.runtimeBus) {
@@ -489,11 +515,10 @@ export async function handlePostTurnContextMaintenance(
 
     try {
       const currentMsgs = deps.conversation.getMessagesForLLM();
-      const useSmallWindow = maxTokens < SMALL_WINDOW_THRESHOLD;
 
       if (!skipAutoCompact && useSmallWindow) {
         try {
-          const compactedMsgs = compactSmallWindow(currentMsgs, 10);
+          const compactedMsgs = compactSmallWindow(currentMsgs, SMALL_WINDOW_KEEP_RECENT);
           deps.conversation.replaceMessagesForLLM(compactedMsgs);
           deps.setIsCompacting(false);
           deps.setLastWarningBracket(0);
@@ -506,9 +531,9 @@ export async function handlePostTurnContextMaintenance(
             messagesBefore: currentMsgs.length, messagesAfter: compactedMsgs.length,
             qualityScore: 1, qualityGrade: 'A', lowQuality: false,
             instructionsReinjected: false, validationPassed: true,
-            sectionsIncluded: [], outcome: 'applied', detail: 'small window: kept last 10 messages',
+            sectionsIncluded: [], outcome: 'applied', detail: `small window: kept last ${SMALL_WINDOW_KEEP_RECENT} messages`,
           });
-          deps.conversation.addSystemMessage('Context auto-compacted (small window mode). Kept last 10 messages.');
+          deps.conversation.addSystemMessage(`Context auto-compacted (small window mode). Kept last ${SMALL_WINDOW_KEEP_RECENT} messages.`);
           deps.requestRender();
         } catch (err: unknown) {
           deps.setIsCompacting(false);

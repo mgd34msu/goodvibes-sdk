@@ -18,8 +18,13 @@ export type { ModelTier };
  *
  * This is used instead of the static ModelDefinition.tier field so that
  * tier-prompt selection is driven by actual model capabilities.
+ *
+ * An unknown window (`null`, what ProviderRegistry.getKnownContextWindowForModel
+ * returns for a guessed or disproven window) gives 'standard': nothing says
+ * the model is small, so it is not handed the small-model guidance.
  */
-export function getTierForContextWindow(contextWindow: number): ModelTier {
+export function getTierForContextWindow(contextWindow: number | null): ModelTier {
+  if (contextWindow === null) return 'standard';
   if (contextWindow > 128_000) return 'premium';
   if (contextWindow >= 32_000) return 'standard';
   return 'free';
