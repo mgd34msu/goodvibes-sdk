@@ -45,7 +45,7 @@ function buildCohortReport(agentManager: AgentManager, cohort: string): string {
   for (const agent of agents) {
     const durationSeconds = agent.completedAt !== undefined ? Math.round((agent.completedAt - agent.startedAt) / 1000) : 0;
     const icon = agent.status === 'completed' ? '\u2713' : agent.status === 'failed' ? '\u2717' : '~';
-    const errorSuffix = agent.error ? ` \u2014 ${agent.error.slice(0, 60)}` : '';
+    const errorSuffix = agent.error ? ` \u2014 ${agent.error}` : '';
     lines.push(`  ${icon} ${agent.id.slice(-8)}: ${agent.status} in ${durationSeconds}s (${agent.toolCallCount} tool calls)${errorSuffix}`);
   }
   return lines.join('\n');
@@ -190,7 +190,7 @@ export function registerHostRuntimeEvents(
 
   unsubs.push(runtimeBus.on<Extract<WorkflowEvent, { type: 'WORKFLOW_CHAIN_FAILED' }>>('WORKFLOW_CHAIN_FAILED', ({ payload }) => {
     withRouter(getSystemMessageRouter, (router) => {
-      router.wrfc(`[WRFC] \u2717 Chain ${payload.chainId.slice(0, 12)} FAILED: ${payload.reason.slice(0, 80)}`);
+      router.wrfc(`[WRFC] \u2717 Chain ${payload.chainId.slice(0, 12)} FAILED: ${payload.reason}`);
     });
     queueConversationFollowUp?.({
       key: `wrfc:${payload.chainId}:failed`,
@@ -251,7 +251,7 @@ export function registerHostRuntimeEvents(
       const durationSeconds = record.completedAt !== undefined ? Math.round((record.completedAt - record.startedAt) / 1000) : 0;
       const taskSnippet = record.task.length > 50 ? `${record.task.slice(0, 50)}\u2026` : record.task;
       withRouter(getSystemMessageRouter, (router) => {
-        router.low(`[Agents] \u2717 ${record.template} ${payload.agentId.slice(-8)}: "${taskSnippet}" \u2014 failed in ${durationSeconds}s: ${payload.error.slice(0, 80)}`);
+        router.low(`[Agents] \u2717 ${record.template} ${payload.agentId.slice(-8)}: "${taskSnippet}" \u2014 failed in ${durationSeconds}s: ${payload.error}`);
       });
       queueConversationFollowUp?.({
         key: `agent:${payload.agentId}:failed`,

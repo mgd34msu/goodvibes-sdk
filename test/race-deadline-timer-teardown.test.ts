@@ -19,6 +19,7 @@ import { afterEach, beforeEach, expect, test } from 'bun:test';
 
 import { cancelActiveTurn, type ActiveCompanionTurn } from '../packages/sdk/src/platform/companion/companion-chat-turn-control.ts';
 import { WrfcController } from '../packages/sdk/src/platform/agents/wrfc-controller.ts';
+import { createFailingFixRunnerForTest } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.ts';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.ts';
 import { AgentMessageBus } from '../packages/sdk/src/platform/agents/message-bus.ts';
 import { AgentManager } from '../packages/sdk/src/platform/tools/agent/index.ts';
@@ -80,6 +81,7 @@ test('cancelActiveTurn clears its settle deadline when the turn settles first', 
 test('WrfcController.dispose() cancels a pending chain-cleanup timer', () => {
   const bus = new RuntimeEventBus();
   const controller = new WrfcController(bus, new AgentMessageBus(), {
+    fixWorkstreamRunner: createFailingFixRunnerForTest(),
     agentManager: new AgentManager(),
     configManager: new ConfigManager({ workingDir: '/tmp', homeDir: '/tmp', surfaceRoot: 'goodvibes' }),
     projectRoot: '/tmp/wrfc-timer-teardown',

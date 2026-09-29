@@ -18,10 +18,10 @@ function providerRegistry() {
   };
 }
 
+/** Project mode is an instruction for the model only (addModelInstruction), never a conversation message. */
 function systemMessages(conversation: ConversationManager): string[] {
-  return conversation.getMessageSnapshot()
-    .filter((message): message is { role: 'system'; content: string } => message.role === 'system')
-    .map((message) => message.content);
+  expect(conversation.getMessageSnapshot().some((message) => message.role === 'system' && message.content.includes('[Project mode]'))).toBe(false);
+  return conversation.takeModelInstructions();
 }
 
 describe('intent classifier project priming', () => {

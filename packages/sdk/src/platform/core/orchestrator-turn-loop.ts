@@ -438,11 +438,15 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
     // agent-runner's composeTurnSystemPrompt established, even though this loop has no in-call
     // context-exceeded retry path to go stale across (compaction here is the PROACTIVE
     // checkContextWindowPreflight above, not a reactive mid-call retry-and-shrink).
+    // Model-only instructions queued since the last model call (the
+    // conversation's addModelInstruction): taken once per iteration, carried by
+    // this iteration's system prompt, never shown in the transcript.
+    const modelInstructions = context.conversation.takeModelInstructions();
     const composeTurnSystemPrompt = (raw: string): string => {
       // owner-profile §11.2: the OPEN tier only, composed fresh onto the current
       // base each iteration and never written back, exactly like the knowledge
       // block below. Absent profile ⇒ `base` comes back untouched.
-      const base = withOpenTierProfileBlock(raw);
+      const base = withModelInstructions(withOpenTierProfileBlock(raw), modelInstructions);
       if (!turnKnowledgeBlock) return base;
       if (knowledgeContextWindow > 0) {
         const liveMsgTokens = estimateConversationTokens(context.conversation.getMessagesForLLM());
@@ -767,4 +771,10 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
       memoryRecordIds: [...turnMemoryRecordIds],
     });
   }
+}
+
+/** Append the model-only instructions to a system prompt as one notes block. */
+export function withModelInstructions(systemPrompt: string, instructions: readonly string[]): string {
+  if (instructions.length === 0) return systemPrompt;
+  return `${systemPrompt}\n\n## Orchestration notes\n${instructions.map((note) => `- ${note}`).join('\n')}`;
 }

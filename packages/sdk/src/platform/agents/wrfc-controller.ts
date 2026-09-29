@@ -146,8 +146,8 @@ export class WrfcController {
   private readonly createWorktree: () => WrfcWorktreeOps;
   private readonly selectChildRoute: WrfcChildRouteSelector | null;
   private workPlanService: WrfcWorkPlanService | null = null;
-  /** The planned-fix executor over the ONE workstream engine. Wired by the composition root; the single-fixer prompt path no longer exists. */
-  private fixWorkstreamRunner: FixWorkstreamRunner | null = null;
+  /** The planned-fix executor over the ONE workstream engine. A required constructor dependency; the single-fixer prompt path no longer exists. */
+  private fixWorkstreamRunner: FixWorkstreamRunner;
   private readonly workPlanTaskQueues = new Map<string, Promise<void>>();
   /** Tracks last-seen timestamp per agent for watchdog timeout. */
   private readonly agentLastSeen = new Map<string, number>();
@@ -166,8 +166,19 @@ export class WrfcController {
       readonly surfaceRoot?: string | undefined;
       readonly createWorktree?: (() => WrfcWorktreeOps) | undefined;
       readonly selectChildRoute?: WrfcChildRouteSelector | undefined;
+      /**
+       * The planned-fix executor over the one workstream engine. Required: a
+       * controller that can start a chain must be able to run that chain's fix
+       * phase, so a composition without one fails here, at construction, never
+       * mid-chain after a failing review.
+       */
+      readonly fixWorkstreamRunner: FixWorkstreamRunner;
     },
   ) {
+    if (!deps.fixWorkstreamRunner || typeof deps.fixWorkstreamRunner.run !== 'function') {
+      throw new Error('WrfcController requires deps.fixWorkstreamRunner: every composition that can run a WRFC chain must wire the planned-fix runner (createFixWorkstreamRunner over its orchestration engine).');
+    }
+    this.fixWorkstreamRunner = deps.fixWorkstreamRunner;
     this.runtimeBus = runtimeBus;
     this.messageBus = messageBus;
     this.agentManager = deps.agentManager;
@@ -231,8 +242,11 @@ export class WrfcController {
     this.workPlanService = service ?? null;
   }
 
-  /** Wire the planned-fix runner (the one engine); absent => failing reviews fail the chain naming the missing wiring. */
-  setFixWorkstreamRunner(runner: FixWorkstreamRunner | null | undefined): void { this.fixWorkstreamRunner = runner ?? null; }
+  /** Replace the planned-fix runner (tests script it; compositions pass it to the constructor). */
+  setFixWorkstreamRunner(runner: FixWorkstreamRunner): void {
+    if (!runner || typeof runner.run !== 'function') throw new Error('WrfcController.setFixWorkstreamRunner requires a runner');
+    this.fixWorkstreamRunner = runner;
+  }
 
   getChain(chainId: string): WrfcChain | null { return this.chains.get(chainId) ?? null; }
 
@@ -1125,10 +1139,6 @@ export class WrfcController {
     });
 
     const runner = this.fixWorkstreamRunner;
-    if (!runner) {
-      this.failChain(chain, 'planned-fix execution is not wired in this composition (setFixWorkstreamRunner was never called)');
-      return;
-    }
     this.workmap.append({ ts: new Date().toISOString(), wrfcId: chain.id, event: 'fix_started', attempt: chain.fixAttempts });
     this.appendOwnerDecision(chain, 'spawn_fixer',
       `Planned fix cycle ${chain.fixAttempts}: review findings decomposed into a dependency-graph workstream (elastic fleet, isolated worktrees, reviewed-and-merged release)`,
@@ -2523,11 +2533,6 @@ export class WrfcController {
     });
 
     const runner = this.fixWorkstreamRunner;
-    if (!runner) {
-      subtask.state = 'failed';
-      this.failChain(chain, `Sub-deliverable ${subtask.id}: planned-fix execution is not wired in this composition (setFixWorkstreamRunner was never called)`);
-      return;
-    }
     const subtaskAsk = `Parent WRFC ask:\n${chain.task}\n\nSub-deliverable ${subtask.id}:\n${subtask.task}`;
     this.appendOwnerDecision(chain, 'spawn_fixer', `Planned fix cycle ${subtask.fixAttempts} for sub-deliverable ${subtask.id}: review findings decomposed into a dependency-graph workstream`, { role: 'fixer' });
     const rawScope = getWrfcCommitScope(this.configManager);

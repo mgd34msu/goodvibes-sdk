@@ -23,6 +23,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { WrfcController } from '../packages/sdk/src/platform/agents/wrfc-controller.js';
+import { createFailingFixRunnerForTest } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.js';
 import { SharedSessionBroker } from '../packages/sdk/src/platform/control-plane/session-broker.js';
 import { trackDisposables } from './_helpers/disposables.ts';
 import { AgentMessageBus } from '../packages/sdk/src/platform/agents/message-bus.js';
@@ -100,6 +101,7 @@ function createHarness(): Harness {
   });
   manager.setRuntimeBus(bus);
   const controller = new WrfcController(bus, messageBus, {
+    fixWorkstreamRunner: createFailingFixRunnerForTest(),
     agentManager: manager,
     configManager,
     projectRoot: '/tmp/conversation-chain-authority-test',

@@ -46,8 +46,17 @@ export interface FixWorkstreamRunner {
   }): Promise<FixWorkstreamOutcome>;
 }
 
+/** The slice of the one engine a fix cycle drives. */
+export type FixWorkstreamEngine = Pick<OrchestrationEngine, 'createWorkstream' | 'start' | 'getWorkstream' | 'on'>;
+
 export interface FixWorkstreamRunnerDeps {
-  readonly engine: Pick<OrchestrationEngine, 'createWorkstream' | 'start' | 'getWorkstream' | 'on'>;
+  /**
+   * The engine, or a function returning it. Compositions build the WRFC
+   * controller (which requires this runner) before the engine exists, so the
+   * function form binds the engine late; it is read at the start of each fix
+   * cycle, never at composition time.
+   */
+  readonly engine: FixWorkstreamEngine | (() => FixWorkstreamEngine);
   readonly semanticEdges?: SemanticEdgePlanner | undefined;
   /** Hard wall-clock bound on one cycle. Default 2 hours. */
   readonly timeoutMs?: number | undefined;
@@ -76,8 +85,10 @@ function isDone(workstream: Workstream): 'merged' | 'failed' | null {
 /** Compose the runner over the one engine. */
 export function createFixWorkstreamRunner(deps: FixWorkstreamRunnerDeps): FixWorkstreamRunner {
   const timeoutMs = deps.timeoutMs ?? 2 * 60 * 60 * 1000;
+  const resolveEngine = (): FixWorkstreamEngine => (typeof deps.engine === 'function' ? deps.engine() : deps.engine);
   return {
     run(input) {
+      const engine = resolveEngine();
       const planned = planFixWorkstream({
         chainId: input.chainId,
         originalTask: input.originalTask,
@@ -95,7 +106,7 @@ export function createFixWorkstreamRunner(deps: FixWorkstreamRunnerDeps): FixWor
           structured: 'nothing-to-fix',
         });
       }
-      const workstream = deps.engine.createWorkstream(planned.workstream);
+      const workstream = engine.createWorkstream(planned.workstream);
       return new Promise<FixWorkstreamOutcome>((resolve) => {
         let settled = false;
         let cycleSeen: readonly string[] | null = null;
@@ -108,7 +119,7 @@ export function createFixWorkstreamRunner(deps: FixWorkstreamRunnerDeps): FixWor
           resolve(outcome);
         };
         const evaluate = (): void => {
-          const live = deps.engine.getWorkstream(workstream.id);
+          const live = engine.getWorkstream(workstream.id);
           if (!live) return;
           // Structured outcomes surface IMMEDIATELY, a cycle or an orphaned
           // task fails the cycle the moment it is known, never a silent stall.
@@ -136,7 +147,7 @@ export function createFixWorkstreamRunner(deps: FixWorkstreamRunnerDeps): FixWor
             finish({ status: 'failed', workstreamId: workstream.id, structured: 'tasks-failed', reason: failures.join('; ') || 'fix tasks failed' });
           }
         };
-        const off = deps.engine.on((event: OrchestrationEvent) => {
+        const off = engine.on((event: OrchestrationEvent) => {
           if (!('workstreamId' in event) || event.workstreamId !== workstream.id) return;
           if (event.type === 'graph-cycle') cycleSeen = event.cycle;
           if (event.type === 'item-orphaned') orphanSeen = event.reason;
@@ -147,7 +158,7 @@ export function createFixWorkstreamRunner(deps: FixWorkstreamRunnerDeps): FixWor
           finish({ status: 'failed', workstreamId: workstream.id, structured: 'timeout', reason: `fix cycle exceeded ${Math.round(timeoutMs / 60_000)} minutes` });
         }, timeoutMs);
         wall.unref?.();
-        deps.engine.start(workstream.id);
+        engine.start(workstream.id);
         evaluate(); // a zero-task or instantly-terminal workstream settles immediately
       });
     },

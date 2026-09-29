@@ -67,7 +67,7 @@ export function prepareConversationForTurn(
   const preTurnPlan = planManager?.getActive(sessionId) ?? null;
   if (preTurnPlan && planManager) {
     const planMd = planManager.toMarkdown(preTurnPlan);
-    conversation.addSystemMessage(
+    conversation.addModelInstruction(
       `## Current Execution Plan\n${planMd}\n\nRefer to this plan. Update item statuses as you complete work.`
     );
   }
@@ -92,7 +92,7 @@ export function prepareConversationForTurn(
 
   const wrfcRoutingPrompt = buildWrfcWorkflowRoutingPrompt(text);
   if (wrfcRoutingPrompt) {
-    conversation.addSystemMessage(wrfcRoutingPrompt);
+    conversation.addModelInstruction(wrfcRoutingPrompt);
   }
 
   const activePlan = planManager?.getActive(sessionId) ?? null;
@@ -103,7 +103,7 @@ export function prepareConversationForTurn(
       && classification.confidence > 0.5
       && hasProjectPrimingSignal;
     if (shouldPrimeProjectMode) {
-      conversation.addSystemMessage(
+      conversation.addModelInstruction(
         '[Project mode] This looks like a multi-step project task. ' +
         'Before executing, write a brief spec (goals, constraints, non-goals) ' +
         'and an execution plan (phases and tasks). ' +
@@ -192,7 +192,7 @@ export async function handleToolResponseOutcome(args: {
       if (activePlan) {
         const summary = planManager?.getSummary(activePlan) ?? '';
         if (spawnedAuthoritativeWrfcChain) {
-          args.conversation.addSystemMessage(
+          args.conversation.addModelInstruction(
             `A WRFC owner chain is now the authoritative owner for this deliverable. Do not spawn additional root agents for review, testing, verification, or fixing this same work; inspect the WRFC chain status instead. Plan progress: ${summary}.`
           );
         } else {
@@ -215,21 +215,21 @@ export async function handleToolResponseOutcome(args: {
               );
             } else {
               const nextDesc = nextItems.map(i => i.description).join(', ');
-              args.conversation.addSystemMessage(
+              args.conversation.addModelInstruction(
                 `Plan progress: ${summary}. Next items ready: ${nextDesc}. Continue spawning agents for remaining work.`
               );
             }
           } else {
-            args.conversation.addSystemMessage(`Plan progress: ${summary}. All items are accounted for.`);
+            args.conversation.addModelInstruction(`Plan progress: ${summary}. All items are accounted for.`);
           }
         }
       } else {
         if (spawnedAuthoritativeWrfcChain) {
-          args.conversation.addSystemMessage(
+          args.conversation.addModelInstruction(
             'A WRFC owner chain is now the authoritative owner for this deliverable. Do not spawn additional root agents for review, testing, verification, or fixing this same work; inspect the WRFC chain status instead.'
           );
         } else {
-          args.conversation.addSystemMessage(
+          args.conversation.addModelInstruction(
             'You spawned an agent for part of the task. If there are remaining tasks, continue spawning agents now.'
           );
         }
@@ -239,7 +239,9 @@ export async function handleToolResponseOutcome(args: {
       emitTurnCompleted(args.runtimeBus, args.emitterContext(args.turnId), {
         turnId: args.turnId,
         response: args.response.content,
-        stopReason: args.response.content.trim().length > 0 ? 'completed' : 'empty_response',
+        // The turn ran its tool calls (it spawned agents) and stops on purpose:
+        // a completed turn, whether or not the model also wrote prose.
+        stopReason: 'completed',
         memoryRecordIds: args.memoryRecordIds,
       });
     }
@@ -247,7 +249,7 @@ export async function handleToolResponseOutcome(args: {
   }
 
   if (args.planManager?.getActive(args.sessionId)) {
-    args.conversation.addSystemMessage(
+    args.conversation.addModelInstruction(
       'Update the execution plan to reflect completed work. Mark items as COMPLETE or IN_PROGRESS with the agent ID.'
     );
   }

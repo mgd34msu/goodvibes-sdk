@@ -11,6 +11,7 @@
 import type { AgentMessageBus } from './message-bus.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { WrfcController } from './wrfc-controller.js';
+import type { FixWorkstreamRunner } from '../orchestration/fix-workstream-runner.js';
 
 /**
  * Construct a WrfcController with test-only affordances. The `skipClaimVerification`
@@ -20,9 +21,26 @@ import { WrfcController } from './wrfc-controller.js';
 export function createWrfcControllerForTest(
   runtimeBus: RuntimeEventBus,
   messageBus: Pick<AgentMessageBus, 'registerAgent'>,
-  deps: ConstructorParameters<typeof WrfcController>[2] & { readonly skipClaimVerification?: boolean },
+  deps: Omit<ConstructorParameters<typeof WrfcController>[2], 'fixWorkstreamRunner'> & {
+    readonly skipClaimVerification?: boolean;
+    /** Defaults to a runner whose every cycle fails as tasks-failed; install a scripted one with installStubFixRunner. */
+    readonly fixWorkstreamRunner?: FixWorkstreamRunner | undefined;
+  },
 ): WrfcController {
-  return new WrfcController(runtimeBus, messageBus, deps);
+  return new WrfcController(runtimeBus, messageBus, {
+    ...deps,
+    fixWorkstreamRunner: deps.fixWorkstreamRunner ?? createFailingFixRunnerForTest(),
+  });
+}
+
+/**
+ * A FixWorkstreamRunner for tests whose chains never need a working fix
+ * phase: every cycle resolves as a structured tasks-failed outcome.
+ */
+export function createFailingFixRunnerForTest(reason = 'test runner: no fix workstream installed'): FixWorkstreamRunner {
+  return {
+    run: () => Promise.resolve({ status: 'failed' as const, reason, structured: 'tasks-failed' as const }),
+  };
 }
 
 /** One recorded planned-fix invocation the stub runner saw. */

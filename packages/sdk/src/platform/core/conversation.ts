@@ -141,6 +141,8 @@ export class ConversationManager {
   private _messagesRevision = 0;
   private _cachedLLMMessages: ProviderMessage[] | null = null;
   private _cachedLLMRevision = -1;
+  /** Instructions for the model only, waiting for the next model call (see addModelInstruction). */
+  private pendingModelInstructions: string[] = [];
 
   constructor() {}
 
@@ -310,6 +312,26 @@ export class ConversationManager {
   public addSystemMessage(content: string): void {
     this.messages.push({ role: 'system', content });
     this._messagesRevision++;
+  }
+
+  /**
+   * An instruction for the model only ("continue spawning agents", "update the
+   * execution plan"). It is never a conversation message, so no transcript,
+   * notice or saved session shows it; the turn loop delivers it once, in the
+   * system prompt of the next model call (takeModelInstructions). System-role
+   * messages never reach the model (getMessagesForLLM skips them), so an
+   * instruction written with addSystemMessage was read by the user alone.
+   */
+  public addModelInstruction(content: string): void {
+    const text = content.trim();
+    if (text.length > 0) this.pendingModelInstructions.push(text);
+  }
+
+  /** The model-only instructions not yet delivered, in order; each is returned exactly once. */
+  public takeModelInstructions(): string[] {
+    const pending = this.pendingModelInstructions;
+    this.pendingModelInstructions = [];
+    return pending;
   }
 
   public getLastUserMessage(): string | null {

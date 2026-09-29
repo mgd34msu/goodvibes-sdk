@@ -165,11 +165,11 @@ describe('orchestrator WRFC spawn continuation contract', () => {
       sessionId: 'session-1',
     });
 
-    const systemMessages = conversation.getMessageSnapshot()
-      .filter((message): message is { role: 'system'; content: string } => message.role === 'system')
-      .map((message) => message.content);
-    expect(systemMessages.some((message) => message.includes('continue spawning agents now'))).toBe(false);
-    expect(systemMessages.some((message) => message.includes('WRFC owner chain is now the authoritative owner'))).toBe(true);
+    // Instructions for the model only: never conversation messages (see addModelInstruction).
+    expect(conversation.getMessageSnapshot().some((message) => message.role === 'system')).toBe(false);
+    const modelInstructions = conversation.takeModelInstructions();
+    expect(modelInstructions.some((message) => message.includes('continue spawning agents now'))).toBe(false);
+    expect(modelInstructions.some((message) => message.includes('WRFC owner chain is now the authoritative owner'))).toBe(true);
   });
 
   test('attaches current user prompt as authoritative task for root agent tool calls', async () => {
@@ -271,9 +271,7 @@ describe('orchestrator WRFC spawn continuation contract', () => {
       sessionId: 'session-1',
     });
 
-    const systemMessages = conversation.getMessageSnapshot()
-      .filter((message): message is { role: 'system'; content: string } => message.role === 'system')
-      .map((message) => message.content);
-    expect(systemMessages.some((message) => message.includes('continue spawning agents now'))).toBe(true);
+    expect(conversation.getMessageSnapshot().some((message) => message.role === 'system')).toBe(false);
+    expect(conversation.takeModelInstructions().some((message) => message.includes('continue spawning agents now'))).toBe(true);
   });
 });

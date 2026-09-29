@@ -1,10 +1,11 @@
 /**
  * agent-graph-composition.ts, the graph that runs agents.
  *
- * Six collaborators that are only meaningful as a set, so they are built as
+ * Seven collaborators that are only meaningful as a set, so they are built as
  * one: a message bus, the archetype loader, the orchestrator that executes a
- * run, the manager that owns the records, the context-accounting holder, and
- * the WRFC controller. Every one of them holds a reference to at least one
+ * run, the manager that owns the records, the context-accounting holder, the
+ * WRFC controller, and the workstream engine that runs the controller's fix
+ * phase. Every one of them holds a reference to at least one
  * other, and two of the links are circular, the orchestrator writes
  * conversation snapshots back through the manager, and the manager drives the
  * WRFC controller which was built from the manager. Assembled anywhere but in
@@ -21,6 +22,8 @@ import { AgentManager, ContextAccountingHolder } from '../tools/index.js';
 import type { ConfigManager } from '../config/index.js';
 import type { ProviderRegistry } from '../providers/index.js';
 import type { RuntimeEventBus } from './events/index.js';
+import { createOrchestrationEngine, type OrchestrationEngine } from '../orchestration/engine.js';
+import { createFixWorkstreamRunner } from '../orchestration/fix-workstream-runner.js';
 
 export interface AgentGraph {
   readonly agentMessageBus: AgentMessageBus;
@@ -29,6 +32,8 @@ export interface AgentGraph {
   readonly agentManager: AgentManager;
   readonly contextAccountingHolder: ContextAccountingHolder;
   readonly wrfcController: WrfcController;
+  /** The one workstream engine the WRFC controller's fix phase runs on. */
+  readonly orchestrationEngine: OrchestrationEngine;
 }
 
 /** Build the agent-execution graph, fully wired in both directions. */
@@ -61,10 +66,19 @@ export function createAgentGraph(options: {
     release: (agentId) => agentManager.releaseConversationSource(agentId),
   });
   agentManager.setRuntimeBus(options.runtimeBus);
+  // A controller that can start a chain must be able to run its fix phase:
+  // the planned-fix runner drives this engine over the same agent manager.
+  const orchestrationEngine = createOrchestrationEngine({
+    agentManager,
+    configManager: options.configManager,
+    runtimeBus: options.runtimeBus,
+    projectRoot: options.workingDirectory,
+  });
   const wrfcController = new WrfcController(options.runtimeBus, agentMessageBus, {
     agentManager,
     configManager: options.configManager,
     projectRoot: options.workingDirectory,
+    fixWorkstreamRunner: createFixWorkstreamRunner({ engine: orchestrationEngine }),
   });
   agentManager.setWrfcController(wrfcController);
   return {
@@ -74,5 +88,6 @@ export function createAgentGraph(options: {
     agentManager,
     contextAccountingHolder,
     wrfcController,
+    orchestrationEngine,
   };
 }

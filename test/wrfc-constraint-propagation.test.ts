@@ -17,7 +17,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { WrfcController } from '../packages/sdk/src/platform/agents/wrfc-controller.js';
-import { createWrfcControllerForTest, installStubFixRunner, type StubFixRunInput } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.js';
+import { createFailingFixRunnerForTest, createWrfcControllerForTest, installStubFixRunner, type StubFixRunInput } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.js';
 import { parseReviewIntoTasks } from '../packages/sdk/src/platform/orchestration/review-task-source.js';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-envelope.js';
@@ -603,6 +603,7 @@ function createGateHarness(gateName: string) {
 
   const messageBus = { registerAgent: (_opts: unknown) => {} };
   const controller = new WrfcController(bus, messageBus, {
+    fixWorkstreamRunner: createFailingFixRunnerForTest(),
     agentManager,
     configManager,
     projectRoot: '/tmp/test-gate-inh',

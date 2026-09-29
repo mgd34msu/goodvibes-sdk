@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { WrfcController } from '../packages/sdk/src/platform/agents/wrfc-controller.js';
+import { createFailingFixRunnerForTest } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.js';
 import { AgentMessageBus } from '../packages/sdk/src/platform/agents/message-bus.js';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 import { createAgentTool, AgentManager, type AgentRecord } from '../packages/sdk/src/platform/tools/agent/index.js';
@@ -45,6 +46,7 @@ function createHarness() {
   });
   manager.setRuntimeBus(bus);
   const controller = new WrfcController(bus, messageBus, {
+    fixWorkstreamRunner: createFailingFixRunnerForTest(),
     agentManager: manager,
     configManager,
     projectRoot: '/tmp/agent-wrfc-batch-policy-test',

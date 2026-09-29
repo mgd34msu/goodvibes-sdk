@@ -91,6 +91,43 @@ export interface WrfcToolContractResolution {
   readonly scopeMutation?: WrfcScopeMutation | undefined;
 }
 
+/**
+ * Leading clause of an ask addressed to the orchestrating model about
+ * DELEGATION ("Spawn one reviewer agent to ...", "Start a background agent
+ * whose task is: ..."). The agent that clause asks for is the spawn being
+ * made, so its task is the delegated work the model extracted, never the
+ * delegation instruction itself: an agent told to "spawn one reviewer agent"
+ * has no agent tool and can only fail.
+ */
+const DELEGATION_ASK_RE =
+  /^\s*(?:please\s+)?(?:spawn|start|launch|kick\s+off|dispatch|fire\s+off|run|create|use|send)\s+(?:exactly\s+|just\s+|only\s+)?(?:one|a|an|two|three|\d+)?\s*(?:(?:new|separate|background|dedicated|single|[\w-]+)\s+){0,3}?(?:sub[-\s]?)?agents?\b/i;
+
+const WRFC_SIGNAL_RE = /\bwrfc\b|work[-\s]*review[-\s]*fix/i;
+
+/** True when the ask is an instruction to delegate work to an agent. */
+export function askDelegatesToAgent(text: string | undefined): boolean {
+  return typeof text === 'string' && DELEGATION_ASK_RE.test(text);
+}
+
+/**
+ * True when the user's own ask forbids writing files ("Do not modify files",
+ * "read-only") and, once those sentences are set aside, asks for no
+ * implementation work and names no WRFC chain. A write-review-fix-confirm
+ * chain cannot honour such an ask: its fix phase writes files. The spawn runs
+ * as a plain agent with the task the model delegated.
+ */
+export function askForbidsWrites(text: string | undefined): boolean {
+  const ask = normalizeTaskText(text);
+  if (!ask || !NO_WRITE_RE.test(ask) || WRFC_SIGNAL_RE.test(ask)) return false;
+  return !IMPLEMENTATION_ACTION_RE.test(stripNoWriteSentences(ask));
+}
+
+/** A parentless spawn whose authoritative ask (or, absent one, task) forbids writes. */
+export function rootSpawnIsReadOnlyAsk(input: Pick<AgentInput, 'authoritativeTask' | 'task' | 'parentAgentId'>): boolean {
+  if (input.parentAgentId) return false;
+  return askForbidsWrites(normalizeTaskText(input.authoritativeTask) ?? normalizeTaskText(input.task));
+}
+
 export function isRootReviewRoleTemplate(template: string | undefined): boolean {
   return ROOT_REVIEW_ROLE_TEMPLATES.has((template ?? '').trim().toLowerCase());
 }

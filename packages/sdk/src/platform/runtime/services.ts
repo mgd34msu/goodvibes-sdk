@@ -432,6 +432,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     configManager,
     projectRoot: workingDirectory,
     surfaceRoot,
+    // The planned-fix path (the single-fixer prompt path is GONE): review
+    // findings decompose into dependency-graph workstreams run by the ONE
+    // engine, composed further down; the runner reads it per fix cycle.
+    fixWorkstreamRunner: createFixWorkstreamRunner({ engine: () => orchestrationEngine }),
   });
   agentManager.setWrfcController(wrfcController);
   const hookDispatcher = new HookDispatcher({ agentManager, toolLLM, projectRoot: workingDirectory }, hookActivityTracker);
@@ -900,9 +904,6 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     fleetCapacity: () => fleetCapacityProbe(),
     maxItemRetries: 2,
   });
-  // The planned-fix path (the single-fixer prompt path is GONE): review
-  // findings decompose into dependency-graph workstreams run by the ONE engine.
-  wrfcController.setFixWorkstreamRunner(createFixWorkstreamRunner({ engine: orchestrationEngine }));
 
   // Live process registry, narrow structural deps only, constructed
   // after every source manager exists. See the RuntimeServices interface

@@ -8,7 +8,7 @@
  */
 import { describe, expect, test, beforeEach } from 'bun:test';
 import { WrfcController } from '../packages/sdk/src/platform/agents/wrfc-controller.js';
-import { installStubFixRunner } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.js';
+import { createFailingFixRunnerForTest, installStubFixRunner } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.js';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-envelope.js';
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
@@ -275,6 +275,7 @@ function createHarness(overrides?: {
   };
 
   const controller = disposables.add(new WrfcController(bus, messageBus, {
+    fixWorkstreamRunner: createFailingFixRunnerForTest(),
     agentManager,
     configManager,
     projectRoot,
@@ -1083,6 +1084,7 @@ describe('WrfcController: gate failure', () => {
 
     const messageBus = { registerAgent: (_opts: unknown) => {} };
     const controller = new WrfcController(busWithGate, messageBus, {
+      fixWorkstreamRunner: createFailingFixRunnerForTest(),
       agentManager,
       configManager,
       projectRoot: '/tmp/test-project-gate',
@@ -1183,6 +1185,7 @@ describe('WrfcController: gate failure', () => {
 
     const messageBus = { registerAgent: (_opts: unknown) => {} };
     const controller = new WrfcController(busWithGate, messageBus, {
+      fixWorkstreamRunner: createFailingFixRunnerForTest(),
       agentManager,
       configManager,
       projectRoot: '/tmp/test-project-gate-wrfc3',

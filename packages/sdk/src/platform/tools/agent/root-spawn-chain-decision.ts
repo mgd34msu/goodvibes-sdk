@@ -26,10 +26,39 @@
 import { logger } from '../../utils/logger.js';
 import type { AgentInput } from './schema.js';
 import {
+  askDelegatesToAgent,
   callerSuppressedWrfcChain,
   isRootReviewRoleTemplate,
+  rootSpawnIsReadOnlyAsk,
   taskProseReadsAsRootReviewRole,
 } from './wrfc-batch-policy.js';
+
+/**
+ * What the user's own ask decides about a parentless spawn, before any
+ * role/prose normalization:
+ * - an ask that forbids writing files ("Do not modify files") outranks a
+ *   model-set reviewMode and a review-role template: no chain, whose fix
+ *   phase would write; the spawn runs as a plain agent;
+ * - an ask that is itself a delegation instruction ("Spawn one reviewer agent
+ *   to …") is not the child's task: the child keeps the task the model
+ *   delegated (the caller skips the authoritative-scope substitution).
+ */
+export function routeRootSpawnAsk(input: AgentInput, task: string, template: string): {
+  readonly input: AgentInput;
+  readonly delegationAsk: boolean;
+  readonly routeReason: string | undefined;
+  /** Whether the spawn is still rewritten into an owner chain (rootSpawnNeedsWrfcNormalization), never for a read-only ask. */
+  readonly rootReviewRoleTask: boolean;
+} {
+  const readOnlyAsk = rootSpawnIsReadOnlyAsk(input);
+  const routed: AgentInput = readOnlyAsk ? { ...input, reviewMode: 'none', dangerously_disable_wrfc: true } : input;
+  return {
+    input: routed,
+    delegationAsk: !input.parentAgentId && askDelegatesToAgent(input.authoritativeTask),
+    routeReason: readOnlyAsk ? 'root-read-only-ask' : undefined,
+    rootReviewRoleTask: !readOnlyAsk && rootSpawnNeedsWrfcNormalization(routed, task, template),
+  };
+}
 
 export function rootSpawnNeedsWrfcNormalization(
   input: Pick<AgentInput, 'dangerously_disable_wrfc' | 'reviewMode' | 'replyStyle' | 'parentAgentId'>,

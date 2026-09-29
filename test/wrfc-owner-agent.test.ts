@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { WrfcController } from '../packages/sdk/src/platform/agents/wrfc-controller.js';
+import { createFailingFixRunnerForTest } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.js';
 import { WrfcExternalWorkBridge, type WrfcExternalWorkAdapter } from '../packages/sdk/src/platform/agents/wrfc-external-adapter.js';
 import { buildReviewTask } from '../packages/sdk/src/platform/agents/wrfc-reporting.js';
 import { parseReviewIntoTasks } from '../packages/sdk/src/platform/orchestration/review-task-source.js';
@@ -80,6 +81,7 @@ describe('WRFC owner agent orchestration', () => {
     });
     manager.setRuntimeBus(bus);
     const controller = new WrfcController(bus, messageBus, {
+      fixWorkstreamRunner: createFailingFixRunnerForTest(),
       agentManager: manager,
       configManager,
       projectRoot: '/tmp/wrfc-owner-agent-test',
@@ -227,6 +229,7 @@ describe('WRFC owner agent orchestration', () => {
     });
     manager.setRuntimeBus(bus);
     const controller = new WrfcController(bus, messageBus, {
+      fixWorkstreamRunner: createFailingFixRunnerForTest(),
       agentManager: manager,
       configManager,
       projectRoot: '/tmp/wrfc-owner-agent-premature-complete-test',
@@ -309,6 +312,7 @@ describe('WRFC owner agent orchestration', () => {
     });
     manager.setRuntimeBus(bus);
     const controller = new WrfcController(bus, messageBus, {
+      fixWorkstreamRunner: createFailingFixRunnerForTest(),
       agentManager: manager,
       configManager,
       projectRoot: '/tmp/wrfc-owner-agent-resume-test',
@@ -377,6 +381,7 @@ describe('WRFC owner agent orchestration', () => {
     });
     manager.setRuntimeBus(bus);
     const controller = new WrfcController(bus, messageBus, {
+      fixWorkstreamRunner: createFailingFixRunnerForTest(),
       agentManager: manager,
       configManager,
       projectRoot: '/tmp/wrfc-owner-agent-cancel-test',
@@ -447,6 +452,7 @@ describe('WRFC owner agent orchestration', () => {
     });
     manager.setRuntimeBus(bus);
     const controller = new WrfcController(bus, messageBus, {
+      fixWorkstreamRunner: createFailingFixRunnerForTest(),
       agentManager: manager,
       configManager,
       projectRoot: '/tmp/wrfc-owner-agent-unexpected-complete-test',

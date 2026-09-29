@@ -21,7 +21,7 @@ import {
   parseReviewerCompletionReport,
 } from '../packages/sdk/src/platform/agents/wrfc-reporting.js';
 import { WrfcController, CURRENT_WRFC_CHAIN_SCHEMA_VERSION } from '../packages/sdk/src/platform/agents/wrfc-controller.js';
-import { installStubFixRunner } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.js';
+import { createFailingFixRunnerForTest, installStubFixRunner } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.js';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-envelope.js';
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
@@ -285,6 +285,7 @@ function createHarness(overrides?: {
   const messageBus = { registerAgent: (_opts: unknown) => {} };
 
   const controller = disposables.add(new WrfcController(bus, messageBus, {
+    fixWorkstreamRunner: createFailingFixRunnerForTest(),
     agentManager,
     configManager,
     projectRoot,

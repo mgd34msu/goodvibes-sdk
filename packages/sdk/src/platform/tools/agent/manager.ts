@@ -33,7 +33,7 @@ import {
   resolveImplementationToolContract,
   resolveNarrowedRootSpawnScope,
 } from './wrfc-batch-policy.js';
-import { rootSpawnNeedsWrfcNormalization } from './root-spawn-chain-decision.js';
+import { routeRootSpawnAsk } from './root-spawn-chain-decision.js';
 
 export type AgentExecutor = {
   runAgent(record: AgentRecord): Promise<void>;
@@ -337,11 +337,11 @@ export class AgentManager {
       throw new Error('AgentManager requires configManager');
     }
     let template = input.template ?? 'general';
-    let wrfcRouteReason: string | undefined;
-    const rootReviewRoleTask = rootSpawnNeedsWrfcNormalization(input, task, template);
+    const { input: routedInput, routeReason, delegationAsk, rootReviewRoleTask } = routeRootSpawnAsk(input, task, template); // see root-spawn-chain-decision.ts
+    input = routedInput; let wrfcRouteReason: string | undefined = routeReason;
     if (rootReviewRoleTask) {
       wrfcRouteReason = 'root-review-role-normalized';
-      const scope = resolveAuthoritativeWrfcScope(input, task);
+      const scope = delegationAsk ? { task, scopeMutation: undefined } : resolveAuthoritativeWrfcScope(input, task);
       const toolContract = input.authoritativeTask || scope.scopeMutation
         ? resolveImplementationToolContract({
             tools: input.tools,
@@ -378,7 +378,7 @@ export class AgentManager {
       task = input.task ?? task;
       template = input.template ?? 'engineer';
     } else if (!input.parentAgentId) {
-      const scope = resolveNarrowedRootSpawnScope(input, task);
+      const scope = delegationAsk ? { task, scopeMutation: undefined } : resolveNarrowedRootSpawnScope(input, task);
       const toolContract = input.authoritativeTask || scope.scopeMutation
         ? resolveImplementationToolContract({
             tools: input.tools,
