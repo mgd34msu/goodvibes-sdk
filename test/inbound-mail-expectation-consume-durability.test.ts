@@ -126,7 +126,7 @@ describe('a consuming match is written through, so a restart cannot resurrect it
       serviceDomain: 'service.test', recipientAddress: ALIAS, purpose: 'Create an account',
     });
 
-    const records = new InboundMailStore(join(dir, 'records.json'));
+    const records = new InboundMailStore(join(dir, 'records.json'), { now: () => NOW.getTime() });
     await intakeFor({ registry, records })(mail(101));
 
     expect(registry.list()).toHaveLength(0);
@@ -144,7 +144,7 @@ describe('a consuming match is written through, so a restart cannot resurrect it
     await first.open({
       serviceDomain: 'service.test', recipientAddress: ALIAS, purpose: 'Create an account',
     });
-    const records1 = new InboundMailStore(join(dir, 'records1.json'));
+    const records1 = new InboundMailStore(join(dir, 'records1.json'), { now: () => NOW.getTime() });
     await intakeFor({ registry: first, records: records1 })(mail(101));
     expect((await records1.list())[0]?.outcome).toBe('matched-expectation');
 
@@ -153,7 +153,7 @@ describe('a consuming match is written through, so a restart cannot resurrect it
     expect((await second.hydrate()).restored).toBe(0);
 
     // --- a SECOND message to the same alias, inside the same window ---
-    const records2 = new InboundMailStore(join(dir, 'records2.json'));
+    const records2 = new InboundMailStore(join(dir, 'records2.json'), { now: () => NOW.getTime() });
     await intakeFor({ registry: second, records: records2 })(mail(102));
     // Single-use means single-use across a restart too.
     expect((await records2.list())[0]?.outcome).toBe('no-expectation');
@@ -205,7 +205,7 @@ describe('a consuming match is written through, so a restart cannot resurrect it
     });
 
     // Mail for a DIFFERENT alias: asked about, not matched, nothing spent.
-    const records = new InboundMailStore(join(dir, 'records.json'));
+    const records = new InboundMailStore(join(dir, 'records.json'), { now: () => NOW.getTime() });
     const other = { ...mail(101), deliveredTo: ['someone-else@his-catchall.test'] } as InboundMailboxMessage;
     await intakeFor({ registry: first, records })(other);
     expect((await records.list())[0]?.outcome).toBe('recipient-mismatch');
@@ -223,7 +223,7 @@ describe('a pass that does not complete leaves the book exactly as it found it',
       serviceDomain: 'service.test', recipientAddress: ALIAS, purpose: 'Create an account',
     });
 
-    const records = new InboundMailStore(join(dir, 'records.json'));
+    const records = new InboundMailStore(join(dir, 'records.json'), { now: () => NOW.getTime() });
     let attempt = 0;
     const intake = intakeFor({
       registry,
@@ -291,7 +291,7 @@ describe('a pass that does not complete leaves the book exactly as it found it',
       serviceDomain: 'service.test', recipientAddress: ALIAS, purpose: 'Create an account',
     });
 
-    const records = new InboundMailStore(join(dir, 'records.json'));
+    const records = new InboundMailStore(join(dir, 'records.json'), { now: () => NOW.getTime() });
     await intakeFor({
       registry,
       records,

@@ -135,7 +135,7 @@ function buildRig(options: {
   const cursors = new MailboxCursorStore(join(dir, 'cursors.json'), {
     isAccountConfigured: (account) => account === ACCOUNT,
   });
-  const records = new InboundMailStore(join(dir, 'records.json'));
+  const records = new InboundMailStore(join(dir, 'records.json'), { now: () => T0.getTime() });
   const expectationStore = new PersistedExpectationStore(join(dir, 'expectations.json'), {
     now: () => T0,
   });
@@ -318,7 +318,7 @@ describe('a restart rehydrates before it serves', () => {
     const cursors = new MailboxCursorStore(join(dir, 'cursors.json'), {
       isAccountConfigured: (account) => account === ACCOUNT,
     });
-    const records = new InboundMailStore(join(dir, 'records.json'));
+    const records = new InboundMailStore(join(dir, 'records.json'), { now: () => T0.getTime() });
     const expectationStore = new PersistedExpectationStore(join(dir, 'expectations.json'), { now: () => later });
     const registry = new InboundExpectationRegistry({ store: expectationStore, now: () => later });
     const supervisor = new InboundMailSupervisor({
@@ -356,7 +356,7 @@ describe('a restart rehydrates before it serves', () => {
     const cursors = new MailboxCursorStore(join(dir, 'cursors.json'), {
       isAccountConfigured: (account) => account === ACCOUNT,
     });
-    const records = new InboundMailStore(join(dir, 'records.json'));
+    const records = new InboundMailStore(join(dir, 'records.json'), { now: () => T0.getTime() });
     const expectationStore = new PersistedExpectationStore(join(dir, 'expectations.json'), { now: () => afterExpiry });
     const registry = new InboundExpectationRegistry({ store: expectationStore, now: () => afterExpiry });
     const supervisor = new InboundMailSupervisor({

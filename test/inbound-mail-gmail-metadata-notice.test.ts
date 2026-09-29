@@ -422,6 +422,10 @@ function gmailMessage(
   };
 }
 
+// The one instant the intake and its record store both run on, so retention
+// is measured against the fixture dates and never against the wall clock.
+const INTAKE_NOW = new Date('2026-07-27T12:00:05.000Z');
+
 interface IntakeRig {
   readonly intake: (message: GmailInboundMessage) => Promise<void>;
   readonly records: InboundMailStore;
@@ -431,7 +435,7 @@ interface IntakeRig {
 
 function intakeRig(): IntakeRig {
   const root = tmpRoot();
-  const records = new InboundMailStore(join(root, 'records.json'));
+  const records = new InboundMailStore(join(root, 'records.json'), { now: () => INTAKE_NOW.getTime() });
   const sent: StructuredNotice[] = [];
   const book = new VerificationExpectationBook({
     // `false`: email is input-only. The book refuses to open an expectation at
@@ -459,7 +463,7 @@ function intakeRig(): IntakeRig {
       },
     },
     noticeMode: () => 'all',
-    now: () => new Date('2026-07-27T12:00:05.000Z'),
+    now: () => INTAKE_NOW,
   });
 
   return { intake: intake as IntakeRig['intake'], records, sent, book };

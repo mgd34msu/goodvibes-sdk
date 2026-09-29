@@ -174,7 +174,7 @@ describe('nothing after the send may throw, because a throw there re-announces',
   test('the record update that fails AFTER the notice completes the pass instead of retrying it', async () => {
     const dir = scratch();
     const registry = registryAt(dir);
-    const store = new InboundMailStore(join(dir, 'records.json'));
+    const store = new InboundMailStore(join(dir, 'records.json'), { now: () => NOW.getTime() });
     let writes = 0;
     const rig = watcher({
       registry,
@@ -215,7 +215,7 @@ describe('nothing after the send may throw, because a throw there re-announces',
     await registry.open({
       serviceDomain: 'service.test', recipientAddress: ALIAS, purpose: 'Create an account',
     });
-    const store = new InboundMailStore(join(dir, 'records.json'));
+    const store = new InboundMailStore(join(dir, 'records.json'), { now: () => NOW.getTime() });
     const rig = watcher({
       registry,
       records: store,
@@ -238,7 +238,7 @@ describe('one message, one record, however many passes it takes', () => {
   test('four transport failures then a success leave exactly one record, not five', async () => {
     const dir = scratch();
     const registry = registryAt(dir);
-    const store = new InboundMailStore(join(dir, 'records.json'));
+    const store = new InboundMailStore(join(dir, 'records.json'), { now: () => NOW.getTime() });
     let attempt = 0;
     const rig = watcher({
       registry,
@@ -266,7 +266,7 @@ describe('one message, one record, however many passes it takes', () => {
     // The counterpart, so "upsert" is not read as "collapse everything".
     const dir = scratch();
     const registry = registryAt(dir);
-    const store = new InboundMailStore(join(dir, 'records.json'));
+    const store = new InboundMailStore(join(dir, 'records.json'), { now: () => NOW.getTime() });
     const rig = watcher({ registry, records: store, send: async () => ({ delivered: true }) });
 
     await rig.pass(mail(205));

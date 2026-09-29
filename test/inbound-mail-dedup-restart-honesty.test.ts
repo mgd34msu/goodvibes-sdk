@@ -129,7 +129,7 @@ describe('the dedup cache does not survive a restart, and no TTL changes that', 
     const cursors = new MailboxCursorStore(join(dir, 'cursors.json'), {
       isAccountConfigured: (account) => account === ACCOUNT,
     });
-    const records = new InboundMailStore(join(dir, 'records.json'));
+    const records = new InboundMailStore(join(dir, 'records.json'), { now: () => NOW.getTime() });
     const expectationStore = new PersistedExpectationStore(join(dir, 'expectations.json'), {
       now: () => NOW,
     });
@@ -216,16 +216,16 @@ describe('a message already announced is not announced again after a restart', (
     // --- daemon run #1: announced, recorded, and then killed before the
     // cursor advance landed, which is why the message comes back at all.
     const first: unknown[] = [];
-    await intakeOver(new InboundMailStore(path), dir, first)(mail(205));
+    await intakeOver(new InboundMailStore(path, { now: () => NOW.getTime() }), dir, first)(mail(205));
     expect(first).toHaveLength(1);
 
     // --- daemon run #2: a new process. New dedup cache, new intake, same
     // message above the same unadvanced cursor.
     const second: unknown[] = [];
-    await intakeOver(new InboundMailStore(path), dir, second)(mail(205));
+    await intakeOver(new InboundMailStore(path, { now: () => NOW.getTime() }), dir, second)(mail(205));
 
     expect(second).toHaveLength(0);
-    const stored = await new InboundMailStore(path).list();
+    const stored = await new InboundMailStore(path, { now: () => NOW.getTime() }).list();
     expect(stored).toHaveLength(1);
     expect(stored[0]!.noticeStatus).toBe('delivered');
   });
@@ -236,7 +236,7 @@ describe('a message already announced is not announced again after a restart', (
     // evidence the owner was told, so the message is announced.
     const dir = scratch();
     const path = join(dir, 'records.json');
-    const store = new InboundMailStore(path);
+    const store = new InboundMailStore(path, { now: () => NOW.getTime() });
     await store.record({
       source: 'imap',
       account: ACCOUNT,
@@ -255,9 +255,9 @@ describe('a message already announced is not announced again after a restart', (
     });
 
     const sent: unknown[] = [];
-    await intakeOver(new InboundMailStore(path), dir, sent)(mail(205));
+    await intakeOver(new InboundMailStore(path, { now: () => NOW.getTime() }), dir, sent)(mail(205));
     expect(sent).toHaveLength(1);
-    expect((await new InboundMailStore(path).list())[0]!.noticeStatus).toBe('delivered');
+    expect((await new InboundMailStore(path, { now: () => NOW.getTime() }).list())[0]!.noticeStatus).toBe('delivered');
   });
 
   test('a record file that cannot be read leads to announcing, not to silence', async () => {
@@ -265,7 +265,7 @@ describe('a message already announced is not announced again after a restart', (
     const path = join(dir, 'records.json');
     writeFileSync(path, '{ this is not json', 'utf-8');
     const sent: unknown[] = [];
-    await intakeOver(new InboundMailStore(path), dir, sent)(mail(205));
+    await intakeOver(new InboundMailStore(path, { now: () => NOW.getTime() }), dir, sent)(mail(205));
     expect(sent).toHaveLength(1);
   });
 
@@ -276,26 +276,26 @@ describe('a message already announced is not announced again after a restart', (
     const dir = scratch();
     const path = join(dir, 'records.json');
     const seed: unknown[] = [];
-    await intakeOver(new InboundMailStore(path), dir, seed)(
+    await intakeOver(new InboundMailStore(path, { now: () => NOW.getTime() }), dir, seed)(
       mail(205, { mailbox: 'Archive' }),
     );
     expect(seed).toHaveLength(1);
 
     const sent: unknown[] = [];
-    await intakeOver(new InboundMailStore(path), dir, sent)(mail(205));
+    await intakeOver(new InboundMailStore(path, { now: () => NOW.getTime() }), dir, sent)(mail(205));
     expect(sent).toHaveLength(1);
-    expect(await new InboundMailStore(path).list()).toHaveLength(2);
+    expect(await new InboundMailStore(path, { now: () => NOW.getTime() }).list()).toHaveLength(2);
   });
 
   test('a delivered record whose UIDVALIDITY generation changed does not suppress the new one', async () => {
     const dir = scratch();
     const path = join(dir, 'records.json');
     const seed: unknown[] = [];
-    await intakeOver(new InboundMailStore(path), dir, seed)(mail(205));
+    await intakeOver(new InboundMailStore(path, { now: () => NOW.getTime() }), dir, seed)(mail(205));
     expect(seed).toHaveLength(1);
 
     const sent: unknown[] = [];
-    await intakeOver(new InboundMailStore(path), dir, sent)(
+    await intakeOver(new InboundMailStore(path, { now: () => NOW.getTime() }), dir, sent)(
       mail(205, { uidValidity: 1001 }),
     );
     expect(sent).toHaveLength(1);

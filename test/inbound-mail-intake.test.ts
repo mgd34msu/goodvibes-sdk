@@ -84,7 +84,7 @@ function rig(options: {
   // pre-rendered string, that is the whole point of the structured shape, so
   // recording it as `string[]` was recording something the port never emits.
   const sent: StructuredNotice[] = [];
-  const records = new InboundMailStore(join(dir, 'records.json'));
+  const records = new InboundMailStore(join(dir, 'records.json'), { now: () => NOW.getTime() });
   const intake = createInboundMailIntake({
     // The real registry-backed matcher, the same object production wires,
     // with no expectation open: the honest `no-expectation` verdict, which is
@@ -144,7 +144,7 @@ describe('which failures put the message back', () => {
     // The validator re-checks every field on load. Before the projection fix
     // this status was not in the accepted set, so the record was discarded
     // here and the owner lost the fact that mail could not be announced.
-    const reloaded = new InboundMailStore(join(dir, 'records.json'));
+    const reloaded = new InboundMailStore(join(dir, 'records.json'), { now: () => NOW.getTime() });
     expect(await reloaded.list()).toHaveLength(1);
     expect((await reloaded.list())[0]!.noticeStatus).toBe('unsupported-delivery-surface');
   });

@@ -99,7 +99,7 @@ function intakeWith(options: {
   const expectationStore = new PersistedExpectationStore(
     join(options.dir, 'expectations.json'), { now: () => NOW },
   );
-  const records = new InboundMailStore(join(options.dir, 'records.json'));
+  const records = new InboundMailStore(join(options.dir, 'records.json'), { now: () => NOW.getTime() });
   const sent: unknown[] = [];
   const intake = createInboundMailIntake({
     expectations: new InboundExpectationRegistry({
@@ -224,7 +224,7 @@ function supervisorWith(dir: string, noticeHealth: InboundNoticeHealth): Inbound
   const cursors = new MailboxCursorStore(join(dir, 'cursors.json'), {
     isAccountConfigured: (account) => account === ACCOUNT,
   });
-  const records = new InboundMailStore(join(dir, 'records.json'));
+  const records = new InboundMailStore(join(dir, 'records.json'), { now: () => NOW.getTime() });
   const expectationStore = new PersistedExpectationStore(join(dir, 'expectations.json'), {
     now: () => NOW,
   });
