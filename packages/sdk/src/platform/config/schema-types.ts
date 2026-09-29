@@ -55,6 +55,7 @@ export interface GoodVibesConfig {
     collapseThreshold: number;  // default: 30
     theme: string;              // default: 'goodvibes'
     themeMode: 'auto' | 'dark' | 'light'; // default: 'auto'
+    treeGlyphs: 'rounded' | 'square' | 'ascii'; // default: 'rounded'
     showThinking: boolean;      // default: false
     showReasoningSummary: boolean; // default: false
     showTokenSpeed: boolean;    // default: false
@@ -252,6 +253,7 @@ export type ConfigKey =
   | 'display.collapseThreshold'
   | 'display.theme'
   | 'display.themeMode'
+  | 'display.treeGlyphs'
   | 'display.showThinking'
   | 'display.showReasoningSummary'
   | 'display.showTokenSpeed'

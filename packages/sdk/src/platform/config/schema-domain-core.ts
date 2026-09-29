@@ -7,6 +7,7 @@ export const coreConfigDefaults = {
     collapseThreshold: 30,
     theme: 'goodvibes',
     themeMode: 'auto',
+    treeGlyphs: 'rounded',
     showThinking: false,
     showReasoningSummary: false,
     showTokenSpeed: false,
@@ -197,10 +198,7 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     description: 'Line count threshold for collapsing tool output',
     ...numRange(1, 1000),
   },
-  {
-    key: 'display.theme',
-    type: 'enum',
-    default: 'goodvibes',
+  { key: 'display.theme', type: 'enum', default: 'goodvibes',
     description: "Color theme name, the color palette: a bundled theme, or 'system' to follow the terminal's own colors ('vaporwave' is a legacy alias of goodvibes-neon). Independent of display.themeMode, which controls light/dark appearance.",
     // Literal on purpose (bundle-order rule: no registry call at module scope); a test pins it to listBundledThemes().
     enumValues: ['goodvibes', 'goodvibes-neon', 'catppuccin', 'tokyonight', 'dracula', 'nord', 'gruvbox',
@@ -213,6 +211,8 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     description: 'Light/dark appearance: auto probes the terminal background colour (OSC 11) once at startup and picks light or dark; dark/light force a fixed appearance regardless of terminal background. Independent of display.theme, which picks the color palette.',
     enumValues: ['auto', 'dark', 'light'],
   },
+  { key: 'display.treeGlyphs', type: 'enum', default: 'rounded', enumValues: ['rounded', 'square', 'ascii'],
+    description: 'Glyphs for the conversation work tree: rounded (╭ ╰ ◉), square (└ ●), or ascii (| + ` - * o x >). A terminal without unicode support uses ascii automatically.' },
   {
     key: 'display.showThinking',
     type: 'boolean',
