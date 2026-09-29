@@ -166,7 +166,7 @@ describe('settings ingestion: a value the reader rejects', () => {
   test('a wrong-shaped value on a known key is skipped loudly and the rest still serves', () => {
     const { manager, path } = managerOverDaemonTier({
       controlPlane: { port: 'not-a-number' },
-      display: { theme: 'dark' },
+      display: { theme: 'nord' },
     });
     // The daemon is alive and running on the default for the one bad key.
     expect(manager.get('controlPlane.port')).toBe(3421);

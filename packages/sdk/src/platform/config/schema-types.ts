@@ -53,7 +53,7 @@ export interface GoodVibesConfig {
     stream: boolean;            // default: true
     lineNumbers: LineNumberMode; // default: 'off'
     collapseThreshold: number;  // default: 30
-    theme: string;              // default: 'vaporwave'
+    theme: string;              // default: 'goodvibes'
     themeMode: 'auto' | 'dark' | 'light'; // default: 'auto'
     showThinking: boolean;      // default: false
     showReasoningSummary: boolean; // default: false

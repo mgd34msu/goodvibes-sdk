@@ -68,12 +68,12 @@ describe('GoodVibes runtime tools', () => {
     const result = await tool.execute({
       mode: 'set',
       key: 'display.theme',
-      value: 'midnight',
+      value: 'catppuccin',
       confirm: true,
     });
 
     expect(result.success).toBe(true);
-    expect(configManager.get('display.theme')).toBe('midnight');
+    expect(configManager.get('display.theme')).toBe('catppuccin');
   });
 
   test('goodvibes_settings refuses raw credential persistence', async () => {

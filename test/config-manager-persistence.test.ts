@@ -45,7 +45,7 @@ describe('ConfigManager persistence', () => {
   test('a clean load quarantines nothing', () => {
     const configDir = tempDir('clean-config');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'settings.json'), JSON.stringify({ display: { theme: 'dark' } }), 'utf-8');
+    writeFileSync(join(configDir, 'settings.json'), JSON.stringify({ display: { theme: 'nord' } }), 'utf-8');
 
     expect(new ConfigManager({ configDir }).getIngestionQuarantine()).toHaveLength(0);
   });

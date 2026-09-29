@@ -43,6 +43,8 @@ import {
   type ThemeTokens,
 } from '../packages/sdk/src/platform/presentation/index.ts';
 
+import { CONFIG_SCHEMA, DEFAULT_CONFIG } from '../packages/sdk/src/platform/config/schema.js';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const THEME_DIR = resolve(__dirname, '../packages/sdk/src/platform/presentation/theme');
 const HEX6 = /^#[0-9a-f]{6}$/;
@@ -97,6 +99,20 @@ describe('bundled themes', () => {
     expect(getBundledTheme('nope')).toBeUndefined();
     expect(getBundledTheme('nord')!.variants).toEqual(['dark']);
     expect(getBundledTheme('one-dark')!.variants).toEqual(['dark']);
+  });
+
+  test('display.theme config default and allowed values track the catalog', () => {
+    const row = CONFIG_SCHEMA.find((entry) => entry.key === 'display.theme');
+    expect(row).toBeDefined();
+    expect(row!.type).toBe('enum');
+    expect(row!.default).toBe(DEFAULT_THEME_NAME);
+    expect(DEFAULT_CONFIG.display.theme).toBe(DEFAULT_THEME_NAME);
+    // The schema carries a literal list (no registry call at module scope); this pins it to
+    // the catalog names, the terminal-following theme, and the legacy 'vaporwave' alias.
+    expect([...(row!.enumValues ?? [])].sort()).toEqual(
+      [...listBundledThemes().map((theme) => theme.name), SYSTEM_THEME_NAME, 'vaporwave'].sort(),
+    );
+    expect(row!.enumValues![0]).toBe(DEFAULT_THEME_NAME);
   });
 
   for (const theme of listBundledThemes()) {

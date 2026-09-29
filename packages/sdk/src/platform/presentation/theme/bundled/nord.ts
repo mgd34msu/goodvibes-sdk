@@ -1,5 +1,7 @@
 /**
- * nord, dark only (nordtheme.com/docs/colors-and-palettes).
+ * nord, dark only (nordtheme.com/docs/colors-and-palettes; nord0..nord15 from
+ * github.com/nordtheme/nord src/nord.css). The two text/border shades brighter
+ * than nord3 (#616e88, #7b88a1) come from nordtheme/vim colors/nord.vim.
  *
  * Authored from the official published palette. Values that miss a contrast
  * floor against the panel carry the smallest adjustment that reaches it; each
@@ -20,8 +22,9 @@ export const NORD_THEME: ThemeJson = {
     success: '#a3be8c',
     info: '#81a1c1',
     text: '#eceff4',
-    textMuted: '#a0a8b7',
-    // dark: published #616e88 is 2.43:1 on the panel; adjusted to reach 2.5:1.
+    // dark: published #7b88a1 (nordtheme/vim nord3_gui_brightened, brightest step) is 3.50:1 on the panel; adjusted to reach 4.5:1.
+    textMuted: '#919cb1',
+    // dark: published #616e88 (nordtheme/vim nord3_gui_bright) is 2.43:1 on the panel; adjusted to reach 2.5:1.
     textFaint: '#64718a',
     selectedListItemText: '#2e3440',
     background: '#2e3440',

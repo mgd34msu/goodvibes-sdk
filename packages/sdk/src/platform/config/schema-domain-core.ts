@@ -5,7 +5,7 @@ export const coreConfigDefaults = {
     stream: true,
     lineNumbers: 'off',
     collapseThreshold: 30,
-    theme: 'vaporwave',
+    theme: 'goodvibes',
     themeMode: 'auto',
     showThinking: false,
     showReasoningSummary: false,
@@ -199,9 +199,12 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
   },
   {
     key: 'display.theme',
-    type: 'string',
-    default: 'vaporwave',
-    description: 'Color theme name, the color palette (e.g. vaporwave). Independent of display.themeMode, which controls light/dark appearance.',
+    type: 'enum',
+    default: 'goodvibes',
+    description: "Color theme name, the color palette: a bundled theme, or 'system' to follow the terminal's own colors ('vaporwave' is a legacy alias of goodvibes-neon). Independent of display.themeMode, which controls light/dark appearance.",
+    // Literal on purpose (bundle-order rule: no registry call at module scope); a test pins it to listBundledThemes().
+    enumValues: ['goodvibes', 'goodvibes-neon', 'catppuccin', 'tokyonight', 'dracula', 'nord', 'gruvbox',
+      'one-dark', 'rosepine', 'solarized', 'github', 'system', 'vaporwave'],
   },
   {
     key: 'display.themeMode',
