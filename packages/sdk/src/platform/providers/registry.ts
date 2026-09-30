@@ -35,6 +35,7 @@ import { getGitHubCopilotTokenCachePath } from './github-copilot.js';
 import { summarizeError } from '../utils/error-display.js';
 import { inferFallbackContextWindow } from './context-window-fallback.js';
 import { ContextWindowOverrideStore, getContextWindowOverridesPath } from './context-window-overrides.js';
+import { CatalogContextWindowResolver } from './context-window-catalog.js';
 import { splitModelRegistryKey, withRegistryKey } from './registry-helpers.js';
 import { computeConfiguredProviderIds } from './registry-configured-ids.js';
 import { initProviderCatalog, refreshProviderCatalog } from './registry-catalog-lifecycle.js';
@@ -53,7 +54,7 @@ import type {
   ModelDefinition, ProviderRegistryOptions, RuntimeProviderRegistration, TokenLimits,
 } from './registry-types.js';
 export type {
-  ContextWindowProvenance, ModelDefinition, ModelTier, ProviderRegistryOptions, RuntimeProviderRegistration, TokenLimits,
+  ContextWindowOrigin, ContextWindowProvenance, ModelDefinition, ModelTier, ProviderRegistryOptions, RuntimeProviderRegistration, TokenLimits,
 } from './registry-types.js';
 
 /**
@@ -95,6 +96,9 @@ export class ProviderRegistry {
   private _modelRegistryRevision = 0;
   /** Persisted per-model context-window overrides; lazy-constructed (needs persistence root). */
   private _contextWindowOverrideStore: ContextWindowOverrideStore | null = null;
+  /** A remote model's missing or guessed window, looked up in the catalog (context-window-catalog.ts). */
+  private readonly catalogWindows = new CatalogContextWindowResolver(
+    () => this.catalogModels, (name) => this.discoveredProviderNames.has(name), (name) => this.providers.get(name), CATALOG_PROVIDER_NAME_ALIASES);
 
   constructor(options: ProviderRegistryOptions) {
     this.configManager = options.configManager;
@@ -194,7 +198,7 @@ export class ProviderRegistry {
       catalogModels: this.getCatalogBuiltins(),
       discoveredModels: this.discoveredModels,
       suppressedCatalogRegistryKeys: this.getSuppressedCatalogModelRegistryKeys(),
-    }).map((model) => this.contextWindowOverrideStore().apply(model));
+    }).map((model) => this.contextWindowOverrideStore().apply(this.catalogWindows.apply(model)));
     return this._cachedModelRegistry;
   }
 
@@ -544,20 +548,14 @@ export class ProviderRegistry {
 
   /**
    * Synthesize a minimal model definition for the configured registryKey when
-   * the catalog-backed registry hasn't materialized it yet, e.g. a fresh
-   * daemon home before the models.dev catalog fetch has completed (or while
-   * offline, where it never will). `buildModelRegistry()` only draws from
-   * custom/runtime/synthetic/catalog/discovered models, none of which are
-   * populated synchronously at construction time, so a stock default like
-   * 'openrouter:openrouter/free' can otherwise be unresolvable for the entire
-   * lifetime of a catalog-less boot.
-   *
-   * Deliberately narrow: only resolves when `providerId` is an actually
-   * registered provider AND that provider's own static `models` list already
-   * declares `resolvedModelId` (e.g. the builtin openrouter provider declares
-   * 'openrouter/free' in builtin-registry.ts). A genuinely unknown or
-   * misconfigured registryKey still falls through to the "not in registry"
-   * error below so callers keep an honest signal instead of a guess.
+   * the catalog-backed registry hasn't materialized it yet (a fresh daemon
+   * home before the models.dev fetch completes, or offline, where it never
+   * will): buildModelRegistry() draws only from sources none of which are
+   * populated at construction, so a stock default like
+   * 'openrouter:openrouter/free' would stay unresolvable for a catalog-less
+   * boot. Deliberately narrow: only a registered provider whose own static
+   * `models` list declares `resolvedModelId`; anything else still falls
+   * through to the "not in registry" error, an honest signal, not a guess.
    */
   private buildConfiguredModelFallback(registryKey: string): ModelDefinition | null {
     let providerId: string;
@@ -578,7 +576,7 @@ export class ProviderRegistry {
       description: `${resolvedModelId}, builtin provider default; model catalog has not hydrated yet.`,
       capabilities: { toolCalling: true, codeEditing: true, reasoning: false, multimodal: false },
       contextWindow: inferFallbackContextWindow(providerId, resolvedModelId),
-      contextWindowProvenance: 'fallback',
+      contextWindowProvenance: 'fallback', contextWindowOrigin: { kind: 'family_default' },
       selectable: true,
       tier: isFree ? 'free' : 'standard',
     });
@@ -683,6 +681,7 @@ export class ProviderRegistry {
     }
 
     this.customModels = result.models;
+    this.catalogWindows.setCustomProviders(result.providers.map(({ config }) => config));
     this._invalidateModelRegistry();
 
     return { warnings, added: diff.added, removed: diff.removed, updated: diff.updated };

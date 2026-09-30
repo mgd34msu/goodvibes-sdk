@@ -266,18 +266,21 @@ export class ContextWindowOverrideStore {
    * Overlay window knowledge onto a model definition. A user override wins
    * ('configured_cap', authoritative downstream); otherwise a learned limit
    * applies when it is smaller than the automatic window ('observed_limit',
-   * equally authoritative, the provider proved the catalog wrong).
+   * equally authoritative, the provider proved the catalog wrong). The
+   * automatic window may itself come from the catalog lookup in
+   * context-window-catalog.ts, which runs before this overlay; an accepted
+   * request larger than that figure still raises it.
    */
   apply(model: ModelDefinition): ModelDefinition {
     const state = this.load();
     const override = state.overrides.get(model.registryKey);
     if (override !== undefined) {
-      return { ...model, contextWindow: override, contextWindowProvenance: 'configured_cap' };
+      return { ...model, contextWindow: override, contextWindowProvenance: 'configured_cap', contextWindowOrigin: { kind: 'user_override' } };
     }
     let resolved = model;
     const observed = state.observed.get(model.registryKey);
     if (observed !== undefined && (model.contextWindow <= 0 || observed < model.contextWindow)) {
-      resolved = { ...model, contextWindow: observed, contextWindowProvenance: 'observed_limit' };
+      resolved = { ...model, contextWindow: observed, contextWindowProvenance: 'observed_limit', contextWindowOrigin: undefined };
     }
     // A learned ceiling is the provider's own word and is kept; any other
     // stated window smaller than what the provider already accepted is false.
@@ -287,7 +290,7 @@ export class ContextWindowOverrideStore {
       resolved.contextWindowProvenance !== 'observed_limit' &&
       accepted > resolved.contextWindow
     ) {
-      return { ...resolved, contextWindow: accepted, contextWindowProvenance: 'accepted_floor' };
+      return { ...resolved, contextWindow: accepted, contextWindowProvenance: 'accepted_floor', contextWindowOrigin: undefined };
     }
     return resolved;
   }

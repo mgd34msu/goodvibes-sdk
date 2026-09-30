@@ -249,12 +249,15 @@ export class ModelLimitsService {
     // An explicit user-configured cap (configured_cap) is authoritative and must
     // never be widened, or narrowed, by a fuzzy OpenRouter match. provider_api
     // values are likewise trusted, as are learned provider limits
-    // (observed_limit, the provider itself rejected anything larger). All
-    // short-circuit ahead of the OpenRouter lookup.
+    // (observed_limit, the provider itself rejected anything larger), and a
+    // catalog figure chosen for a model its own source left unstated
+    // (catalog, context-window-catalog.ts), so the label naming that source
+    // stays true. All short-circuit ahead of the OpenRouter lookup.
     if (
       (modelDef.contextWindowProvenance === 'provider_api' ||
         modelDef.contextWindowProvenance === 'configured_cap' ||
-        modelDef.contextWindowProvenance === 'observed_limit') &&
+        modelDef.contextWindowProvenance === 'observed_limit' ||
+        modelDef.contextWindowProvenance === 'catalog') &&
       modelDef.contextWindow > 0
     ) {
       return modelDef.contextWindow;

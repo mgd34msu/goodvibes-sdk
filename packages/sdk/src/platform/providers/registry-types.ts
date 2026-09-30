@@ -31,9 +31,30 @@ export interface TokenLimits {
  * - `accepted_floor`, the stated window was disproven: the provider accepted a
  *                     request larger than it. The real window is unknown;
  *                     `contextWindow` holds the largest input seen accepted.
+ * - `catalog`       , looked up in the models.dev catalog for a remote model
+ *                     whose own source stated no real window (see
+ *                     context-window-catalog.ts); `contextWindowOrigin` says
+ *                     which provider or how many providers stated it
  * - `fallback`      , nothing states the window; `contextWindow` is a guess
  */
-export type ContextWindowProvenance = 'provider_api' | 'configured_cap' | 'observed_limit' | 'accepted_floor' | 'fallback';
+export type ContextWindowProvenance = 'provider_api' | 'configured_cap' | 'observed_limit' | 'accepted_floor' | 'catalog' | 'fallback';
+
+/**
+ * Where a resolved context window came from, in more detail than its
+ * provenance. `describeContextWindowSource` turns it into a label.
+ *
+ * - `user_override` , set with /context window or the model picker
+ * - `provider_file` , the model's entry in a custom provider file
+ * - `catalog`       , the model's own catalog provider lists it
+ * - `consensus`     , the value most catalog providers listing the model share
+ * - `family_default`, no catalog provider lists the model; a family guess
+ */
+export type ContextWindowOrigin =
+  | { readonly kind: 'user_override' }
+  | { readonly kind: 'provider_file' }
+  | { readonly kind: 'catalog'; readonly catalogProviderId: string }
+  | { readonly kind: 'consensus'; readonly providers: number; readonly agreeing: number }
+  | { readonly kind: 'family_default' };
 
 /** Describes a selectable model and its capabilities. */
 export interface ModelDefinition {
@@ -51,6 +72,8 @@ export interface ModelDefinition {
   };
   contextWindow: number;
   contextWindowProvenance?: ContextWindowProvenance | undefined;
+  /** Where the window came from, in more detail than its provenance. */
+  contextWindowOrigin?: ContextWindowOrigin | undefined;
   selectable: boolean;
   /**
    * What this exact model accepts for reasoning effort, and which request

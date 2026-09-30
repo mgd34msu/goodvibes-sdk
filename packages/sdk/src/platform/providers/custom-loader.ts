@@ -367,6 +367,7 @@ export async function loadCustomProviders(
         description: m.description ?? '',
         contextWindow: resolved.tokens,
         contextWindowProvenance: resolved.provenance,
+        ...(resolved.provenance === 'configured_cap' ? { contextWindowOrigin: { kind: 'provider_file' as const } } : {}),
         selectable: m.selectable ?? true,
         capabilities: {
           toolCalling: m.capabilities.toolCalling,

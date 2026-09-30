@@ -113,6 +113,8 @@ export interface ModelPickerEntry {
    * - `observed_limit`, learned from a provider rejecting a longer request
    * - `accepted_floor`, the stated window was disproven by a larger accepted
    *                     request; the real window is unknown
+   * - `catalog`       , models.dev figure for a remote model whose own source
+   *                     stated none (its catalog provider, or the consensus)
    * - `fallback`      , default constant (no config or API source)
    * - `openrouter`    , sourced from OpenRouter model data (built-in catalog models)
    * - `registry`      , static value in the built-in model registry
@@ -122,6 +124,7 @@ export interface ModelPickerEntry {
     | 'configured_cap'
     | 'observed_limit'
     | 'accepted_floor'
+    | 'catalog'
     | 'fallback'
     | 'openrouter'
     | 'registry';
