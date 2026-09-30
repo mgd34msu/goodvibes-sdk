@@ -1,5 +1,57 @@
 # Changelog
 
+## [2.1.0] - 2026-09-30
+
+### Added
+
+- **A theme engine in the presentation contract.** Bundled themes (goodvibes,
+  goodvibes-neon, catppuccin, tokyonight, dracula, nord, gruvbox, one-dark,
+  rosepine, solarized, github) match their published palettes, a system theme
+  is built from the terminal's own palette, and a bridge maps themes onto
+  today's tones. display.theme defaults to goodvibes and lists the bundled
+  names as its choices.
+- **display.treeGlyphs** chooses rounded, square or ascii glyphs for the
+  conversation work tree, defaulting to rounded.
+- **Notifications name the work.** Every channel carries the turn's name and
+  how it ended. The new behavior.notificationsMetadataOnly setting sends
+  metadata only and defaults to off. The end-of-turn popup can be handed to
+  the host so a turn pops once, and Slack and Discord notices follow the same
+  rules.
+- **Context windows come from the models.dev catalog** when a remote
+  provider file states none or holds the old 8192 guess: the provider's own
+  entry first, then the value most catalog providers share (ties go smaller),
+  then the family default as a labelled guess. describeContextWindowSource
+  names where each window came from.
+
+### Changed
+
+- **WRFC chains work in their own git worktree** from a snapshot of the
+  user's files. A passed chain commits only its own changes plus edits made
+  by GoodVibes' own tools, runs the repository's git hooks, and leaves the
+  user's other uncommitted edits in place. A failed or cancelled chain stops
+  its remaining fix tasks and names them.
+- **Tier guidance takes an audience**, so a person's conversation never gets
+  the agent completion demand.
+
+### Fixed
+
+- Compaction keeps each kept message whole with its tool calls, model and
+  reasoning.
+- An unknown context window is reported as unknown, a larger accepted
+  request disproves a stated window, and compaction never acts on a guessed
+  window or runs when it cannot shrink anything.
+- A chain that commits nothing no longer announces an auto-commit, and a
+  WRFC controller cannot be built without its fix runner.
+- A read-only or delegation-phrased ask no longer becomes a chain with the
+  wrong task; instructions for the model reach only the model; notices keep
+  their full failure text; a turn that ends by spawning agents counts as
+  completed.
+- Background process listings say whether the process ended, and a
+  follow-up acknowledgement's usage never replaces the session's context
+  size.
+- Runtime notices appear once in the notifications history.
+- The inbound mail tests run on their own fixed clock.
+
 ## [2.0.23] - 2026-08-23
 
 ### Fixed
