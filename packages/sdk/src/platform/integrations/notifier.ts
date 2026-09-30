@@ -8,6 +8,12 @@ import type { DeliveryQueueConfig, IntegrationQueueStatus } from './delivery.js'
 import { snapshotQueueStatus } from './delivery.js';
 import { ServiceRegistry } from '../config/service-registry.js';
 import type { FeatureFlagManager } from '../runtime/feature-flags/index.js';
+import {
+  WorkNameMemory,
+  agentCompletedText,
+  workstreamFailedText,
+  workstreamPassedText,
+} from './work-notification-text.js';
 
 // ---------------------------------------------------------------------------
 // Notifier
@@ -21,21 +27,35 @@ import type { FeatureFlagManager } from '../runtime/feature-flags/index.js';
  *   DISCORD_WEBHOOK_URL, DISCORD_BOT_TOKEN
  *
  * Attach to the RuntimeEventBus to automatically post notifications for key events.
+ *
+ * Text (owner ruling 2026-09-29, work-notification-text.ts, the same words the
+ * webhook channel uses): an agent or workstream notice names its task, taken
+ * from the opening event. When behavior.notificationsMetadataOnly is on
+ * (default off; the `metadataOnly` reader is called at send time, so a change
+ * applies without a restart) it carries ids and outcomes only, never the task,
+ * a failure reason or the agent's output.
  */
 export class Notifier {
   private slack?: SlackIntegration | undefined;
   private discord?: DiscordIntegration | undefined;
   private unsubscribers: Array<() => void> = [];
   private readonly _queue: DeliveryQueue;
+  /** behavior.notificationsMetadataOnly, read at send time. Absent means off. */
+  private metadataOnly: () => boolean;
+  /** Task text per agent id / workstream id, from the opening event; dropped at the terminal one. */
+  private readonly names = new WorkNameMemory();
 
   constructor(options?: {
     slack?: SlackIntegration | undefined;
     discord?: DiscordIntegration | undefined;
     delivery?: Partial<DeliveryQueueConfig> | undefined;
     featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
+    /** Reader for behavior.notificationsMetadataOnly, called at send time. Absent means off. */
+    metadataOnly?: (() => boolean) | undefined;
   }) {
     this.slack = options?.slack;
     this.discord = options?.discord;
+    this.metadataOnly = options?.metadataOnly ?? (() => false);
     this._queue = new DeliveryQueue({
       ...(options?.delivery ?? {}),
       featureFlags: options?.featureFlags,
@@ -47,7 +67,11 @@ export class Notifier {
    */
   static async fromConfig(
     serviceRegistry: Pick<ServiceRegistry, 'resolveSecret'>,
-    options: { featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null } = {},
+    options: {
+      featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
+      /** Reader for behavior.notificationsMetadataOnly, called at send time. */
+      metadataOnly?: (() => boolean) | undefined;
+    } = {},
   ): Promise<Notifier> {
     const [
       slackWebhookFromService,
@@ -76,7 +100,12 @@ export class Notifier {
         ? new DiscordIntegration(discordWebhook, discordToken)
         : undefined;
 
-    return new Notifier({ slack, discord, featureFlags: options.featureFlags });
+    return new Notifier({ slack, discord, featureFlags: options.featureFlags, metadataOnly: options.metadataOnly });
+  }
+
+  /** Replace the behavior.notificationsMetadataOnly reader (hosts that build the notifier before config is ready). */
+  setMetadataOnlyReader(reader: () => boolean): void {
+    this.metadataOnly = reader;
   }
 
   // -------------------------------------------------------------------------
@@ -90,8 +119,11 @@ export class Notifier {
    * @param data   - Arbitrary key/value payload for formatting
    */
   async notify(event: string, data: Record<string, unknown>): Promise<void> {
-    const text = this.formatText(event, data);
+    await this.deliver(event, this.formatText(event, data));
+  }
 
+  /** Post already-worded text to every configured channel through the delivery queue. */
+  private async deliver(event: string, text: string): Promise<void> {
     if (this.slack) {
       const slack = this.slack;
       await this._queue.enqueue('slack', event, text, () => slack.postWebhook(text));
@@ -144,39 +176,35 @@ export class Notifier {
   attachToRuntimeBus(bus: RuntimeEventBus): void {
     this.detach();
 
+    // The opening events carry the task text; the terminal ones carry the id
+    // alone, so the names are remembered here for the length of the work.
+    this.unsubscribers.push(
+      bus.on<Extract<AgentEvent, { type: 'AGENT_SPAWNING' }>>('AGENT_SPAWNING', ({ payload }) => {
+        this.names.rememberAgent(payload.agentId, payload.task);
+      }),
+    );
+
+    this.unsubscribers.push(
+      bus.on<Extract<WorkflowEvent, { type: 'WORKFLOW_CHAIN_CREATED' }>>('WORKFLOW_CHAIN_CREATED', ({ payload }) => {
+        this.names.rememberWorkstream(payload.chainId, payload.task);
+      }),
+    );
+
     this.unsubscribers.push(
       bus.on<Extract<AgentEvent, { type: 'AGENT_COMPLETED' }>>('AGENT_COMPLETED', ({ payload }) => {
-        void this.notify('AGENT_COMPLETED', {
-          event: 'AGENT_COMPLETED',
-          agentId: payload.agentId,
-          task: payload.output?.slice(0, 100) ?? payload.agentId,
-          result: payload.output,
-        }).catch((error: unknown) => {
-          logger.warn('[notifier] AGENT_COMPLETED notification failed', { error: summarizeError(error) });
-        });
+        this.sendRuntimeNotification('AGENT_COMPLETED', agentCompletedText(payload.agentId, this.names.takeAgent(payload.agentId), this.metadataOnly));
       }),
     );
 
     this.unsubscribers.push(
       bus.on<Extract<WorkflowEvent, { type: 'WORKFLOW_CHAIN_PASSED' }>>('WORKFLOW_CHAIN_PASSED', ({ payload }) => {
-        void this.notify('WORKFLOW_CHAIN_PASSED', {
-          event: 'WORKFLOW_CHAIN_PASSED',
-          chainId: payload.chainId,
-        }).catch((error: unknown) => {
-          logger.warn('[notifier] WORKFLOW_CHAIN_PASSED notification failed', { error: summarizeError(error) });
-        });
+        this.sendRuntimeNotification('WORKFLOW_CHAIN_PASSED', workstreamPassedText(this.names.takeWorkstream(payload.chainId), this.metadataOnly));
       }),
     );
 
     this.unsubscribers.push(
       bus.on<Extract<WorkflowEvent, { type: 'WORKFLOW_CHAIN_FAILED' }>>('WORKFLOW_CHAIN_FAILED', ({ payload }) => {
-        void this.notify('WORKFLOW_CHAIN_FAILED', {
-          event: 'WORKFLOW_CHAIN_FAILED',
-          chainId: payload.chainId,
-          reason: payload.reason,
-        }).catch((error: unknown) => {
-          logger.warn('[notifier] WORKFLOW_CHAIN_FAILED notification failed', { error: summarizeError(error) });
-        });
+        this.sendRuntimeNotification('WORKFLOW_CHAIN_FAILED', workstreamFailedText(this.names.takeWorkstream(payload.chainId), payload.reason, this.metadataOnly));
       }),
     );
 
@@ -195,20 +223,25 @@ export class Notifier {
   // Private helpers
   // -------------------------------------------------------------------------
 
+  private sendRuntimeNotification(event: string, text: string): void {
+    void this.deliver(event, text).catch((error: unknown) => {
+      logger.warn(`[notifier] ${event} notification failed`, { error: summarizeError(error) });
+    });
+  }
+
+  /**
+   * Text for the public notify(event, data) API. The three runtime events
+   * take the same words as the bus handlers above, including the privacy
+   * setting; `data.task` names the work.
+   */
   private formatText(event: string, data: Record<string, unknown>): string {
     switch (event) {
-      case 'AGENT_COMPLETED': {
-        const task = typeof data.task === 'string' ? data.task : String(data.agentId ?? '');
-        return `Agent completed: ${task}`;
-      }
-      case 'WORKFLOW_CHAIN_PASSED': {
-        const score = typeof data.score === 'number' ? `${data.score}/10` : 'passed';
-        return `Review passed: ${score}`;
-      }
-      case 'WORKFLOW_CHAIN_FAILED': {
-        const reason = typeof data.reason === 'string' ? data.reason : 'unknown reason';
-        return `Review chain failed: ${reason}`;
-      }
+      case 'AGENT_COMPLETED':
+        return agentCompletedText(String(data.agentId ?? ''), stringOrNull(data.task), this.metadataOnly);
+      case 'WORKFLOW_CHAIN_PASSED':
+        return workstreamPassedText(stringOrNull(data.task), this.metadataOnly);
+      case 'WORKFLOW_CHAIN_FAILED':
+        return workstreamFailedText(stringOrNull(data.task), typeof data.reason === 'string' ? data.reason : 'unknown reason', this.metadataOnly);
       default: {
         const extras = Object.entries(data)
           .filter(([k]) => k !== 'event')
@@ -218,4 +251,8 @@ export class Notifier {
       }
     }
   }
+}
+
+function stringOrNull(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }

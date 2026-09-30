@@ -207,8 +207,8 @@ export class Orchestrator {
 
   /** True when the turn failed (set in catch; read in finally for markComplete vs markFailed). */
   private _turnFailed = false;
-  /** How the active turn ended, for the named end-of-turn popup (turn-end-notice.ts). */
-  private readonly turnEnd = new TurnEndNotice();
+  /** The named end-of-turn popup (turn-end-notice.ts); a host showing its own calls turnEndNotice.handOff(). */
+  public readonly turnEndNotice = new TurnEndNotice();
 
   /** Event replay queue, ensures model acknowledges significant events */
   private readonly replayQueue: EventReplayQueue;
@@ -790,7 +790,7 @@ export class Orchestrator {
       addStreamingOutputTokens: (value) => { this.streamingOutputTokens += value; },
       setLastRequestInputTokens: (value) => { this.lastRequestInputTokens = value; },
       setLastInputTokens: (value) => { this.lastInputTokens = value; },
-      markTurnFailed: (reason) => { this._turnFailed = true; this.turnEnd.markFailed(reason); },
+      markTurnFailed: (reason) => { this._turnFailed = true; this.turnEndNotice.markFailed(reason); },
       noteModelContextWindowWarning: (details) => {
         this.modelContextWarning = details;
         logger.warn('Orchestrator: model reported context window exhaustion - forcing compaction at next opportunity', details);
@@ -859,7 +859,7 @@ export class Orchestrator {
       this.conversation.removeMessagesAfter(this.turnStartMessageCount);
       this.conversation.markLastUserMessageCancelled();
       this.conversation.addSystemMessage('[Response cancelled]');
-      this.turnEnd.markCancelled();
+      this.turnEndNotice.markCancelled();
       if (this.runtimeBus) {
         emitTurnCancel(this.runtimeBus, createEmitterContext(this.sessionId, turnId), {
           turnId,
@@ -888,7 +888,7 @@ export class Orchestrator {
       }
     }
     this._turnFailed = true;
-    this.turnEnd.markFailed(summarizeError(error));
+    this.turnEndNotice.markFailed(summarizeError(error));
     if (this.runtimeBus) {
       emitTurnError(this.runtimeBus, createEmitterContext(this.sessionId, turnId), {
         turnId,
@@ -906,7 +906,7 @@ export class Orchestrator {
     configManager: ReturnType<typeof requireConfigManager>,
     turnText: string,
   ): void {
-    if (this._turnFailed) this.turnEnd.markFailed();
+    if (this._turnFailed) this.turnEndNotice.markFailed();
     // ── GC-ORCH-015: Terminal-state tool-call reconciliation ───────────────────
     // If the turn threw an exception between addAssistantMessage (which sets
     // _pendingToolCalls) and addToolResults (which clears it), there are
@@ -930,7 +930,7 @@ export class Orchestrator {
     }
     this.stopThinking();
     const configGet = (key: string): unknown => configManager.get(key as Parameters<typeof configManager.get>[0]);
-    this.turnEnd.send({ configGet, conversation: this.conversation, turnText, sessionId: this.sessionId, durationMs: Date.now() - turnStartTime });
+    this.turnEndNotice.send({ configGet, conversation: this.conversation, turnText, sessionId: this.sessionId, durationMs: Date.now() - turnStartTime });
 
     // ── Event replay queue ────────────────────────────────────────────────
     // Inject unacknowledged events as system messages, then acknowledge them:

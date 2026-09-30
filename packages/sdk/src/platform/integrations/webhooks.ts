@@ -3,8 +3,13 @@ import type { RuntimeEventBus, AgentEvent, WorkflowEvent } from '../runtime/even
 import { classifyHostTrustTier, extractHostname, emitSsrfDeny } from '../tools/fetch/trust-tiers.js';
 import { instrumentedFetch, createTimeoutController } from '../utils/fetch-with-timeout.js';
 import { isNotifySuppressed } from '../utils/notify.js';
-import { trimAtWordBoundary } from '../runtime/turn-notification.js';
-import { workstreamLabel } from '../channels/workstream-labels.js';
+import {
+  WorkNameMemory,
+  agentCompletedText,
+  agentFailedText,
+  workstreamFailedText,
+  workstreamPassedText,
+} from './work-notification-text.js';
 
 // ---------------------------------------------------------------------------
 // WebhookNotifier
@@ -43,8 +48,7 @@ export class WebhookNotifier {
    */
   private metadataOnly: () => boolean;
   /** Task text per agent id / workstream id, from the opening event; dropped at the terminal one. */
-  private readonly agentTasks = new Map<string, string>();
-  private readonly workstreamTasks = new Map<string, string>();
+  private readonly names = new WorkNameMemory();
 
   constructor(urls: string[] = [], options: WebhookNotifierOptions = {}) {
     this.urls = validateWebhookUrls(urls);
@@ -174,33 +178,25 @@ export class WebhookNotifier {
     // alone, so the names are remembered here for the length of the work.
     this.unsubscribers.push(
       bus.on<Extract<AgentEvent, { type: 'AGENT_SPAWNING' }>>('AGENT_SPAWNING', ({ payload }) => {
-        rememberBounded(this.agentTasks, payload.agentId, payload.task);
+        this.names.rememberAgent(payload.agentId, payload.task);
       }),
     );
 
     this.unsubscribers.push(
       bus.on<Extract<WorkflowEvent, { type: 'WORKFLOW_CHAIN_CREATED' }>>('WORKFLOW_CHAIN_CREATED', ({ payload }) => {
-        rememberBounded(this.workstreamTasks, payload.chainId, payload.task);
+        this.names.rememberWorkstream(payload.chainId, payload.task);
       }),
     );
 
     this.unsubscribers.push(
       bus.on<Extract<AgentEvent, { type: 'AGENT_COMPLETED' }>>('AGENT_COMPLETED', ({ payload }) => {
-        const task = takeName(this.agentTasks, payload.agentId);
-        this.sendRuntimeNotification(this.namedOr(
-          `Agent completed: ${payload.agentId}`,
-          task ? `Agent finished: ${task}` : null,
-        ));
+        this.sendRuntimeNotification(agentCompletedText(payload.agentId, this.names.takeAgent(payload.agentId), this.metadataOnly));
       }),
     );
 
     this.unsubscribers.push(
       bus.on<Extract<AgentEvent, { type: 'AGENT_FAILED' }>>('AGENT_FAILED', ({ payload }) => {
-        const task = takeName(this.agentTasks, payload.agentId);
-        this.sendRuntimeNotification(this.namedOr(
-          `Agent failed: ${payload.agentId}`,
-          `Agent failed: ${task ?? payload.agentId}\n${trimAtWordBoundary(payload.error, 300)}`,
-        ));
+        this.sendRuntimeNotification(agentFailedText(payload.agentId, this.names.takeAgent(payload.agentId), payload.error, this.metadataOnly));
       }),
     );
 
@@ -208,38 +204,17 @@ export class WebhookNotifier {
       bus.on<Extract<WorkflowEvent, { type: 'WORKFLOW_CHAIN_PASSED' }>>('WORKFLOW_CHAIN_PASSED', ({ payload }) => {
         // Named in plain words: a webhook body is read by whatever the operator
         // pointed it at, which makes it outward-facing text.
-        const task = takeName(this.workstreamTasks, payload.chainId) ?? registeredWorkstreamName(payload.chainId);
-        this.sendRuntimeNotification(this.namedOr(
-          'A workstream passed all its checks.',
-          task ? `Workstream passed all its checks: ${task}` : null,
-        ));
+        this.sendRuntimeNotification(workstreamPassedText(this.names.takeWorkstream(payload.chainId), this.metadataOnly));
       }),
     );
 
     this.unsubscribers.push(
       bus.on<Extract<WorkflowEvent, { type: 'WORKFLOW_CHAIN_FAILED' }>>('WORKFLOW_CHAIN_FAILED', ({ payload }) => {
-        const task = takeName(this.workstreamTasks, payload.chainId) ?? registeredWorkstreamName(payload.chainId);
-        this.sendRuntimeNotification(this.namedOr(
-          'A workstream could not be finished.',
-          `Workstream could not be finished${task ? `: ${task}` : ''}\n${trimAtWordBoundary(payload.reason, 300)}`,
-        ));
+        this.sendRuntimeNotification(workstreamFailedText(this.names.takeWorkstream(payload.chainId), payload.reason, this.metadataOnly));
       }),
     );
 
     logger.info('WebhookNotifier: attached to RuntimeEventBus', { urlCount: this.urls.length });
-  }
-
-  /** The metadata-only text when the privacy setting is on or nothing names the work, else the named text. */
-  private namedOr(metadataText: string, namedText: string | null): string {
-    if (namedText === null) return metadataText;
-    let metadataOnly = false;
-    try {
-      metadataOnly = this.metadataOnly();
-    } catch {
-      // A reader that throws must not turn into sending names: fail toward metadata.
-      metadataOnly = true;
-    }
-    return metadataOnly ? metadataText : namedText;
   }
 
   /** Remove all webhook subscriptions. */
@@ -333,33 +308,6 @@ export interface WebhookNotifierOptions {
    * runtime notifications carry ids and outcomes only. Absent means false.
    */
   metadataOnly?: (() => boolean) | undefined;
-}
-
-/** Most names kept at once; a process that never sees terminal events cannot grow the maps unbounded. */
-const MAX_REMEMBERED_NAMES = 256;
-
-function rememberBounded(map: Map<string, string>, id: string, task: string): void {
-  const name = trimAtWordBoundary(task, 80);
-  if (!name) return;
-  map.delete(id);
-  map.set(id, name);
-  while (map.size > MAX_REMEMBERED_NAMES) {
-    const oldest = map.keys().next().value;
-    if (oldest === undefined) break;
-    map.delete(oldest);
-  }
-}
-
-/** The shared workstream label registry's name (channels/workstream-labels.ts), or null when it has none. */
-function registeredWorkstreamName(chainId: string): string | null {
-  const label = workstreamLabel(chainId);
-  return label === 'The workstream' ? null : label;
-}
-
-function takeName(map: Map<string, string>, id: string): string | null {
-  const name = map.get(id) ?? null;
-  map.delete(id);
-  return name;
 }
 
 export interface WebhookNotifierDeliveryResult {

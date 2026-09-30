@@ -90,7 +90,7 @@ describe('the orchestrator end-of-turn popup names the turn and its outcome', ()
       _pendingToolCalls: [],
       currentSubmissionKey: null,
       _turnFailed: false,
-      turnEnd,
+      turnEndNotice: turnEnd,
       sessionId: 'abcdef1234567890',
       abortController: { signal: { aborted } },
       isStreaming: false,
