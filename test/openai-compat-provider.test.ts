@@ -87,20 +87,6 @@ function makeDiscoveredServer(over: Partial<DiscoveredServer> = {}): DiscoveredS
 // ── Empty-apiKey construction (discovered/anonymous providers) ───────────────
 
 describe('OpenAICompatProvider: empty apiKey construction', () => {
-  test('constructing with apiKey: "" (discovered-provider shape) does not throw', () => {
-    expect(() =>
-      new OpenAICompatProvider({
-        name: 'ollama',
-        baseURL: 'http://127.0.0.1:1/v1',
-        apiKey: '',
-        defaultModel: 'llama3',
-        models: ['llama3'],
-        allowAnonymous: true,
-        anonymousConfigured: true,
-      }),
-    ).not.toThrow();
-  });
-
   test('empty apiKey + allowAnonymous reports isConfigured() true but auth mode stays "anonymous" (unconfigured internal state preserved)', async () => {
     const provider = new OpenAICompatProvider({
       name: 'ollama',

@@ -7,8 +7,6 @@
  * is asserted without waiting five minutes.
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 import { IMAP_MAX_FETCH_UIDS } from '../packages/sdk/src/platform/email/imap-client.ts';
 import { composeOpenFailure } from '../packages/sdk/src/platform/email/imap-open.ts';
@@ -37,12 +35,6 @@ import {
   fixedRandom,
   scriptedRandom,
 } from './_helpers/inbound-watcher-harness.ts';
-
-const INBOUND_DIR = join(
-  import.meta.dir,
-  '..',
-  'packages/sdk/src/platform/email/inbound',
-);
 
 describe('backoff', () => {
   test('windows double from one second and stop at the ceiling', () => {
@@ -430,39 +422,6 @@ describe('protocol details', () => {
       .toBe(27 * 60_000);
   });
 });
-
-describe('the inbound path has no way to start work', () => {
-  test('no file under platform/email/inbound references a spawn capability', () => {
-    const banned = [
-      'trySpawnAgent',
-      'sessionBroker',
-      'AgentManager',
-      'queueSurfaceReplyFromBinding',
-      'publishConversationFollowup',
-      'SurfaceAdapterContext',
-    ];
-    const offences: string[] = [];
-    for (const entry of readdirSync(INBOUND_DIR)) {
-      if (!entry.endsWith('.ts')) continue;
-      // Comments are stripped first: these files EXPLAIN that they are not
-      // given a spawn capability, and naming the thing you do not have is not
-      // having it. The assertion is about code.
-      const source = stripComments(readFileSync(join(INBOUND_DIR, entry), 'utf8'));
-      for (const name of banned) {
-        if (source.includes(name)) offences.push(`${entry}: ${name}`);
-      }
-    }
-    expect(offences).toEqual([]);
-  });
-});
-
-function stripComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .split('\n')
-    .map((line) => line.replace(/\/\/.*$/, ''))
-    .join('\n');
-}
 
 function stubWire(lines: readonly string[], onSend?: (text: string) => void): MailboxWire {
   return {

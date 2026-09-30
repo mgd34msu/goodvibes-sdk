@@ -46,9 +46,6 @@ function registerN(
 }
 
 describe('MAX_LISTENERS constant', () => {
-  test('MAX_LISTENERS is exported and equals 100', () => {
-    expect(MAX_LISTENERS).toBe(100);
-  });
 });
 
 describe('below-cap registration (production mode)', () => {

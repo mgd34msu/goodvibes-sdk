@@ -1241,19 +1241,4 @@ describe('the flow is merchant-agnostic by construction', () => {
     expect(alphaHtml).toContain('<table');
     expect(betaHtml).not.toContain('<table');
   });
-
-  test('no shipped source file names either fixture, or any merchant markup', async () => {
-    // A selector table would have to live somewhere. This is the check that
-    // notices the first one, while it is still one line.
-    const { Glob } = await import('bun');
-    const glob = new Glob('packages/sdk/src/platform/payments/**/*.ts');
-    const offenders: string[] = [];
-    for await (const path of glob.scan({ cwd: process.cwd() })) {
-      const source = await Bun.file(path).text();
-      for (const marker of ['bezeichnung', 'kreditkartennummer', 'data-amount', 'querySelector', 'td.price']) {
-        if (source.includes(marker)) offenders.push(`${path}: ${marker}`);
-      }
-    }
-    expect(offenders).toEqual([]);
-  });
 });

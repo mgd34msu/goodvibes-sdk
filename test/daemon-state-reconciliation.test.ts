@@ -109,18 +109,6 @@ describe('AgentTaskAdapter.attachRuntimeBus: task registry sync', () => {
     const known = store.getState().tasks.tasks.get(taskId);
     expect(known?.status).toBe('running'); // unchanged
   });
-
-  test('unsubscribe tears down listeners: subsequent events do not affect tasks', () => {
-    const unsub = adapter.attachRuntimeBus(bus); // second subscription
-    const taskId = adapter.wrapAgent('ag-unsub', 'Test', { sessionId: 'sess-x' });
-    adapter.handleAgentStateChange('ag-unsub', 'running');
-
-    unsub();
-
-    // Fire, the second subscription was torn down; first still works but
-    // the point is no crash and state is correct regardless
-    expect(() => emitAgent('AGENT_COMPLETED', 'ag-unsub')).not.toThrow();
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -492,17 +480,6 @@ describe('SharedSessionBroker.stop() tears down resources', () => {
     await new Promise<void>((resolve) => setImmediate(resolve));
 
     expect(broker.getSession(session.id)?.activeAgentId).toBeUndefined();
-  });
-});
-
-describe('SharedSessionBroker.attachRuntimeBus is idempotent', () => {
-  test('second call returns no-op unsub', async () => {
-    const bus = new RuntimeEventBus();
-    const broker = makeBroker();
-    await broker.start();
-    broker.attachRuntimeBus(bus, () => null);
-
-    const unsub = broker.attachRuntimeBus(bus, () => null);
   });
 });
 

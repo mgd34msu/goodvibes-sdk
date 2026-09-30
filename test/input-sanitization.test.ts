@@ -11,10 +11,6 @@ import {
 } from '../packages/sdk/src/platform/security/http-auth.js';
 
 describe('platform/security: http-auth smoke', () => {
-  test('OPERATOR_SESSION_COOKIE_NAME is a non-empty string', () => {
-    expect(typeof OPERATOR_SESSION_COOKIE_NAME).toBe('string');
-    expect(OPERATOR_SESSION_COOKIE_NAME.length).toBeGreaterThan(0);
-  });
 
   test('extractOperatorAuthToken returns empty string for a request with no auth header', () => {
     const req = new Request('http://localhost/api/test');

@@ -92,7 +92,7 @@ If a TypeScript version bump requires consumers to change their application-leve
 
 ## Enforcement
 
-The CHANGELOG gate (`bun run changelog:check`) verifies that every release has a properly labeled section. Version bump classification is a required part of the PR description for any release PR. Misclassified bumps are caught in review before merge.
+`bun run release:prepare` scaffolds a CHANGELOG section for every new version and checks that it exists (`bun run changelog:check`). Version bump classification is a required part of the PR description for any release PR. Misclassified bumps are caught in review before merge.
 
 API surface checks and changelog review are the enforcement mechanisms for
 unintended public-surface drift.

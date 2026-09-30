@@ -1,9 +1,9 @@
 # CI Setup: API surface gate (`api:check`)
 
-`api:check` runs as a step inside the consolidated `validate` job (via `bun run
-validate`) in `.github/workflows/ci.yml`; there is no separate
-`api-surface-check` job. The standalone job below is illustrative, add it only
-if this check ever needs to be isolated into its own job.
+No CI job runs `api:check`. `bun run release:prepare` regenerates the reports
+(`api:extract`) and the subpath surface at each version bump, and the diff of
+`etc/*.api.md` in that commit is the review record of the public surface. The
+job below is illustrative, for a repo that wants the reports enforced per push.
 
 Uses the same SHA-pinned action versions as the existing CI jobs.
 Fails if the extracted public API surface differs from the committed baseline `etc/goodvibes-sdk.api.md`.

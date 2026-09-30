@@ -17,10 +17,7 @@
  * ConversationManager, release on every exit path) really invoke it.
  */
 import { describe, expect, test } from 'bun:test';
-import {
-  AgentManager,
-  DEFAULT_CONVERSATION_SNAPSHOT_RETENTION,
-} from '../packages/sdk/src/platform/tools/agent/manager.js';
+import { AgentManager } from '../packages/sdk/src/platform/tools/agent/manager.js';
 import type { ConversationMessageSnapshot } from '../packages/sdk/src/platform/core/conversation.js';
 import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
@@ -95,10 +92,6 @@ describe('AgentManager: conversation snapshot bridge', () => {
     expect(() => manager.releaseConversationSource('ag-throws-release')).not.toThrow();
     // Source removed from the live map either way; nothing was frozen.
     expect(manager.getConversationSnapshot('ag-throws-release')).toEqual([]);
-  });
-
-  test('bound respected: DEFAULT_CONVERSATION_SNAPSHOT_RETENTION is a positive, sane default', () => {
-    expect(DEFAULT_CONVERSATION_SNAPSHOT_RETENTION).toBeGreaterThan(0);
   });
 
   test('bound respected: releasing more agents than the retention limit evicts the oldest first', () => {

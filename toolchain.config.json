@@ -1,0 +1,36 @@
+{
+  "packageName": "@pellux/goodvibes-sdk",
+  "releaseCut": {
+    "branch": "main",
+    "versionFiles": [
+      "packages/contracts/package.json",
+      "packages/errors/package.json",
+      "packages/daemon-sdk/package.json",
+      "packages/transport-core/package.json",
+      "packages/transport-http/package.json",
+      "packages/transport-realtime/package.json",
+      "packages/operator-sdk/package.json",
+      "packages/peer-sdk/package.json",
+      "packages/sdk/package.json",
+      "packages/terminal-shell/package.json",
+      "packages/toolchain/package.json"
+    ],
+    "syncCommands": [
+      ["bun", "scripts/release-prepare.ts", "--no-bump", "--no-changelog"]
+    ],
+    "commitPaths": [
+      "package.json",
+      "packages/*/package.json",
+      "packages/sdk/src/platform/version.ts",
+      "packages/contracts/artifacts",
+      "packages/contracts/src/generated",
+      "docs",
+      "etc",
+      "bundle-budgets.json",
+      "eval/baseline.json",
+      "CHANGELOG.md"
+    ],
+    "changelogHeading": "bracket",
+    "changelogInsertMarker": "top"
+  }
+}

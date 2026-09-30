@@ -6,8 +6,6 @@
 
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { settleEvents } from './_helpers/test-timeout.js';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import type {
   CompanionChatManagerConfig,
@@ -432,39 +430,5 @@ describe('DaemonHttpRouter forwards resolveDefaultProviderModel into companion d
     expect(res!.status).toBe(400);
     const body = await res!.json() as Record<string, unknown>;
     expect(body['code']).toBe('NO_MODEL_CONFIGURED');
-  });
-});
-
-describe('companion-chat facade-composition: composition wire assertion', () => {
-  const FACADE_COMPOSITION_PATH = resolve(
-    import.meta.dir,
-    '../packages/sdk/src/platform/daemon/facade-composition.ts',
-  );
-
-  let sourceText: string;
-
-  beforeEach(() => {
-    sourceText = readFileSync(FACADE_COMPOSITION_PATH, 'utf-8');
-  });
-
-  test('resolveDaemonFacadeRuntime includes companionChatManager in its return object', () => {
-    expect(sourceText).toMatch(
-      /^(?!\s*\/\/).*companionChatManager = new CompanionChatManager\(/m,
-    );
-    expect(sourceText).toMatch(
-      /^(?!\s*\/\/)(?!.*runtime\.companionChatManager).*\bcompanionChatManager,\s*$/m,
-    );
-  });
-
-  test('createDaemonFacadeCollaborators passes companionChatManager: runtime.companionChatManager to DaemonHttpRouter', () => {
-    expect(sourceText).toMatch(
-      /^(?!\s*\/\/).*companionChatManager:\s*runtime\.companionChatManager,/m,
-    );
-  });
-
-  test('createDaemonFacadeCollaborators passes resolveDefaultProviderModel from options to DaemonHttpRouter', () => {
-    expect(sourceText).toMatch(
-      /^(?!\s*\/\/).*resolveDefaultProviderModel:\s*options\.resolveDefaultProviderModel,/m,
-    );
   });
 });

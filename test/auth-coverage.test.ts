@@ -67,11 +67,6 @@ describe('createBrowserTokenStore: storage edge cases', () => {
     expect(() => createBrowserTokenStore()).toThrow('Browser token storage is unavailable');
   });
 
-  test('uses provided custom storage without throwing', () => {
-    const storage = makeStorage();
-    expect(() => createBrowserTokenStore({ storage })).not.toThrow();
-  });
-
   test('setToken(null) removes the key instead of storing null', async () => {
     const storage = makeStorage({ 'goodvibes.token': 'existing' });
     const store = createBrowserTokenStore({ storage });
@@ -273,16 +268,6 @@ describe('createGoodVibesAuthClient: observer onAuthTransition', () => {
 // ---------------------------------------------------------------------------
 
 describe('createGoodVibesAuthClient: getters', () => {
-  test('tokenStore getter returns TokenStore instance when tokenStore provided', () => {
-    const store = createMemoryTokenStore();
-    const client = createGoodVibesAuthClient(makeOperator(), store);
-    expect(client.tokenStore).not.toBeNull();
-  });
-
-  test('sessionManager getter is accessible', () => {
-    const client = createGoodVibesAuthClient(makeOperator(), createMemoryTokenStore());
-    expect(client.sessionManager).not.toBeNull(); // presence-only: sessionManager exposed
-  });
 
   test('permissionResolver builds a resolver from a snapshot', () => {
     const client = createGoodVibesAuthClient(makeOperator(), createMemoryTokenStore());

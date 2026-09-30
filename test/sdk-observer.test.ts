@@ -12,7 +12,6 @@ import {
   createGoodVibesAuthClient,
 } from '../packages/sdk/src/auth.js';
 import {
-  createConsoleObserver,
   createOpenTelemetryObserver,
   invokeObserver,
   type SDKObserver,
@@ -215,17 +214,6 @@ describe('SDKObserver: TransportObserver callbacks', () => {
 });
 
 describe('SDKObserver: built-in adapters', () => {
-  test('createConsoleObserver constructs without error', () => {
-    expect(() => createConsoleObserver()).not.toThrow();
-    expect(() => createConsoleObserver({ level: 'debug' })).not.toThrow();
-    expect(() => createConsoleObserver({ level: 'info' })).not.toThrow();
-  });
-
-  test('createConsoleObserver.onAuthTransition does not throw', () => {
-    const obs = createConsoleObserver();
-    expect(() => obs.onAuthTransition?.({ from: 'anonymous', to: 'token', reason: 'login' })).not.toThrow();
-  });
-
   test('createOpenTelemetryObserver constructs and calls meter/tracer without error', () => {
     const spans: Array<{ name: string; ended: boolean }> = [];
     const counters: Array<{ name: string; value: number }> = [];

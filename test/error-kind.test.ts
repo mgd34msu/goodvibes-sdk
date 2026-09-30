@@ -22,11 +22,6 @@ import type { SDKErrorKind } from '../packages/errors/dist/index.js';
 
 describe('error-kind: packages/errors', () => {
   describe('GoodVibesSdkError base class', () => {
-    test('has kind field', () => {
-      const err = new GoodVibesSdkError('base');
-      expect(typeof err.kind).toBe('string'); // kind is always a string
-      expect(typeof err.kind).toBe('string');
-    });
 
     test('kind defaults to unknown when no category or status', () => {
       const err = new GoodVibesSdkError('test');

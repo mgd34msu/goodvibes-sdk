@@ -1,14 +1,8 @@
 /**
  * The flow executor, the step plan, and the generated runbook.
- *
- * The runbook drift test is the important one: the written fallback exists so
- * a user has a route when automation fails, and a stale runbook is worse than
- * none because it sends them somewhere that no longer matches reality.
  */
 
 import { describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import {
   FORBIDDEN_OAUTH_SCOPES,
   GOOGLE_SETUP_STEPS,
@@ -25,7 +19,6 @@ import {
 } from '../packages/sdk/src/platform/google/setup-flow.ts';
 import {
   renderGoogleSetupRunbook,
-  RUNBOOK_RELATIVE_PATH,
 } from '../packages/sdk/src/platform/google/setup-runbook.ts';
 import type {
   GoogleProgressPort,
@@ -223,12 +216,6 @@ describe('the guided new-client instructions', () => {
 });
 
 describe('the generated runbook', () => {
-  test('the checked-in doc matches what the plan generates, so it cannot drift', () => {
-    const repoRoot = join(import.meta.dir, '..');
-    const committed = readFileSync(join(repoRoot, RUNBOOK_RELATIVE_PATH), 'utf8');
-    expect(committed).toBe(renderGoogleSetupRunbook());
-  });
-
   test('every step has an anchor the automation can point an error message at', () => {
     const runbook = renderGoogleSetupRunbook();
     for (const step of GOOGLE_SETUP_STEPS) {

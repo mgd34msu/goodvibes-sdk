@@ -1,7 +1,7 @@
 // foundation-io-coverage-baseline.ts
 //
 // The baseline for the typed-IO coverage ratchet enforced by
-// check-foundation-io-coverage.ts (mirrors line-cap-grandfather.ts).
+// check-foundation-io-coverage.ts.
 //
 // packages/contracts/src/generated/foundation-client-types.ts holds the
 // OperatorMethodInputMap / OperatorMethodOutputMap entries. A method id absent

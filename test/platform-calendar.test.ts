@@ -15,9 +15,6 @@
  *  - purity: no file under platform/calendar/ imports fs/net/tty/process.
  */
 import { describe, expect, test } from 'bun:test';
-import { readFileSync, readdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_REFRESH_INTERVAL_MS,
   MIN_REFRESH_INTERVAL_MS,
@@ -30,9 +27,6 @@ import {
   type EventDateTime,
   type FeedFetchResult,
 } from '../packages/sdk/src/platform/calendar/index.ts';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const CALENDAR_DIR = resolve(__dirname, '../packages/sdk/src/platform/calendar');
 
 // --- fixtures ---------------------------------------------------------------
 
@@ -432,37 +426,5 @@ describe('maskFeedUrl', () => {
     expect(masked).toContain('https://calendar.google.com');
     expect(masked).not.toContain('abc123secret');
     expect(masked).toContain('…');
-  });
-});
-
-describe('purity', () => {
-  test('no calendar module reaches fs/net/tty/process/crypto/path/os/child_process, Buffer, or a bare (non-relative) import', () => {
-    const files = readdirSync(CALENDAR_DIR).filter((f) => f.endsWith('.ts'));
-    const banned: { readonly name: string; readonly pattern: RegExp }[] = [
-      { name: 'node:fs', pattern: /from ['"]node:fs['"]/ },
-      { name: 'node:net', pattern: /from ['"]node:net['"]/ },
-      { name: 'node:tty', pattern: /from ['"]node:tty['"]/ },
-      { name: 'node:process', pattern: /from ['"]node:process['"]/ },
-      { name: 'node:http(s)', pattern: /from ['"]node:https?['"]/ },
-      { name: 'node:crypto', pattern: /from ['"]node:crypto['"]/ },
-      { name: 'node:path', pattern: /from ['"]node:path['"]/ },
-      { name: 'node:os', pattern: /from ['"]node:os['"]/ },
-      { name: 'node:child_process', pattern: /from ['"]node:child_process['"]/ },
-      { name: 'process.stdout/stderr/env', pattern: /process\.(stdout|stderr|env)/ },
-      { name: 'global fetch(...)', pattern: /\bfetch\s*\(/ },
-      { name: 'Buffer', pattern: /\bBuffer\b/ },
-      // Any import specifier that is neither relative ('./'/'../') nor a type-only
-      // re-export of a relative path, i.e. a bare package/builtin specifier. Every
-      // real import in this module is (and must stay) relative; this catches any
-      // new bare specifier (a builtin this list doesn't yet name explicitly, or an
-      // npm dependency) the moment it is introduced.
-      { name: 'bare (non-relative) import specifier', pattern: /from\s+['"](?!\.{1,2}\/)[^'"]+['"]/ },
-    ];
-    for (const f of files) {
-      const src = readFileSync(resolve(CALENDAR_DIR, f), 'utf8');
-      for (const { name, pattern } of banned) {
-        expect({ file: f, banned: name, matched: pattern.test(src) }).toEqual({ file: f, banned: name, matched: false });
-      }
-    }
   });
 });

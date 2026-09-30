@@ -49,8 +49,8 @@ bun run openapi:generate   # regenerate both copies
 bun run openapi:check      # exit 1 on drift
 ```
 
-`contracts:check` (part of `validate`) runs the drift check, so a change to the
-operator contract that is not reflected in the committed OpenAPI document, or a
-hand-edit to the document, fails gates. The generator's inputs are themselves
+`bun run release:prepare` regenerates the document at each version bump, so a
+change to the operator contract lands in the committed OpenAPI document with
+the release, and a hand-edit is overwritten. The generator's inputs are themselves
 committed artifacts (`operator-contract.json` plus the typed-client-IO ratchet
 inputs), so generation is deterministic.

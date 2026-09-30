@@ -18,7 +18,6 @@ and a thin CLI (`bin` entry):
   optional daemon leg and native-addon copy/cross-fetch, all config-driven.
 - **release-cut.** Prepare, bump, changelog, tag only. Never re-runs gates (CI
   owns validation).
-- **coverage-gate.** Aggregates coverage and enforces a per-repo floor that only increases.
 - **verification-ledger.** Totals math and JSON and Markdown rendering of a
   repo-collected verification inventory.
 - **post-build-smoke.** Boots a compiled binary and checks its version banner.

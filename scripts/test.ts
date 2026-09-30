@@ -84,8 +84,21 @@ function defaultTestArgs(): readonly string[] {
   return [...rootTestFiles, ...integrationArgs, ...toolchainArgs];
 }
 
+/**
+ * Paths passed on the command line win. Flags alone (`--changed=origin/main`,
+ * `-t pattern`) keep the default file set, so `bun run test:changed` narrows
+ * the suite this script owns instead of letting bun discover every *.test.ts
+ * under the checkout (fixtures, the workers legs, vendored packages).
+ */
 function resolveTestArgs(): readonly string[] {
-  return args.length > 0 ? args : defaultTestArgs();
+  const hasPaths = args.some((arg, index) => !arg.startsWith('-') && !isFlagValue(index));
+  return hasPaths ? args : [...args, ...defaultTestArgs()];
+}
+
+/** True for the value of a space-separated flag such as `-t name` or `--timeout 5000`. */
+function isFlagValue(index: number): boolean {
+  const previous = args[index - 1];
+  return previous !== undefined && /^(-t|--test-name-pattern|--timeout|--preload|--rerun-each|--bail)$/.test(previous);
 }
 
 /**

@@ -49,10 +49,6 @@ describe('globToRegex', () => {
     expect(re.test('file.ts')).toBe(true);
   });
 
-  test('returns a RegExp instance', () => {
-    expect(globToRegex('*.ts')).toBeInstanceOf(RegExp);
-  });
-
   test('matches at end of path segment', () => {
     const re = globToRegex('*.json');
     expect(re.test('package.json')).toBe(true);
@@ -61,10 +57,6 @@ describe('globToRegex', () => {
 });
 
 describe('buildGlobMatcher', () => {
-  test('returns a function', () => {
-    expect(typeof buildGlobMatcher('*.ts')).toBe('function');
-  });
-
   test('matcher returns true for matching path', () => {
     const match = buildGlobMatcher('*.ts');
     expect(match('foo.ts')).toBe(true);

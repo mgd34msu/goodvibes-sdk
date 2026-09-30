@@ -80,9 +80,4 @@ describe('createEmbeddedSession', () => {
     const record = await session.sessions.createSession({ project: work, title: 'embed' });
     expect(record.id.length).toBeGreaterThan(0);
   });
-
-  test('stop is idempotent', async () => {
-    await session.stop();
-    await session.stop();
-  });
 });

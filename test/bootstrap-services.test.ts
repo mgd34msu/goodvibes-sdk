@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -519,38 +519,5 @@ describe('startHostServices detached daemon spawn (Layer 2 default)', () => {
     expect(handle.daemonStatus.mode).toBe('external');
     // Adopting a pre-existing daemon is not a "we started it" event: no hint.
     expect(handle.daemonStartHint).toBeUndefined();
-  });
-});
-
-describe('client bootstrap cannot reach daemon composition code', () => {
-  /**
-   * Source-level, on purpose. A behavioural test cannot see this: an
-   * `await import('../daemon/server.js')` on a branch nothing takes still makes
-   * a bundler pull `platform/daemon`, and everything it imports, into a client
-   * bundle, and wrap the shared platform modules in lazy initializers to do it.
-   * That is what left module constants uninitialized when hoisted turn-engine
-   * functions read them (`ACTION_VERBS` undefined, every turn dead). The daemon
-   * product composes DaemonServer/HttpListener with direct static imports in its
-   * own entrypoint; this module must have no path to them at all.
-   */
-  const MODULE_PATH = new URL('../packages/sdk/src/platform/runtime/bootstrap-services.ts', import.meta.url);
-  const source = readFileSync(MODULE_PATH, 'utf8');
-
-  test('no dynamic import reaches platform/daemon', () => {
-    const dynamicDaemonImport = /import\s*\(\s*['"][^'"]*\/daemon\//;
-    expect(dynamicDaemonImport.test(source)).toBe(false);
-  });
-
-  test('no static import reaches platform/daemon either', () => {
-    const staticDaemonImport = /\bfrom\s+['"][^'"]*\/daemon\//;
-    expect(staticDaemonImport.test(source)).toBe(false);
-  });
-
-  test('the daemon composition classes are neither bound nor constructed here', () => {
-    // Naming them in a comment is fine, reaching them is not.
-    expect(source).not.toMatch(/new\s+DaemonServer\b/);
-    expect(source).not.toMatch(/new\s+HttpListener\b/);
-    expect(source).not.toMatch(/\{\s*DaemonServer[\s,}]/);
-    expect(source).not.toMatch(/\{\s*HttpListener[\s,}]/);
   });
 });

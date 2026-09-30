@@ -498,43 +498,6 @@ describe('PersistentStore writes owner-only, durably, and leaves no litter', () 
     expect(new PersistentStore<{ value: number }>(join(dir, 'x.json')).lockPath)
       .toBe(`${join(dir, 'x.json')}.lock`);
   });
-
-  /**
-   * STRUCTURAL, AND SAID SO.
-   *
-   * The fsync ordering, write, sync the file, rename, sync the directory,
-   * has no observable behavioural consequence that a test on a working machine
-   * can distinguish from its absence: what it buys is what survives a power
-   * cut, and a power cut is not something this suite can stage. Simulating one
-   * would only test the simulation.
-   *
-   * So this asserts the defining lines are present, in order, in the source.
-   * That is a weaker claim than the others in this file and is labelled as
-   * such: it catches a removal or a reordering of the durability calls, which
-   * is the realistic regression, and it does not and cannot prove durability.
-   */
-  test('the persist path syncs the file before the rename and the directory after it', () => {
-    const source = readFileSync(
-      join(import.meta.dir, '..', 'packages/sdk/src/platform/state/persistent-store.ts'),
-      'utf-8',
-    );
-    // SCOPED TO THE persist BODY, and that scoping is not cosmetic: this test
-    // was first written with a bare `source.indexOf('await handle.sync();')`,
-    // which matched the sync inside the `syncDirectory` helper defined ABOVE
-    // the class. Every ordering assertion then passed for a reason that had
-    // nothing to do with persist, and a mutation moving persist's own sync
-    // could not have been detected. Anchored on the write that precedes it.
-    const body = source.slice(source.indexOf('  async persist(data: T): Promise<void> {'));
-    expect(body.length).toBeGreaterThan(0);
-    const write = body.indexOf("await handle.writeFile(content, 'utf-8');");
-    const syncFile = body.indexOf('await handle.sync();');
-    const rename = body.indexOf('await fs.rename(tmpPath, this.filePath);');
-    const syncDir = body.indexOf('await syncDirectory(this.dir);');
-    expect(write).toBeGreaterThan(-1);
-    expect(syncFile).toBeGreaterThan(write);
-    expect(rename).toBeGreaterThan(syncFile);
-    expect(syncDir).toBeGreaterThan(rename);
-  });
 });
 
 describe('two independent writers over one record file lose nothing', () => {

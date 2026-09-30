@@ -115,4 +115,3 @@ Operational docs in the repository root, one level up from `docs/`:
 - [Project README](../README.md)
 - [Security policy](../SECURITY.md)
 - [Changelog](../CHANGELOG.md)
-- [Test coverage](../COVERAGE.md)

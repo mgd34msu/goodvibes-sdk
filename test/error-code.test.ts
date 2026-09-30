@@ -372,25 +372,6 @@ describe('backward compatibility', () => {
 // ---------------------------------------------------------------------------
 
 describe('agent and domain-specific codes', () => {
-  test('AGENT_TIMEOUT is in SDKErrorCodes', () => {
-    expect(SDKErrorCodes.AGENT_TIMEOUT).toBe('AGENT_TIMEOUT');
-    expect(isKnownErrorCode('AGENT_TIMEOUT')).toBe(true);
-  });
-
-  test('AGENT_FAILED is in SDKErrorCodes', () => {
-    expect(SDKErrorCodes.AGENT_FAILED).toBe('AGENT_FAILED');
-    expect(isKnownErrorCode('AGENT_FAILED')).toBe(true);
-  });
-
-  test('TOKEN_EXPIRED is in SDKErrorCodes', () => {
-    expect(SDKErrorCodes.TOKEN_EXPIRED).toBe('TOKEN_EXPIRED');
-    expect(isKnownErrorCode('TOKEN_EXPIRED')).toBe(true);
-  });
-
-  test('CANCELLED is in SDKErrorCodes', () => {
-    expect(SDKErrorCodes.CANCELLED).toBe('CANCELLED');
-    expect(isKnownErrorCode('CANCELLED')).toBe(true);
-  });
 
   test('explicit AGENT_TIMEOUT code survives round-trip through toJSON', () => {
     const err = new GoodVibesSdkError('agent timed out', {

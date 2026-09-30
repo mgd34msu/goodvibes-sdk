@@ -67,4 +67,4 @@ This surface works on Hermes (React Native / Expo), browser, Cloudflare Workers,
 
 ## Enforcement
 
-CI job `platform-matrix` (`rn-bundle` dimension, implemented in `test/rn-bundle-node-imports.test.ts`) verifies that the companion entry point dist bundles, `react-native.js`, `expo.js`, `browser.js`, `browser-homeassistant.js`, `browser-knowledge.js`, `web.js`, `workers.js`, `auth.js`, contain no `Bun.*` identifiers and no `node:*` imports. Any match fails CI and blocks release.
+The release gates' `runtimes (rn-bundle)` job (`release-gates.yml`, implemented in `test/rn-bundle-node-imports.test.ts`) verifies that the companion entry point dist bundles, `react-native.js`, `expo.js`, `browser.js`, `browser-homeassistant.js`, `browser-knowledge.js`, `web.js`, `workers.js`, `auth.js`, contain no `Bun.*` identifiers and no `node:*` imports. Any match fails the release gates and blocks the release.

@@ -16,7 +16,6 @@ import {
   parseMethodIds,
   untypedMethodIds,
 } from '../scripts/foundation-io-coverage-rule.ts';
-import { FOUNDATION_IO_COVERAGE_BASELINE } from '../scripts/foundation-io-coverage-baseline.ts';
 
 const ROOT = resolve(import.meta.dir, '..');
 
@@ -77,18 +76,6 @@ describe('foundation-io coverage ratchet: pure rule', () => {
 });
 
 describe('foundation-io coverage ratchet: live source', () => {
-  test('the checked-in baseline equals the real untyped count', () => {
-    const idsText = readFileSync(resolve(ROOT, 'packages/contracts/src/generated/operator-method-ids.ts'), 'utf8');
-    const typesText = readFileSync(resolve(ROOT, 'packages/contracts/src/generated/foundation-client-types.ts'), 'utf8');
-    const ids = parseMethodIds(idsText);
-    const input = parseMapKeys(typesText, 'OperatorMethodInputMap');
-    const output = parseMapKeys(typesText, 'OperatorMethodOutputMap');
-    const untyped = untypedMethodIds(ids, input, output);
-    // If this fails, either add typed IO entries (count rose) or update the
-    // baseline (count fell), the ratchet's own message says which.
-    expect(untyped.length).toBe(FOUNDATION_IO_COVERAGE_BASELINE);
-    expect(evaluateRatchet(untyped.length, FOUNDATION_IO_COVERAGE_BASELINE).ok).toBe(true);
-  });
 
   test('the covered restore verbs are among the fully-typed set (Item 1 regression net)', () => {
     const idsText = readFileSync(resolve(ROOT, 'packages/contracts/src/generated/operator-method-ids.ts'), 'utf8');

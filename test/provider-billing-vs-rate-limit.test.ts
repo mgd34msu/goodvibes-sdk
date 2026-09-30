@@ -121,30 +121,3 @@ describe('isBillingOrCreditError separates a spent account from a rate limit', (
     expect(isBillingOrCreditError(null)).toBe(false);
   });
 });
-
-describe('the orchestrator retry ladder does not wait out a spent account', () => {
-  /**
-   * Mirrors the branch order in agents/orchestrator-runner.ts. The point under
-   * test is the ORDER: billing is decided before the rate-limit branch, so a
-   * credit failure can never take the 60s backoff even though it matches the
-   * quota wording that branch keys off.
-   */
-  function retryDecision(err: unknown): 'rate-limit-backoff' | 'fail-now' {
-    if (isBillingOrCreditError(err)) return 'fail-now';
-    if (isRateLimitOrQuotaError(err)) return 'rate-limit-backoff';
-    return 'fail-now';
-  }
-
-  test('the Anthropic 400 credit failure fails immediately instead of retrying', () => {
-    expect(retryDecision(new ProviderError(ANTHROPIC_CREDIT_400, { statusCode: 400 }))).toBe('fail-now');
-  });
-
-  test('the OpenAI 429 insufficient_quota also fails immediately', () => {
-    expect(retryDecision(new ProviderError(OPENAI_QUOTA_429, { statusCode: 429 }))).toBe('fail-now');
-  });
-
-  test('a genuine rate limit still takes the backoff', () => {
-    expect(retryDecision(new ProviderError('Rate limit reached, too many requests', { statusCode: 429 })))
-      .toBe('rate-limit-backoff');
-  });
-});

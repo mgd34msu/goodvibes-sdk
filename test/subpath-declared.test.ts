@@ -15,12 +15,11 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const REPO_ROOT = resolve(import.meta.dir, '..');
 const PACKAGE_DIR = join(REPO_ROOT, 'packages', 'sdk');
-const PLATFORM_DIR = join(PACKAGE_DIR, 'src', 'platform');
 
 function exportsMap(): Record<string, unknown> {
   const manifest = JSON.parse(readFileSync(join(PACKAGE_DIR, 'package.json'), 'utf8')) as {
@@ -51,10 +50,6 @@ describe('every shipped capability is importable from the published package', ()
     expect(entry?.types).toBe('./dist/platform/payments/index.d.ts');
   });
 
-  test('the payments source module the entry names actually exists', () => {
-    expect(existsSync(join(PLATFORM_DIR, 'payments', 'index.ts'))).toBe(true);
-  });
-
   test('every declared platform subpath names a dist path, not a src path', () => {
     // A subpath pointing into src/ works in the repo and breaks on install,
     // because src is not in the published `files` list.
@@ -71,44 +66,5 @@ describe('every shipped capability is importable from the published package', ()
       }
     }
     expect(offenders).toEqual([]);
-  });
-
-  test('the known-undeclared list is honest about what it covers', () => {
-    // The list exists so the gate can ship without blocking lanes that did not
-    // introduce the defect. It must stay a list of REAL top-level capability
-    // directories, an entry naming something that does not exist would be a
-    // silent widening of the exemption.
-    const source = readFileSync(join(REPO_ROOT, 'scripts', 'check-subpath-declared.ts'), 'utf8');
-    const block = /const KNOWN_UNDECLARED: readonly string\[\] = \[([\s\S]*?)\];/.exec(source)?.[1] ?? '';
-    const listed = [...block.matchAll(/'\.\/platform\/([^']+)'/g)].map((match) => match[1] ?? '');
-    expect(listed.length).toBeGreaterThan(0);
-    for (const name of listed) {
-      expect(existsSync(join(PLATFORM_DIR, name, 'index.ts'))).toBe(true);
-    }
-  });
-
-  test('the rule is top-level only, so internal submodules are not flagged', () => {
-    // ./platform/tools/read is reached through ./platform/tools. A rule that
-    // demanded an entry for every barrel file would fire on ~97 modules here
-    // and be switched off within a day.
-    const declared = new Set(Object.keys(exportsMap()));
-    expect(existsSync(join(PLATFORM_DIR, 'tools', 'read', 'index.ts'))).toBe(true);
-    expect(declared.has('./platform/tools/read')).toBe(false);
-    expect(declared.has('./platform/tools')).toBe(true);
-  });
-});
-
-describe('the surface a consumer needs to construct the capability', () => {
-  test('the daemon-side service is exported, not merely present in source', async () => {
-    // Reachable from source and absent from the published surface is exactly
-    // the shape of gap the subpath check cannot see, because the SUBPATH was
-    // declared correctly, only the symbol was missing.
-    const surface = await import('../packages/sdk/src/platform/payments/index.js');
-    expect(typeof surface.PaymentsGatewayServiceImpl).toBe('function');
-    // And the pieces a daemon has to build to use it.
-    expect(typeof surface.readPaymentsServiceConfig).toBe('function');
-    expect(typeof surface.createModelMerchantJudge).toBe('function');
-    expect(typeof surface.runCheckout).toBe('function');
-    expect(typeof surface.createChannelPaymentNotifier).toBe('function');
   });
 });

@@ -14,21 +14,11 @@ describe('runtime meter', () => {
     resetMetrics();
   });
 
-  test('platformMeter is exported from metrics module', async () => {
-    const { platformMeter } = await import('../packages/sdk/src/platform/runtime/metrics.js');
-    expect(platformMeter).not.toBeNull(); // presence-only: platformMeter exported
-  });
-
   test('httpRequestsTotal counter add() and value() work', async () => {
     const { httpRequestsTotal } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     const before = httpRequestsTotal.value({ status_class: '2xx' });
     httpRequestsTotal.add(1, { status_class: '2xx' });
     expect(httpRequestsTotal.value({ status_class: '2xx' })).toBe(before + 1);
-  });
-
-  test('llmRequestDurationMs histogram record() does not throw', async () => {
-    const { llmRequestDurationMs } = await import('../packages/sdk/src/platform/runtime/metrics.js');
-    expect(() => llmRequestDurationMs.record(125, { provider: 'anthropic' })).not.toThrow();
   });
 
   test('sessionsActive gauge can be set and read', async () => {

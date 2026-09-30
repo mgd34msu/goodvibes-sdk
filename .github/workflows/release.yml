@@ -271,8 +271,8 @@ jobs:
             in_section { print }
           ' CHANGELOG.md)
           if [ -z "$EXCERPT" ]; then
-            # Non-fatal by design (scripts/check-changelog.ts owns the hard gate,
-            # and it already passed for this version), but never silent: a
+            # Non-fatal by design (`bun run release:prepare` scaffolds the
+            # section at the version bump and checks it), but never silent: a
             # one-line release body means the extraction missed a section that
             # exists.
             echo "::warning::No CHANGELOG.md section matched ${VERSION}; falling back to a bare 'Release ${VERSION}' body. Check the heading form for this version."

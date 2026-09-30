@@ -14,10 +14,6 @@ import { randomUUID } from 'node:crypto';
 import { createDaemonRuntimeSessionRouteHandlers } from '../packages/daemon-sdk/src/runtime-session-routes.js';
 import type { DaemonRuntimeRouteContext } from '../packages/daemon-sdk/src/runtime-route-types.js';
 import type { ConversationMessageEnvelope } from '../packages/sdk/src/platform/control-plane/conversation-message.js';
-import type {
-  CompanionChatTurnStartedEvent,
-  CompanionChatTurnCompletedEvent,
-} from '../packages/sdk/src/platform/companion/companion-chat-types.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -611,81 +607,3 @@ describe('body size handling', () => {
   });
 });
 
-describe('envelope shape consistency: chat-mode vs Problem-2', () => {
-  /**
-   * Cross-cutting test: asserts that CompanionChatTurnStartedEvent.envelope and
-   * ConversationMessageEnvelope share the same structural shape. TypeScript ensures
-   * this at compile time; here we verify at runtime by constructing both and
-   * asserting structural equivalence.
-   */
-  test('ConversationMessageEnvelope fields are a structural subset of turn.started envelope', () => {
-    const envelope: ConversationMessageEnvelope = {
-      sessionId: 'sess-1',
-      messageId: 'msg-1',
-      body: 'Hello',
-      source: 'companion-chat-user',
-      timestamp: Date.now(),
-    };
-
-    // Simulate what _runTurn emits on turn.started
-    const turnStartedPayload: CompanionChatTurnStartedEvent = {
-      type: 'turn.started',
-      sessionId: envelope.sessionId,
-      messageId: envelope.messageId,
-      turnId: randomUUID(),
-      envelope,
-    };
-
-    expect(turnStartedPayload.envelope).not.toBeUndefined(); // presence-only: envelope field
-    expect(turnStartedPayload.envelope.sessionId).toBe(envelope.sessionId);
-    expect(turnStartedPayload.envelope.messageId).toBe(envelope.messageId);
-    expect(turnStartedPayload.envelope.body).toBe(envelope.body);
-    expect(turnStartedPayload.envelope.source).toBe('companion-chat-user');
-    expect(typeof turnStartedPayload.envelope.timestamp).toBe('number');
-  });
-
-  test('ConversationMessageEnvelope fields are a structural subset of turn.completed envelope', () => {
-    const envelope: ConversationMessageEnvelope = {
-      sessionId: 'sess-1',
-      messageId: 'assistant-msg-1',
-      body: 'Hello from assistant',
-      source: 'companion-chat-assistant',
-      timestamp: Date.now(),
-    };
-
-    const turnCompletedPayload: CompanionChatTurnCompletedEvent = {
-      type: 'turn.completed',
-      sessionId: envelope.sessionId,
-      turnId: randomUUID(),
-      assistantMessageId: envelope.messageId,
-      envelope,
-    };
-
-    expect(turnCompletedPayload.envelope).not.toBeUndefined(); // presence-only: envelope field
-    expect(turnCompletedPayload.envelope.source).toBe('companion-chat-assistant');
-    expect(turnCompletedPayload.envelope.body).toBe('Hello from assistant');
-  });
-
-  test('Problem-2 follow-up envelope is structurally identical to chat-mode envelope', () => {
-    // Both must satisfy ConversationMessageEnvelope, confirmed by TypeScript.
-    // At runtime: verify that a Problem-2 envelope and a chat-mode envelope
-    // have exactly the same required keys.
-    const chatEnvelope: ConversationMessageEnvelope = {
-      sessionId: 'sess-1',
-      messageId: 'msg-1',
-      body: 'test',
-      source: 'companion-chat-user',
-      timestamp: 1000,
-    };
-    const followupEnvelope: ConversationMessageEnvelope = {
-      sessionId: 'sess-1',
-      messageId: 'msg-2',
-      body: 'test',
-      source: 'companion-followup',
-      timestamp: 1000,
-    };
-    const chatKeys = Object.keys(chatEnvelope).sort();
-    const followupKeys = Object.keys(followupEnvelope).sort();
-    expect(chatKeys).toEqual(followupKeys);
-  });
-});

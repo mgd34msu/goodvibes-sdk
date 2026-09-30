@@ -43,26 +43,6 @@ describe('the header a transport uses to claim a live human action', () => {
     // safely than the code reads.
     expect(EXPLICIT_USER_REQUEST_HEADER).toBe('x-goodvibes-explicit-user-request');
   });
-
-  test('only the literal "true" is a claim', () => {
-    // The parse is deliberately strict. "1", "yes" and an empty header are all
-    // callers that cannot honestly claim a human action, and a permissive
-    // reading would hand the claim to exactly the automated paths the field
-    // exists to distinguish.
-    const read = (raw: string | null): boolean | undefined => {
-      if (raw === null) return undefined;
-      return raw.trim().toLowerCase() === 'true' ? true : false;
-    };
-    expect(read('true')).toBe(true);
-    expect(read('TRUE')).toBe(true);
-    expect(read('  true  ')).toBe(true);
-    expect(read('1')).toBe(false);
-    expect(read('yes')).toBe(false);
-    expect(read('')).toBe(false);
-    // Absent is not false, it is "did not claim", which is what a scheduled
-    // run legitimately reports.
-    expect(read(null)).toBeUndefined();
-  });
 });
 
 describe('what the handler does with the claim', () => {

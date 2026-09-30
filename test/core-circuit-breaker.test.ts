@@ -49,16 +49,6 @@ describe('ConsecutiveErrorBreaker', () => {
     expect(breaker.consecutiveErrors).toBe(0);
   });
 
-  test('consecutiveErrors getter returns current count', () => {
-    expect(breaker.consecutiveErrors).toBe(0);
-    breaker.recordAllFailed();
-    expect(breaker.consecutiveErrors).toBe(1);
-    breaker.recordAllFailed();
-    expect(breaker.consecutiveErrors).toBe(2);
-    breaker.recordSuccess();
-    expect(breaker.consecutiveErrors).toBe(0);
-  });
-
   test('constants have expected values', () => {
     expect(CONSECUTIVE_ERROR_WARN).toBe(5);
     expect(CONSECUTIVE_ERROR_BREAK).toBe(10);

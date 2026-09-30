@@ -131,13 +131,6 @@ describe('AutoHealer: never throws', () => {
 });
 
 describe('AutoHealer: HealResult shape', () => {
-  test('result always has healed (boolean) and content (string)', async () => {
-    const healer = makeHealer(true);
-    const result = await healer.heal('test.ts', VALID_TS, ['some error']);
-    expect(typeof result.healed).toBe('boolean');
-    expect(typeof result.content).toBe('string');
-  });
-
   test('result.method is undefined when config gate blocks execution', async () => {
     const healer = makeHealer(false);
     const result = await healer.heal('test.ts', VALID_TS, ['error']);

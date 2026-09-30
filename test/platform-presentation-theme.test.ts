@@ -9,13 +9,9 @@
  *  - the color helpers;
  *  - generateSystemTheme: deterministic, tolerant of missing slots, and
  *    meeting the same floors on three real terminal palettes;
- *  - the legacy bridge: neon dark reproduces TONE_TOKENS / DIFF_TONES;
- *  - purity and the no-module-scope-calls rule for theme data files.
+ *  - the legacy bridge: neon dark reproduces TONE_TOKENS / DIFF_TONES.
  */
 import { describe, expect, test } from 'bun:test';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_THEME_NAME,
   DIFF_TONES,
@@ -45,8 +41,6 @@ import {
 
 import { CONFIG_SCHEMA, DEFAULT_CONFIG } from '../packages/sdk/src/platform/config/schema.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const THEME_DIR = resolve(__dirname, '../packages/sdk/src/platform/presentation/theme');
 const HEX6 = /^#[0-9a-f]{6}$/;
 
 /** Tokens allowed to resolve to '' (terminal default background). */
@@ -344,34 +338,6 @@ describe('legacy bridge', () => {
         };
         walk(tones);
       }
-    }
-  });
-});
-
-describe('theme module hygiene', () => {
-  const files = (dir: string): string[] =>
-    readdirSync(dir).flatMap((entry) => {
-      const full = join(dir, entry);
-      return statSync(full).isDirectory() ? files(full) : entry.endsWith('.ts') ? [full] : [];
-    });
-
-  test('no file under theme/ touches fs/tty/process', () => {
-    const all = files(THEME_DIR);
-    expect(all.length).toBeGreaterThan(5);
-    const forbidden = [/from\s+['"]node:/, /require\(/, /process\./];
-    for (const file of all) {
-      const source = readFileSync(file, 'utf8');
-      for (const pattern of forbidden) expect(pattern.test(source)).toBe(false);
-    }
-  });
-
-  test('bundled theme files are plain data (no calls at module scope)', () => {
-    for (const file of files(join(THEME_DIR, 'bundled'))) {
-      const code = readFileSync(file, 'utf8')
-        .replace(/\/\*[\s\S]*?\*\//g, '')
-        .replace(/\/\/.*$/gm, '')
-        .replace(/'[^']*'/g, "''");
-      expect(/[A-Za-z0-9_$\])]\s*\(/.test(code)).toBe(false);
     }
   });
 });

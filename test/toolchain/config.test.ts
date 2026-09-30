@@ -70,9 +70,9 @@ describe('toolchain config', () => {
   test('rejects a malformed nested section with a clear message naming the bad field', () => {
     const raw = JSON.stringify({
       packageName: '@pellux/goodvibes-tui',
-      coverage: { funcsFloor: 80, linesFloor: '90', command: ['bun', 'test', '--coverage', 'src'] },
+      smoke: { bannerPrefix: 'goodvibes ', forbiddenStrings: 'sqlite-vec', binaryDefault: 'dist/goodvibes' },
     });
-    expect(() => parseToolchainConfig(raw)).toThrow(/coverage\.linesFloor/);
+    expect(() => parseToolchainConfig(raw)).toThrow(/smoke\.forbiddenStrings/);
   });
   test('rejects a malformed enum field with a clear message naming the bad field', () => {
     const raw = JSON.stringify({

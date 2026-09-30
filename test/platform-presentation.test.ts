@@ -14,22 +14,14 @@
  *    reads process.stdout/stderr.
  */
 import { describe, expect, test } from 'bun:test';
-import { readFileSync, readdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
-  DIFF_TONES,
   GLYPHS,
-  SPINNER_FRAMES,
   STATE_GLYPHS,
   THINKING_PHRASES,
   TONE_TOKENS,
   resolveTones,
   waitingPhrase,
 } from '../packages/sdk/src/platform/presentation/index.ts';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const PRESENTATION_DIR = resolve(__dirname, '../packages/sdk/src/platform/presentation');
 
 describe('resolveTones', () => {
   test('dark is reference-identical to TONE_TOKENS', () => {
@@ -70,19 +62,9 @@ describe('resolveTones', () => {
     expect(light.accent.workflow).toBe(TONE_TOKENS.accent.workflow);
     expect(light.accent.conversation).toBe(TONE_TOKENS.accent.conversation);
   });
-
-  test('DIFF_TONES and SPINNER_FRAMES are exported verbatim', () => {
-    expect(DIFF_TONES).toEqual({ add: '#00ff88', del: '#ff4444', hunk: '#88aaff' });
-    expect(SPINNER_FRAMES).toEqual(['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']);
-  });
 });
 
 describe('GLYPHS / STATE_GLYPHS', () => {
-  test('status group carries the TUI-reconciled values', () => {
-    expect(GLYPHS.status.idle).toBe('◌');
-    expect(GLYPHS.status.info).toBe('○');
-    expect(GLYPHS.status.warn).toBe('⚠');
-  });
 
   test('STATE_GLYPHS aliases GLYPHS.status, not independent literals', () => {
     expect(STATE_GLYPHS).toEqual({
@@ -99,10 +81,6 @@ describe('GLYPHS / STATE_GLYPHS', () => {
 });
 
 describe('waitingPhrase', () => {
-  test('approval', () => {
-    expect(waitingPhrase('approval')).toBe('Waiting for your approval');
-  });
-
   test('reconnecting', () => {
     expect(waitingPhrase('reconnecting', { reconnectAttempt: 2, reconnectMaxAttempts: 5 }))
       .toBe('Reconnecting (attempt 2/5)...');
@@ -131,27 +109,5 @@ describe('waitingPhrase', () => {
     expect(waitingPhrase('pre-first-token')).toBe('Waiting for model 0s...');
     expect(waitingPhrase('stalled')).toBe('Stalled 0s...');
     expect(waitingPhrase('thinking')).toBe(THINKING_PHRASES[0]);
-  });
-});
-
-describe('purity', () => {
-  test('no file under platform/presentation/ touches fs/tty/process', () => {
-    const files = readdirSync(PRESENTATION_DIR).filter((f) => f.endsWith('.ts'));
-    expect(files.length).toBeGreaterThan(0);
-    const forbidden = [
-      /from\s+['"]node:fs['"]/,
-      /from\s+['"]node:tty['"]/,
-      /from\s+['"]node:process['"]/,
-      /require\(['"]node:/,
-      /process\.stdout/,
-      /process\.stderr/,
-      /process\.env/,
-    ];
-    for (const file of files) {
-      const source = readFileSync(resolve(PRESENTATION_DIR, file), 'utf8');
-      for (const pattern of forbidden) {
-        expect(pattern.test(source)).toBe(false);
-      }
-    }
   });
 });

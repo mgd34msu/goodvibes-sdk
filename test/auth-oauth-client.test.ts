@@ -82,11 +82,4 @@ describe('OAuthClient', () => {
       expect(client.decodeJwtPayload('header.!!!invalid!!!.sig')).toBeNull();
     });
   });
-
-  describe('config accessor', () => {
-    test('exposes the config passed at construction', () => {
-      const client = new OAuthClient(BASE_CONFIG);
-      expect(client.config).toBe(BASE_CONFIG);
-    });
-  });
 });

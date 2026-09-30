@@ -108,14 +108,6 @@ describe('chaos: MCP reconnect flapping', () => {
   });
 
   describe('auth-expiry: reconnect exhaustion', () => {
-    test('DEFAULT_RECONNECT_CONFIG has sensible maxAttempts', () => {
-      expect(DEFAULT_RECONNECT_CONFIG.maxAttempts).toBeGreaterThan(0);
-      expect(DEFAULT_RECONNECT_CONFIG.maxAttempts).toBeLessThanOrEqual(20);
-    });
-
-    test('DEFAULT_RECONNECT_CONFIG base delay is positive', () => {
-      expect(DEFAULT_RECONNECT_CONFIG.baseDelayMs).toBeGreaterThan(0);
-    });
 
     test('after exhausted reconnect attempts, can transition to disconnected', () => {
       // Simulate: N reconnect attempts -> then give up -> disconnected

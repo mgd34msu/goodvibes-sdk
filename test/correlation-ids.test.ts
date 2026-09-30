@@ -7,13 +7,6 @@ import { describe, expect, test } from 'bun:test';
  * are not exercised here because no production code calls them.
  */
 describe('correlation ids', () => {
-  test('getCorrelationContext returns empty object when no context is active', async () => {
-    const { getCorrelationContext } = await import('../packages/sdk/src/platform/runtime/correlation.js');
-    const ctx = getCorrelationContext();
-    // toBeTypeOf('object') already proves ctx is defined; check the empty-ctx contract directly.
-    expect(ctx).toBeTypeOf('object');
-  });
-
   test('correlationCtx.run provides requestId within the callback', async () => {
     const { correlationCtx, getCorrelationContext } = await import('../packages/sdk/src/platform/runtime/correlation.js');
     let captured: ReturnType<typeof getCorrelationContext> = {};

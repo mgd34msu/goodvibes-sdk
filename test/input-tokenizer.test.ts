@@ -74,9 +74,4 @@ describe('InputTokenizer: baseline sanity (text and key tokens)', () => {
     expect(t.type).toBe('key');
     expect(t.logicalName).toBe('enter');
   });
-
-  test('an unrecognized bare escape does not throw', () => {
-    const tokenizer = new InputTokenizer();
-    expect(() => tokenizer.feed('\x1b')).not.toThrow();
-  });
 });

@@ -21,12 +21,6 @@ describe('auth events', () => {
     resetMetrics();
   });
 
-  test('authSuccessTotal and authFailureTotal counters are exported from metrics', async () => {
-    const mod = await import('../packages/sdk/src/platform/runtime/metrics.js');
-    expect(mod.authSuccessTotal).not.toBeNull(); // presence-only: counter exported
-    expect(mod.authFailureTotal).not.toBeNull(); // presence-only: counter exported
-  });
-
   test('authSuccessTotal counter supports add()', async () => {
     const { authSuccessTotal } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     const before = authSuccessTotal.value();

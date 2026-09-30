@@ -54,10 +54,6 @@ function makeConfigManagerWith(
 }
 
 describe('platform/runtime/sandbox: behavior smoke', () => {
-  test('isRunningInWsl returns a boolean', () => {
-    expect(typeof isRunningInWsl()).toBe('boolean');
-  });
-
   test('getSandboxConfigSnapshot returns a frozen snapshot from config values', () => {
     const config = getSandboxConfigSnapshot(makeConfigManager());
     expect(Object.isFrozen(config)).toBe(true);
@@ -86,17 +82,6 @@ describe('platform/runtime/sandbox: behavior smoke', () => {
     expect(status.runningInWsl).toBe(isRunningInWsl());
     expect(status.recommendedBackend).toBe('qemu');
     expect(Array.isArray(status.warnings)).toBe(true);
-  });
-
-  test('listSandboxProfiles returns a non-empty array, each profile has id/label/kind/isolation', () => {
-    const profiles = listSandboxProfiles(makeConfigManager());
-    expect(profiles).toBeInstanceOf(Array);
-    expect(profiles.length).toBeGreaterThan(0);
-    const first = profiles[0] as unknown as Record<string, unknown>;
-    expect(typeof first.id).toBe('string');
-    expect(typeof first.label).toBe('string');
-    expect(typeof first.kind).toBe('string');
-    expect(typeof first.isolation).toBe('string');
   });
 
   test('listSandboxPresets returns an array containing secure-balanced', () => {

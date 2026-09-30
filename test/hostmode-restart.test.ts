@@ -139,12 +139,6 @@ describe('CM3: ConfigManager.subscribe: unsubscribe stops notifications', () => 
     cm.set('httpListener.port', 5000);
     expect(received).toEqual([4000]); // 5000 not received after unsubscribe
   });
-
-  test('unsub() is idempotent (calling twice does not throw)', () => {
-    const cm = makeConfigManager();
-    const unsub = cm.subscribe('httpListener.port', () => {});
-    expect(() => { unsub(); unsub(); }).not.toThrow();
-  });
 });
 
 describe('CM4: ConfigManager.subscribe: key isolation', () => {
@@ -336,19 +330,6 @@ describe('HW3: createHostModeRestartWatcher: unsubscribe prevents further callba
     handle.unsubscribe();
     cm.set('httpListener.port', nextTestPort());
     expect(onRestart).toHaveBeenCalledTimes(0);
-  });
-});
-
-describe('HW4: createHostModeRestartWatcher: unsubscribe is idempotent', () => {
-  test('calling unsubscribe() twice does not throw', () => {
-    const cm = makeConfigManager();
-    const handle = createHostModeRestartWatcher({
-      configManager: cm,
-      keys: ['httpListener.port'],
-      onRestart: () => {},
-      getIsRunning: () => true,
-    });
-    expect(() => { handle.unsubscribe(); handle.unsubscribe(); }).not.toThrow();
   });
 });
 

@@ -151,7 +151,7 @@ Commit **all** generated outputs together (JSON + the generated `.ts` files + th
 ```
 bun run refresh:contracts:check   # exit 1 on any drift between source and artifacts
 bun run contracts:check           # same, CI wrapper
-bun run docs:check                # docs regenerated + completeness
+bun run docs:check                # docs regenerated
 bun test test/contracts-sync.test.ts test/operator-contract-catalog.test.ts \
          test/operator-sdk-coverage.test.ts test/transport-parity.test.ts
 ```

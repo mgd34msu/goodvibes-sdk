@@ -6,11 +6,6 @@
 import { describe, expect, test } from 'bun:test';
 
 describe('platform/workflow: smoke', () => {
-  test('fireTriggers has arity >= 1 (accepts trigger config)', async () => {
-    const { fireTriggers } = await import('../packages/sdk/src/platform/workflow/index.js');
-    expect(fireTriggers.length).toBeGreaterThanOrEqual(1);
-  });
-
   test('fireTriggers resolves to empty array when triggerManager has no triggers', async () => {
     const { fireTriggers } = await import('../packages/sdk/src/platform/workflow/index.js');
     // fireTriggers(event, triggerManager), stub a manager with no triggers

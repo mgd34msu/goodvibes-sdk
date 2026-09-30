@@ -5,7 +5,6 @@ import { tmpdir } from 'node:os';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 import { ToolRegistry } from '../packages/sdk/src/platform/tools/registry.js';
 import {
-  appendGoodVibesRuntimeAwarenessPrompt,
   createGoodVibesContextTool,
   createGoodVibesSettingsTool,
 } from '../packages/sdk/src/platform/tools/goodvibes-runtime/index.js';
@@ -90,11 +89,5 @@ describe('GoodVibes runtime tools', () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain('Refusing to persist a raw credential');
     expect(configManager.get('surfaces.slack.botToken')).toBe('');
-  });
-
-  test('runtime awareness prompt tells models to inspect harness state', () => {
-    const prompt = appendGoodVibesRuntimeAwarenessPrompt('Base prompt');
-    expect(prompt).toContain('goodvibes_context');
-    expect(prompt).toContain('Do not spawn agents or WRFC chains');
   });
 });

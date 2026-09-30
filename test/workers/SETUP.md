@@ -51,8 +51,9 @@ rebuilding per leg.
 
 ## 3. CI matrix dimension
 
-`.github/workflows/ci.yml` runs `workers` (and `workers-wrangler`) as two of
-the four legs of the `platform-matrix` job:
+`.github/workflows/release-gates.yml` runs `workers` (and `workers-wrangler`)
+as legs of its `runtimes` job (the YAML below is the older ci.yml shape; the
+commands are the same):
 
 ```yaml
       matrix:

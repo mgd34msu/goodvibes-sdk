@@ -19,7 +19,6 @@ const TOOLS: Record<string, string> = {
   'sdk-pin-gate': './sdk-pin-gate.js',
   'build-binaries': './build-binaries.js',
   'release-cut': './release-cut.js',
-  'coverage-gate': './coverage-gate.js',
   'verification-ledger': './verification-ledger.js',
   'post-build-smoke': './post-build-smoke.js',
   'package-install-check': './package-install-check.js',

@@ -196,35 +196,3 @@ describe('Reviewer report: malformed constraintFindings', () => {
     expect(result.issues).toEqual([]);
   });
 });
-
-describe('Parser purity: does not mutate caller\'s object', () => {
-  test('result is a new object: original parsed object is not mutated', () => {
-    // We pass raw JSON string; parse it as an object, then check that the
-    // field the parser adds (constraints:[]) is NOT on the live object
-    // we can access. We verify this by checking that the raw JSON source
-    // object (reconstructed) does not have constraints after parsing.
-    const sourceObj: Record<string, unknown> = { ...BASE_ENGINEER };
-    // Confirm: no constraints key on source
-    expect('constraints' in sourceObj).toBe(false);
-
-    const raw = asJsonBlock(sourceObj);
-    const result = parseCompletionReport(raw) as EngineerReport;
-
-    // Result should have constraints:[] (added by applyConstraintDefaults)
-    expect(result.constraints).toEqual([]);
-
-    // The original sourceObj is NOT mutated, still no 'constraints' key
-    expect('constraints' in sourceObj).toBe(false);
-  });
-
-  test('result object is a different reference from any internally parsed object', () => {
-    const raw = asJsonBlock({ ...BASE_ENGINEER, constraints: [{ id: 'c1', text: 'pure', source: 'prompt' }] });
-    const result1 = parseCompletionReport(raw) as EngineerReport;
-    const result2 = parseCompletionReport(raw) as EngineerReport;
-    // Each call returns a new object (parseCompletionReport always parses fresh)
-    // The constraints arrays should be equal in value but independent
-    expect(result1.constraints).toEqual(result2.constraints);
-    // But they're not the same array reference (spread creates new arrays)
-    expect(result1.constraints === result2.constraints).toBe(false);
-  });
-});

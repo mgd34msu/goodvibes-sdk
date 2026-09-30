@@ -60,29 +60,4 @@ describe('Home Assistant state provenance contract', () => {
     expect(result.provenance).toBeUndefined();
     expect(result.contract).toBe(HOME_STATE_PROVENANCE_CONTRACT);
   });
-
-  test('the state-read tool descriptions state the cite-or-refuse contract', () => {
-    const tools = listHomeAssistantTools();
-    const stateTool = tools.find((tool) => tool.name === 'homeassistant_state');
-    const statesTool = tools.find((tool) => tool.name === 'homeassistant_states');
-
-    expect(stateTool?.description).toContain('Home-state honesty contract');
-    expect(stateTool?.description).toContain('observedAt');
-    expect(statesTool?.description).toContain('Home-state honesty contract');
-  });
-
-  test('the model-facing Home Assistant system prompt states the contract', () => {
-    const prompt = buildHomeAssistantSystemPrompt({
-      text: 'is the garage door open',
-      messageId: 'm1',
-      conversationId: 'c1',
-      surfaceId: 's1',
-      channelId: 'area.garage',
-      title: 'Home Assistant',
-      remoteSessionTtlMs: 60_000,
-    });
-
-    expect(prompt).toContain('Home-state honesty contract');
-    expect(prompt).toContain("don't have state");
-  });
 });

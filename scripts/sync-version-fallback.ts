@@ -13,8 +13,7 @@ for (const target of targets) {
   const source = readFileSync(target, 'utf8');
   // Tolerate both `"...";;` and `'...';` shapes so a prior manual edit with
   // the wrong quote style (or stray duplicate semicolon) gets normalized
-  // back to the canonical `let version = 'X.Y.Z';` format that
-  // test/version-sync.test.ts matches on.
+  // back to the canonical `let version = 'X.Y.Z';` format.
   const next = source.replace(
     /let version = ['"][^'"]*['"];+/,
     `let version = '${version}';`,

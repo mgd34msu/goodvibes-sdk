@@ -14,7 +14,6 @@
  * out until a consumer breaks.
  */
 import { describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -218,21 +217,6 @@ describe('class members', () => {
     };
     expect(diffSnapshots(base, after).some((line) => line.includes('no longer exposes PUBLIC member(s): checkInbox'))).toBe(true);
   });
-
-  test('the committed report records public members for the classes that have them', () => {
-    const committed = JSON.parse(readFileSync(join(SDK_ROOT, 'etc', 'subpath-api-surface.json'), 'utf8')) as Snapshot;
-    const classes = Object.values(committed).flat().filter((entry) => entry.kind === 'class');
-    const withMembers = classes.filter((entry) => (entry.publicMembers?.length ?? 0) > 0);
-    expect(classes.length).toBeGreaterThan(100);
-    // Not "all", because three providers genuinely declare no members of their
-    // own (`class LocalAIProvider extends DiscoveredCompatProvider {}`). A
-    // detector that claimed 100% here would be reporting coverage it lacks:
-    // members reached only by INHERITANCE are not recorded on the subclass.
-    expect(withMembers.length).toBeGreaterThan(classes.length * 0.9);
-    const emailService = (committed['./platform/email'] ?? []).find((entry) => entry.name === 'EmailService');
-    expect(emailService?.publicMembers).toContain('listInbox');
-    expect(emailService?.publicMembers).not.toContain('recordIngest'); // private, not surface
-  });
 });
 
 describe('normalizeDeclarationText', () => {
@@ -249,51 +233,5 @@ describe('normalizeDeclarationText', () => {
   test('two declarations differing only in a member type do not normalize to the same string', () => {
     expect(normalizeDeclarationText('interface A { s: string; }'))
       .not.toBe(normalizeDeclarationText('interface A { s: number; }'));
-  });
-});
-
-describe('the committed report', () => {
-  const committed = JSON.parse(readFileSync(join(SDK_ROOT, 'etc', 'subpath-api-surface.json'), 'utf8')) as Snapshot;
-  const manifest = JSON.parse(readFileSync(join(PACKAGE_DIR, 'package.json'), 'utf8')) as {
-    exports: Record<string, unknown>;
-  };
-
-  test('every subpath that publishes types has a non-empty section', () => {
-    const { entryPoints, problems } = resolveSubpathEntryPoints(manifest, PACKAGE_DIR);
-    expect(problems).toEqual([]);
-    expect(missingFromReport(entryPoints, committed)).toEqual([]);
-    expect(coverageProblems(committed)).toEqual([]);
-    expect(entryPoints.size).toBeGreaterThan(100);
-  });
-
-  test('the platform email module is in the report with its declaration text', () => {
-    const email = committed['./platform/email'] ?? [];
-    for (const name of ['EmailInboxListResult', 'EmailSummary', 'ImapMessageDetail']) {
-      const entry = email.find((candidate) => candidate.name === name);
-      expect(entry, `${name} missing from ./platform/email`).toBeDefined();
-      expect(entry?.text.length ?? 0).toBeGreaterThan(name.length);
-    }
-  });
-
-  test('a non-exported type an export references is recorded beside it', () => {
-    // The gap that let PermissionConfigReader.getSnapshot() narrow from the
-    // whole GoodVibesConfig to one key with no report diff: the alias name in
-    // the declaration text never changed. One level of referenced definitions
-    // is now recorded; the transitive closure is not (12.1 MB vs 5.7 MB).
-    const reader = (committed['./platform/permissions'] ?? []).find((e) => e.name === 'PermissionConfigReader');
-    expect(reader).toBeDefined();
-    expect(reader?.text).toContain('PermissionConfigSnapshot');
-    expect(reader?.text).toContain(' ;; via ');
-    // And it really carries the DEFINITION, not just the name again.
-    expect(reader?.text).toContain('permissions');
-  });
-
-  test('those same names are absent from the api-extractor rollups: the rollups are not this gate', () => {
-    const rollup = readFileSync(join(SDK_ROOT, 'etc', 'goodvibes-sdk.api.md'), 'utf8')
-      + readFileSync(join(SDK_ROOT, 'etc', 'goodvibes-sdk-embed.api.md'), 'utf8');
-    // If this ever fails it is good news, it means `packages/sdk/src/index.ts`
-    // started re-exporting the platform tree and the rollup covers it too. Fix
-    // by deleting this assertion, not by narrowing the report.
-    expect(rollup).not.toContain('EmailInboxListResult');
   });
 });

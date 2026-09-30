@@ -80,34 +80,6 @@ describe('the config key exists and mirrors trustProxy', () => {
   });
 });
 
-describe('the listener resolves it the way it resolves trustProxy', () => {
-  /**
-   * The constructor line under test is
-   * `config.trustCloudflare ?? Boolean(configManager.get('httpListener.trustCloudflare'))`,
-   * the same shape as trustProxy's. Read here rather than by booting a
-   * listener: constructing one binds two rate limiters and their eviction
-   * sweeps, and the property this pins is the resolution, not the socket.
-   */
-  function resolve(explicit: boolean | undefined, configured: boolean): boolean {
-    const { manager, dispose } = configManager({ 'httpListener.trustCloudflare': configured });
-    try {
-      return explicit ?? Boolean(manager.get('httpListener.trustCloudflare'));
-    } finally {
-      dispose();
-    }
-  }
-
-  test('with nothing passed, the config key decides', () => {
-    expect(resolve(undefined, true)).toBe(true);
-    expect(resolve(undefined, false)).toBe(false);
-  });
-
-  test('an explicit constructor argument still wins, in both directions', () => {
-    expect(resolve(false, true)).toBe(false);
-    expect(resolve(true, false)).toBe(true);
-  });
-});
-
 describe('the range check the key turns on', () => {
   test('a peer inside a published Cloudflare range is recognized', () => {
     // 173.245.48.0/20 and 2400:cb00::/32 are both on Cloudflare's published list.

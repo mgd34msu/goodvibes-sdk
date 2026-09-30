@@ -70,12 +70,6 @@ describe('surface-owned browser storage', () => {
     expect(browserScreenshotRoot('/home/someone', 'agent')).toBe('/home/someone/.goodvibes/agent/browser/screenshots');
   });
 
-  test('neither writes into the user\'s project directory', () => {
-    for (const path of [browserProfileRoot('/home/someone', 'agent'), browserScreenshotRoot('/home/someone', 'agent')]) {
-      expect(path.startsWith('/home/someone/.goodvibes/')).toBe(true);
-    }
-  });
-
   test('two surfaces never share a browser profile directory', () => {
     expect(browserProfileRoot('/home/someone', 'agent')).not.toBe(browserProfileRoot('/home/someone', 'daemon'));
   });
@@ -86,28 +80,5 @@ describe('the node-hosted browser host', () => {
     const path = browserHostScriptPath();
     expect(path.endsWith('browser-host.mjs')).toBe(true);
     expect(readFileSync(path, 'utf8')).toContain('connectOverCDP');
-  });
-
-  test('the host never closes a browser it attached to', () => {
-    const source = readFileSync(browserHostScriptPath(), 'utf8');
-    // The release handler drops the connection; nothing calls browser.close().
-    expect(source).toContain('state.browser = null');
-    expect(source).not.toContain('browser.close()');
-  });
-
-  /**
-   * The agent asserted the script sat beside `dist/goodvibes-agent`. The SDK
-   * equivalent is that the published package carries it: tsc emits only what it
-   * compiles, so without the prepare step this hand-written .mjs would exist in
-   * src and be absent from dist, and every attach would fail on a machine that
-   * installed the package.
-   */
-  test('the package build stages the host script into dist', () => {
-    const prepare = readFileSync(join(import.meta.dir, '..', 'scripts', 'prepare-sdk-package.ts'), 'utf8');
-    expect(prepare).toContain('platform/browser/browser-host.mjs');
-    const manifest = JSON.parse(readFileSync(join(sdkPackageDir, 'package.json'), 'utf8')) as {
-      readonly files?: readonly string[];
-    };
-    expect(manifest.files).toContain('dist');
   });
 });

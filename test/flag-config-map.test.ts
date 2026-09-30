@@ -19,10 +19,6 @@ describe('FEATURE_FLAG_CONFIG completeness', () => {
     expect(missing).toEqual([]);
   });
 
-  test('all 44 flags are covered', () => {
-    expect(FEATURE_FLAGS.length).toBe(Object.keys(FEATURE_FLAG_CONFIG).length);
-  });
-
   test('every association key is a real flag id', () => {
     const flagIds = new Set(FEATURE_FLAGS.map((f) => f.id));
     const stale = Object.keys(FEATURE_FLAG_CONFIG).filter((id) => !flagIds.has(id));

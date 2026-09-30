@@ -6,10 +6,6 @@ import {
 } from '../packages/sdk/src/platform/runtime/permissions/normalization/index.js';
 
 describe('platform/runtime/permissions/normalization: smoke', () => {
-  test('DEFAULT_ALLOWED_CLASSES is a non-empty Set', () => {
-    expect(DEFAULT_ALLOWED_CLASSES.size).toBeGreaterThan(0);
-  });
-
   test('normalizeCommand returns an object with original and segments', () => {
     const result = normalizeCommand('ls -la /tmp');
     expect(result.original).toBe('ls -la /tmp');

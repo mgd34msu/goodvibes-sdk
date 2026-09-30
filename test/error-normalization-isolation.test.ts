@@ -31,12 +31,4 @@ describe('error normalization isolation', () => {
     expect(result.statusCode).toBe(503);
     expect(typeof result.recoverable).toBe('boolean');
   });
-
-  test('summarizeError never throws for any input type', async () => {
-    const { summarizeError } = await import('../packages/sdk/src/platform/utils/error-display.js');
-    const inputs = [null, undefined, '', 0, false, [], {}, new Error('x'), 'string error', { code: 'E_FAIL' }];
-    for (const input of inputs) {
-      expect(() => summarizeError(input)).not.toThrow();
-    }
-  });
 });

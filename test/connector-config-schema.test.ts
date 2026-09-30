@@ -108,14 +108,6 @@ describe('every promoted key is a real, valid CONFIG_SCHEMA row', () => {
     expect(row.default).toBe(expected);
   });
 
-  test('there are exactly twenty-two connector keys: not more, not fewer', () => {
-    const connectorKeys = CONFIG_SCHEMA
-      .map((s) => s.key)
-      .filter((key) => key.startsWith('email.') || key.startsWith('calendar.') || key.startsWith('google.'));
-    expect(new Set(connectorKeys).size).toBe(22);
-    expect(connectorKeys.map(String).sort()).toEqual(EXPECTED.map((e) => e.key).sort());
-  });
-
   test.each(EXPECTED)('$key is reachable through DEFAULT_CONFIG with the same default', ({ key, default: expected }) => {
     const value = key.split('.').reduce<unknown>(
       (node, part) => (node && typeof node === 'object' ? (node as Record<string, unknown>)[part] : undefined),

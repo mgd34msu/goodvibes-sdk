@@ -87,14 +87,3 @@ describe('gateBackgroundToolCall', () => {
     expect(seen[0]).toMatchObject({ template: 'engineer' });
   });
 });
-
-describe('PermissionConfigReader', () => {
-  test('a reader supplying only the permissions slice satisfies the contract', () => {
-    // Before narrowing, a caller had to produce an entire GoodVibesConfig to
-    // stand in for a reader whose consumers touch one key.
-    const reader: Pick<PermissionConfigReader, 'getSnapshot'> = {
-      getSnapshot: () => ({ permissions: {} as Snapshot['permissions'] }),
-    };
-    expect(reader.getSnapshot().permissions).toBeDefined();
-  });
-});

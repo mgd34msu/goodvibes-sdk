@@ -69,18 +69,6 @@ describe('event-envelope contract', () => {
 
       expect(Object.isFrozen(envelope)).toBe(true);
     });
-
-    test('modifying a frozen envelope throws in strict mode or is silently ignored', () => {
-      const envelope = createEventEnvelope('TASK_FAILED', { type: 'TASK_FAILED' as const, taskId: 't1', error: 'err', durationMs: 50 }, baseContext);
-
-      // In strict mode this throws; in sloppy mode it is a no-op. Either way, value unchanged.
-      try {
-        (envelope as { type: string }).type = 'MUTATED';
-      } catch (_e) {
-        // expected in strict mode
-      }
-      expect(envelope.type).toBe('TASK_FAILED');
-    });
   });
 
   describe('traceId propagation', () => {

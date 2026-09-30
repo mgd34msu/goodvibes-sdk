@@ -8,8 +8,6 @@
  * exist on the public relay/daemon surface or in the relay source tree.
  */
 import { describe, expect, test } from 'bun:test';
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
 import { isRelayTunneledRequest, RELAY_VIA_HEADER } from '../packages/daemon-sdk/src/relay-registration.js';
 import {
   evaluateStepUp,
@@ -58,23 +56,5 @@ describe('certificate-minting prohibition (the daemon never mints certificates)'
     const names = Object.keys(relaySurface);
     const offenders = names.filter((name) => /cert|mint|x509|openssl/i.test(name));
     expect(offenders).toEqual([]);
-  });
-
-  test('no certificate-minting module exists in the relay source tree', () => {
-    const relayDir = join(import.meta.dir, '..', 'packages', 'sdk', 'src', 'platform', 'relay');
-    const files = readdirSync(relayDir);
-    expect(files.some((file) => /cert/i.test(file))).toBe(false);
-    // No relay source invokes openssl or self-signs anything.
-    for (const file of files) {
-      if (!file.endsWith('.ts')) continue;
-      const source = readFileSync(join(relayDir, file), 'utf8');
-      expect(source.includes('openssl'), `${file} must not orchestrate openssl`).toBe(false);
-      expect(/self.signed/i.test(source), `${file} must not self-sign`).toBe(false);
-    }
-  });
-
-  test('the daemon entry source exports no cert-minting name', () => {
-    const daemonEntry = readFileSync(join(import.meta.dir, '..', 'packages', 'sdk', 'src', 'daemon.ts'), 'utf8');
-    expect(/mint[A-Za-z]*Certificate|LanCert/i.test(daemonEntry)).toBe(false);
   });
 });

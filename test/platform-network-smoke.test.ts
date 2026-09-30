@@ -10,9 +10,7 @@ import {
   resolveInboundTlsContext,
 } from '../packages/sdk/src/platform/runtime/network/inbound.js';
 import {
-  inspectOutboundTls,
   applyOutboundTlsToFetchInit,
-  GlobalNetworkTransportInstaller,
 } from '../packages/sdk/src/platform/runtime/network/outbound.js';
 
 /** Minimal config reader that returns undefined for all keys. */
@@ -45,20 +43,8 @@ describe('platform/runtime/network: behavior smoke', () => {
     expect(ctx.tls).toBeUndefined();
   });
 
-  test('inspectOutboundTls returns snapshot with mode and trustMode fields', () => {
-    const snapshot = inspectOutboundTls(makeConfig());
-    expect(snapshot).toHaveProperty('mode'); // presence-only refined: check mode field
-    expect('mode' in snapshot).toBe(true);
-  });
-
   test('applyOutboundTlsToFetchInit preserves method in the returned init object', () => {
     const init = applyOutboundTlsToFetchInit('https://example.test/', { method: 'GET' }, makeConfig());
     expect((init as RequestInit).method).toBe('GET');
-  });
-
-  test('GlobalNetworkTransportInstaller instance exposes install and setConfigManager', () => {
-    const installer = new GlobalNetworkTransportInstaller();
-    expect(typeof installer.install).toBe('function');
-    expect(typeof installer.setConfigManager).toBe('function');
   });
 });

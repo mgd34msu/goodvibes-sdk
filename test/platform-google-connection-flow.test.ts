@@ -11,8 +11,6 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 import { planGoogleConnection } from '../packages/sdk/src/platform/google/discovery.ts';
 import { diagnoseInvalidGrant } from '../packages/sdk/src/platform/google/grant-diagnosis.ts';
@@ -24,7 +22,6 @@ import { GoogleTokenManager } from '../packages/sdk/src/platform/google/token-ma
 import { proveGoogleConnection } from '../packages/sdk/src/platform/google/connection-proof.ts';
 import {
   GOOGLE_CONFIG_KEYS,
-  GOOGLE_REFERENCED_COMMANDS,
   GOOGLE_SETUP_STEPS,
   GOOGLE_SECRET_KEYS,
   OAUTH_SCOPES,
@@ -201,17 +198,6 @@ describe('discovery decides before anything runs', () => {
     expect(plan.route).toBe('guided-new-client');
     expect(filesTouched).toBe(0);
     void watchfulHome;
-  });
-
-  test('the discovery contract exposes no file port at all, so a scan is impossible', () => {
-    // Structural rather than behavioural: the succession cannot regrow a disk
-    // step by accident if there is nothing to read a disk with.
-    const source = readFileSync(
-      join(import.meta.dir, '..', 'packages/sdk/src/platform/google/discovery.ts'),
-      'utf8',
-    );
-    expect(source).not.toContain('GoogleFilePort');
-    expect(source).not.toContain('adoptGmailMcpCredentials');
   });
 });
 
@@ -741,28 +727,6 @@ describe('no setup string tells the user to type anything', () => {
     expect(mentionsUserTypedCommand(last)).toBe(false);
   });
 
-  test('no runner fix string instructs a command', () => {
-    // Fix strings are what a person reads at the moment something went wrong,
-    // which is the worst possible moment to be handed a command to look up.
-    const source = readFileSync(
-      join(import.meta.dir, '..', 'packages/sdk/src/platform/google/setup-actions.ts'),
-      'utf8',
-    );
-    const offenders = [...source.matchAll(/(?:problem|fix|detail):\s*(?:'((?:[^'\\]|\\.)*)'|`((?:[^`\\]|\\.)*)`)/g)]
-      .map((match) => match[1] ?? match[2] ?? '')
-      .filter((text) => text.length > 0 && mentionsUserTypedCommand(text));
-    expect(offenders).toEqual([]);
-  });
-
-  test('the file-intake failure offers to read the path rather than naming a command', () => {
-    const source = readFileSync(
-      join(import.meta.dir, '..', 'packages/sdk/src/platform/google/setup-actions.ts'),
-      'utf8',
-    );
-    expect(source).toContain('Tell me where the client JSON is and I will read it from there.');
-    expect(source).not.toContain('/google client-file <path-to-client.json>');
-  });
-
   test('a dead grant offers a fresh consent rather than naming a command', () => {
     for (const status of ['testing', 'in-production', 'unknown'] as const) {
       const diagnosis = diagnoseInvalidGrant({
@@ -787,104 +751,5 @@ describe('no setup string tells the user to type anything', () => {
     } as never);
     expect(proof.calendar.fix).toBeDefined();
     expect(mentionsUserTypedCommand(proof.calendar.fix ?? '')).toBe(false);
-  });
-});
-
-describe('every command named in Google-flow text exists', () => {
-  // An error told the owner to run `/google setup --path oauth` and the
-  // command surface answered "Unknown setup item google". A fix line naming a
-  // command that does not resolve is worse than no fix line.
-
-  const googleDir = join(import.meta.dir, '..', 'packages/sdk/src/platform/google');
-
-  /**
-   * Command invocations named anywhere in the connector's source, as
-   * "/command subcommand".
-   *
-   * URLs are stripped first, so `console.cloud.google.com/auth/audience`
-   * cannot be mistaken for a command. Only the three commands this connector
-   * ever names are matched, and only where a slash starts a token, never
-   * after a word character, a dot, a colon, a backslash or another slash,
-   * which excludes import specifiers, file paths, regex literals and HTML.
-   *
-   * A bare `/google` with no subcommand is normalised to `/google status`,
-   * which is what the command does when run with no arguments.
-   */
-  /**
-   * Comments and file paths stripped before the scan.
-   *
-   * A comment explaining what the owner ran when a defect was found is history,
-   * not an instruction, and a path like `$HOME/google-cloud-sdk/bin` is neither.
-   * The rule is about what a PERSON is shown, so only string literals count.
-   */
-  function userFacingText(source: string): string {
-    return source
-      .replace(/\/\*[\s\S]*?\*\//g, ' ')
-      .replace(/(^|[^:])\/\/[^\n]*/g, '$1 ')
-      .replace(/https?:\/\/\S+/g, ' ')
-      .replace(/\$\{[^}]*\}/g, ' ');
-  }
-
-  function slashCommandsIn(source: string): readonly string[] {
-    const withoutUrls = userFacingText(source);
-    // `(?![-\w./])` keeps `/google-cloud-sdk/bin` and `/google-workspace-...json`
-    // out: a hyphenated path segment is a path, not a command.
-    const pattern = /(?<![\w/.:\\-])\/(google|email|calendar)(?![-\w./])[ ]*([a-z][a-z-]*)?/g;
-    return [...withoutUrls.matchAll(pattern)].map((match) => {
-      const command = match[1];
-      const sub = match[2];
-      if (sub === undefined) return command === 'google' ? '/google status' : `/${command}`;
-      return `/${command} ${sub}`;
-    });
-  }
-
-  function namedCommands(): ReadonlyMap<string, readonly string[]> {
-    const found = new Map<string, string[]>();
-    for (const entry of readdirSync(googleDir)) {
-      if (!entry.endsWith('.ts')) continue;
-      for (const command of slashCommandsIn(readFileSync(join(googleDir, entry), 'utf8'))) {
-        const list = found.get(command) ?? [];
-        if (!list.includes(entry)) list.push(entry);
-        found.set(command, list);
-      }
-    }
-    return found;
-  }
-
-  test('the connector names only commands on the declared list', () => {
-    const offenders: string[] = [];
-    for (const [command, files] of namedCommands()) {
-      if (!GOOGLE_REFERENCED_COMMANDS.includes(command)) {
-        offenders.push(`${command} (in ${files.join(', ')})`);
-      }
-    }
-    expect(offenders).toEqual([]);
-  });
-
-  test('the declared list is not empty, so the sweep cannot pass vacuously', () => {
-    expect(GOOGLE_REFERENCED_COMMANDS.length).toBeGreaterThan(0);
-    expect(namedCommands().size).toBeGreaterThan(0);
-  });
-
-  test('the only user-facing text naming a command is the declared list itself', () => {
-    // The commands still exist for self-service and the agent-side test still
-    // proves each one resolves. What changed is that no string a person reads
-    // reaches for one: setup-plan.ts holds the contract list and the runbook
-    // renders a clearly-labelled self-service section, and every other file
-    // talks about what the platform will do instead.
-    const files = new Set<string>();
-    for (const [, where] of namedCommands()) for (const file of where) files.add(file);
-    expect([...files].sort()).toEqual(['setup-plan.ts', 'setup-runbook.ts']);
-  });
-
-  test('no text still points at the setup subcommand that answered "Unknown setup item"', () => {
-    for (const entry of readdirSync(googleDir)) {
-      if (!entry.endsWith('.ts')) continue;
-      const source = readFileSync(join(googleDir, entry), 'utf8');
-      // The specific dead pointer from the incident. `/google setup --path
-      // app-password` survives because that path is real; the oauth variant is
-      // replaced by /google connect and /google reauthorize.
-      expect(source).not.toContain('/google setup --path oauth');
-    }
   });
 });

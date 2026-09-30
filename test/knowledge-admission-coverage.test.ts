@@ -9,7 +9,6 @@
  * passes stopWhenPaused (making the caller-allowlist justification true).
  */
 import { describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
 import { trackDisposables } from './_helpers/disposables.ts';
 import { KnowledgeService } from '../packages/sdk/src/platform/knowledge/service.js';
 import { HomeGraphService } from '../packages/sdk/src/platform/knowledge/home-graph/service.js';
@@ -84,22 +83,5 @@ describe('home-graph 0ms ingest-enrichment tail honors pause + admission', () =>
     const h = runtimeWith({});
     await enrichAndImproveHomeGraphSource(h.runtime, 'src-1', 'space-1');
     expect(h.enrichCalls()).toBe(1);
-  });
-});
-
-describe('composition + pump shape pins', () => {
-  test('services.ts threads admitExpensiveWork into the agent and home-graph constructions', () => {
-    const src = readFileSync('packages/sdk/src/platform/runtime/services.ts', 'utf-8');
-    const agentBlock = src.slice(src.indexOf('const agentKnowledgeService = new KnowledgeService('), src.indexOf('agentKnowledgeService.attachRuntimeBus'));
-    expect(agentBlock).toContain('admitExpensiveWork');
-    const hgBlock = src.slice(src.indexOf('const homeGraphService = new HomeGraphService('), src.indexOf('const projectPlanningService'));
-    expect(hgBlock).toContain('admitExpensiveWork');
-  });
-
-  test('the sync pump selfImprove loop passes stopWhenPaused (the allowlist justification is true)', () => {
-    const src = readFileSync('packages/sdk/src/platform/knowledge/home-graph/sync-self-improvement.ts', 'utf-8');
-    // The pump's per-round call carries the runOptions, not just the reindex helper's.
-    const pumpCall = src.slice(src.indexOf("reason: 'homegraph-sync'"), src.indexOf("reason: 'homegraph-sync'") + 500);
-    expect(pumpCall).toContain('{ stopWhenPaused: true }');
   });
 });

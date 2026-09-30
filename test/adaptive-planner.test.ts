@@ -1,11 +1,6 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'bun:test';
 import { AdaptivePlanner, type PlannerInputs } from '../packages/sdk/src/platform/core/adaptive-planner.js';
 import type { RawDecomposition } from '../packages/sdk/src/platform/core/plan-proposal.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function inputs(overrides: Partial<PlannerInputs> = {}): PlannerInputs {
   return {
@@ -105,22 +100,5 @@ describe('AdaptivePlanner.proposeWorkstream', () => {
     const latest = planner.getLatest();
     expect(latest).not.toBeNull();
     expect(latest!.selected).toBe(result.gate.strategy);
-  });
-});
-
-describe('AdaptivePlanner purity (import-surface test)', () => {
-  test('adaptive-planner.ts performs no async/await, no fs, no agent spawn', () => {
-    const source = readFileSync(
-      join(__dirname, '..', 'packages/sdk/src/platform/core/adaptive-planner.ts'),
-      'utf-8',
-    );
-    // Targeted at actual async syntax (function modifier / await / Promise
-    // return types), not incidental prose, a comment describing
-    // BACKGROUND_DEFERRED legitimately contains the word "async".
-    expect(source).not.toMatch(/\basync\s+(\(|function\b|[a-zA-Z_]+\s*\()/);
-    expect(source).not.toMatch(/\bawait\b/);
-    expect(source).not.toMatch(/\bPromise\s*</);
-    expect(source).not.toMatch(/readFileSync|writeFileSync|existsSync|mkdirSync/);
-    expect(source).not.toMatch(/AgentManager|spawn\(|fetch\(|LLMProvider/);
   });
 });

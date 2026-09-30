@@ -97,16 +97,4 @@ describe('isRetryableExecResult', () => {
     const result = makeResult({ exit_code: 1, stderr: 'some other error' });
     expect(isRetryableExecResult(result)).toBe(false);
   });
-
-  test('jitter: bounded random source can produce varied retry delays', () => {
-    const cap = 1000 * Math.pow(2, 1); // attempt=1, base=1000
-    let seed = 0x12345678;
-    const nextUnit = () => {
-      seed = (1664525 * seed + 1013904223) >>> 0;
-      return seed / 0x100000000;
-    };
-    const delays = Array.from({ length: 20 }, () => nextUnit() * cap);
-    const allSame = delays.every((d) => d === delays[0]);
-    expect(allSame).toBe(false);
-  });
 });

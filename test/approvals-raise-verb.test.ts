@@ -14,7 +14,7 @@
  *     through the same free function raise does.
  */
 
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, jest, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -149,12 +149,22 @@ describe('approvals.raise: creating an ask from a surface', () => {
   test('a waitMs that runs out reports the still-pending record, never a decision nobody made', async () => {
     const { broker, cleanup } = makeBroker();
     try {
-      const result = await createApprovalRaiseHandler(broker)(
+      // Fake timers: the wait expires because the test advances the clock,
+      // not because 25 real milliseconds happened to pass on this host.
+      jest.useFakeTimers();
+      let settled = false;
+      const pending = Promise.resolve(createApprovalRaiseHandler(broker)(
         invocation({ request: ask('call-6'), waitMs: 25 }),
-      ) as { approval: { status: string }; decided: boolean };
+      )).finally(() => { settled = true; });
+      for (let turn = 0; !settled && turn < 1_000; turn += 1) {
+        jest.advanceTimersByTime(25);
+        await new Promise<void>((resolve) => setImmediate(resolve));
+      }
+      const result = await pending as { approval: { status: string }; decided: boolean };
       expect(result.decided).toBe(false);
       expect(result.approval.status).toBe('pending');
     } finally {
+      jest.useRealTimers();
       cleanup();
     }
   });

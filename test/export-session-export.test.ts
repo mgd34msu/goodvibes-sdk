@@ -198,10 +198,6 @@ describe('redactMessage', () => {
 // ── exportToJSON ──────────────────────────────────────────────────────────────
 
 describe('exportToJSON', () => {
-  test('produces valid JSON', () => {
-    const json = exportToJSON([userMsg('hello')], basicMeta);
-    expect(() => JSON.parse(json)).not.toThrow();
-  });
 
   test('output structure has expected top-level keys', () => {
     const payload = JSON.parse(exportToJSON([userMsg('hi')], basicMeta));
@@ -360,11 +356,6 @@ describe('exportToHTML', () => {
 // ── exportToMarkdownExtended ──────────────────────────────────────────────────
 
 describe('exportToMarkdownExtended', () => {
-  test('returns a non-empty string', () => {
-    const md = exportToMarkdownExtended([userMsg('hello')], basicMeta);
-    expect(typeof md).toBe('string');
-    expect(md.length).toBeGreaterThan(0);
-  });
 
   test('appends cost section when cost > 0', () => {
     const md = exportToMarkdownExtended([userMsg('hi')], basicMeta, { cost: 0.002 });
@@ -480,11 +471,6 @@ describe('renderMarkdownToHtml (via exportToHTML)', () => {
 // ── defaultExportPath ─────────────────────────────────────────────────────────
 
 describe('defaultExportPath', () => {
-  test('returns a string path', () => {
-    const p = defaultExportPath('html', HOME_ROOT);
-    expect(typeof p).toBe('string');
-    expect(p.length).toBeGreaterThan(0);
-  });
 
   test('uses correct extension for html', () => {
     expect(defaultExportPath('html', HOME_ROOT)).toMatch(/\.html$/);

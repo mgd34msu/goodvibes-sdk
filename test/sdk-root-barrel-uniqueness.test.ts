@@ -19,9 +19,4 @@ describe('root barrel symbol uniqueness', () => {
     const collisions = Object.keys(Root).filter((k) => /_\d+$/.test(k));
     expect(collisions).toEqual([]);
   });
-
-  test('root barrel exports at least one symbol', () => {
-    // Sanity-check that the import resolved and is non-empty.
-    expect(Object.keys(Root).length).toBeGreaterThan(0);
-  });
 });

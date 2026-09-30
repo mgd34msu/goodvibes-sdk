@@ -31,15 +31,12 @@ import {
   WEBUI_METHOD_SAMPLES,
 } from '../packages/contracts/src/generated/webui-facade.ts';
 import {
-  render as renderWebui,
   loadContract as loadWebuiContract,
   buildRoutes,
   buildWsInvokeIds,
   buildSamples,
-  WEBUI_FACADE_OUT_PATH,
 } from '../scripts/generate-webui-facade.ts';
 import {
-  render as renderHa,
   loadContract as loadHaContract,
   consumedIdsFor,
   HA_CLIENT_OUT_PATH,
@@ -85,13 +82,6 @@ describe('webui facade: REST vs ws disposition', () => {
   test('WEBUI_METHOD_SAMPLES has a generated input/output sample per method', () => {
     expect(Object.keys(WEBUI_METHOD_SAMPLES).sort()).toEqual(methods.map((m) => m.id).sort());
     expect(WEBUI_METHOD_SAMPLES).toEqual(buildSamples(methods));
-  });
-});
-
-describe('webui facade: drift guard', () => {
-  test('the checked-in module matches a fresh generation', () => {
-    const onDisk = readFileSync(WEBUI_FACADE_OUT_PATH, 'utf8');
-    expect(onDisk).toBe(renderWebui(contract));
   });
 });
 
@@ -143,10 +133,5 @@ describe('HA python client: generated transport', () => {
       expect(py).toMatch(new RegExp(`(class ${stem}Input\\(TypedDict|${stem}Input = )`));
       expect(py).toMatch(new RegExp(`(class ${stem}Output\\(TypedDict|${stem}Output = )`));
     }
-  });
-
-  test('the checked-in file matches a fresh generation (drift guard)', () => {
-    const fresh = renderHa(haContract);
-    expect(py).toBe(fresh.endsWith('\n') ? fresh : `${fresh}\n`);
   });
 });

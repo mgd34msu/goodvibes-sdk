@@ -18,10 +18,6 @@ import { cancelAllAgentRuns, type CancellableAgentRuns } from '../packages/sdk/s
 import { registerRuntimePollers } from '../packages/sdk/src/platform/runtime/disposal.js';
 
 describe('RuntimePollerOwners is satisfiable from the published surface', () => {
-  test('the tools barrel publishes the agent-run canceller the contract names', () => {
-    expect(typeof cancelAllAgentRuns).toBe('function');
-  });
-
   test('cancelAllAgentRuns cancels the live runs, and leaves settled ones alone', () => {
     const cancelled: string[] = [];
     const manager: CancellableAgentRuns = {

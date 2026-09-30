@@ -55,10 +55,11 @@ Run:
 
 ```bash
 bun run refresh:contracts
-bun run validate
+bun run docs:generate
 ```
 
-The validation pipeline checks contract, transport, error, daemon, and docs sync.
+`bun run release:prepare` regenerates these (and every other generated file)
+at each version bump.
 
 ## Realtime reconnect loops
 

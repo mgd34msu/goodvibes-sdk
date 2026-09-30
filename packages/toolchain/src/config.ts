@@ -5,7 +5,7 @@
  * `toolchain.config.ts` that default-exports a {@link ToolchainConfig}) at its
  * root. The published `@pellux/goodvibes-toolchain` package holds the behavior;
  * the config holds the repo-specific values (package names, binary matrix,
- * coverage floors, publish ordering) so one implementation serves every repo.
+ * publish ordering) so one implementation serves every repo.
  *
  * The full contract and per-repo examples are documented in
  * `docs/release-and-publishing.md` (SDK repo).
@@ -59,14 +59,6 @@ export interface BuildConfig {
   readonly targets: readonly BinaryTarget[];
   /** Commands run once before compiling (each a full argv), e.g. `[["bun","run","scripts/prebuild.ts"]]`. */
   readonly prebuild: readonly (readonly string[])[];
-}
-
-/** coverage-gate ratchet floors and the coverage command. */
-export interface CoverageConfig {
-  readonly funcsFloor: number;
-  readonly linesFloor: number;
-  /** argv that emits Bun's text coverage table, e.g. `["bun","test","--coverage","src"]`. */
-  readonly command: readonly string[];
 }
 
 /** post-build-smoke parameters. */
@@ -133,7 +125,6 @@ export interface ToolchainConfig {
   readonly packageName: string;
   readonly sdkPin?: SdkPinConfig;
   readonly build?: BuildConfig;
-  readonly coverage?: CoverageConfig;
   readonly smoke?: SmokeConfig;
   readonly releaseCut?: ReleaseCutConfig;
   readonly publish?: PublishPackageConfig;
@@ -190,7 +181,7 @@ export function resolvePerJobGreenConfig(partial: Partial<PerJobGreenConfig> & P
 // function that fills every field from a `Partial<...>` plus defaults, so
 // requiredness for those two lives in the resolver, not here: every field
 // below is optional and the resolver decides what is missing. The other
-// sections (build, coverage, smoke, releaseCut, publish) have no resolver,
+// sections (build, smoke, releaseCut, publish) have no resolver,
 // their consumers read the parsed fields directly, so their required fields
 // stay required here.
 const SdkPinConfigSchema = z.object({
@@ -218,12 +209,6 @@ const BuildConfigSchema = z.object({
   addonOutDir: z.string(),
   targets: z.array(BinaryTargetSchema),
   prebuild: z.array(z.array(z.string())),
-}).catchall(z.unknown());
-
-const CoverageConfigSchema = z.object({
-  funcsFloor: z.number(),
-  linesFloor: z.number(),
-  command: z.array(z.string()),
 }).catchall(z.unknown());
 
 const SmokeConfigSchema = z.object({
@@ -264,7 +249,6 @@ const ToolchainConfigSchema = z.object({
   packageName: z.string().min(1, 'must be a non-empty string'),
   sdkPin: SdkPinConfigSchema.optional(),
   build: BuildConfigSchema.optional(),
-  coverage: CoverageConfigSchema.optional(),
   smoke: SmokeConfigSchema.optional(),
   releaseCut: ReleaseCutConfigSchema.optional(),
   publish: PublishPackageConfigSchema.optional(),

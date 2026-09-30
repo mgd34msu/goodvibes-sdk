@@ -1,90 +1,28 @@
 #!/usr/bin/env bash
-# Pre-commit hook: enforces api-extractor snapshot is in sync with source,
-# and the 800-line source-file cap.
+# Pre-commit hook: one fast source check, nothing heavy.
 #
-# When a commit touches any TypeScript source under packages/*/src/, this hook
-# (1) runs line:check — cheap, no build required — to catch line-cap ratchet
-# violations before they land, then (2) rebuilds the SDK and runs api:check.
-# If etc/goodvibes-sdk.api.md drifts from what the current source produces,
-# the commit is REJECTED with instructions.
+# When a commit touches TypeScript under packages/*/src/, this runs
+# credential-scope:check (~0.7 s, no build): a credential the platform stores
+# must be classified, or no surface can route it. Build, typecheck, tests and
+# the release checks run in CI (see docs/testing-and-validation.md); generated
+# files are refreshed by `bun run release:prepare` at the version bump.
 #
-# Activated by `git config core.hooksPath .githooks` (run by the `prepare`
-# script in package.json after `bun install`).
+# Activated by `git config core.hooksPath .githooks` (the `prepare` script in
+# package.json runs it after `bun install`).
 #
-# To bypass in genuinely emergency situations: `git commit --no-verify`.
-# Don't make a habit of it.
+# Bypass in an emergency: `git commit --no-verify`.
 set -euo pipefail
 
-# Package manifests count as source here. The subpath API report is driven by
-# the `exports` map in packages/*/package.json, so publishing a new subpath
-# changes the public surface without touching a single .ts file; this pattern
-# previously matched src/**.ts only, and such a commit went through untouched.
 STAGED_SRC=$(git diff --cached --name-only --diff-filter=ACMR \
-  | grep -E '^packages/[^/]+/(src/.*\.ts|package\.json)$' || true)
+  | grep -E '^packages/[^/]+/src/.*\.ts$' || true)
 if [ -z "$STAGED_SRC" ]; then
   exit 0
 fi
 
-echo "[pre-commit] $(echo "$STAGED_SRC" | wc -l | tr -d ' ') source files staged — running line:check"
-
-if ! bun run line:check; then
-  echo "" >&2
-  echo "[pre-commit] BLOCKED: line-cap-check failed (see above)." >&2
-  echo "" >&2
-  echo "  Bypass (emergency only): git commit --no-verify" >&2
-  exit 1
-fi
-
-echo "[pre-commit] running credential-scope:check — a stored credential must be classified"
-
 if ! bun run credential-scope:check; then
   echo "" >&2
   echo "[pre-commit] BLOCKED: credential-scope-check failed (see above)." >&2
-  echo "" >&2
-  echo "  A credential nothing classifies is a credential nothing can route, and" >&2
-  echo "  that is how a capability ends up silently dead on the daemon while" >&2
-  echo "  working credentials sit on the same disk." >&2
-  echo "" >&2
-  echo "  Bypass (emergency only): git commit --no-verify" >&2
-  exit 1
-fi
-
-echo "[pre-commit] running api:check to catch public-surface drift"
-
-if ! bun run build >/dev/null 2>&1; then
-  echo "" >&2
-  echo "[pre-commit] BLOCKED: \`bun run build\` failed. Fix build errors before committing." >&2
-  exit 1
-fi
-
-# `bun run build` compiles tsconfig.build.json — the eleven packages, and only
-# them. It does NOT typecheck test/ or scripts/; before tsconfig.tests.json
-# existed, nothing did. `bun run typecheck` covers the full solution and judges
-# each project by its OUTPUT as well as its exit code, because a `tsc --build`
-# has been observed printing diagnostics while exiting 0.
-if ! bun run typecheck; then
-  echo "" >&2
-  echo "[pre-commit] BLOCKED: typecheck failed (see above)." >&2
-  echo "" >&2
-  echo "  This covers test/ and scripts/ as well as packages/*/src." >&2
-  echo "" >&2
-  echo "  Bypass (emergency only): git commit --no-verify" >&2
-  exit 1
-fi
-
-if ! bun run api:check; then
-  echo "" >&2
-  echo "[pre-commit] BLOCKED: etc/goodvibes-sdk.api.md is out of sync with current source." >&2
-  echo "" >&2
-  echo "  Source files changed but the public API report wasn't regenerated. To fix:" >&2
-  echo "" >&2
-  echo "    bunx api-extractor run --local" >&2
-  echo "    git add etc/goodvibes-sdk.api.md" >&2
-  echo "    git commit --amend --no-edit   # OR re-run your original git commit" >&2
-  echo "" >&2
-  echo "  If the diff looks wrong, your source change may have unintentionally altered" >&2
-  echo "  the public surface. Review the diff before committing." >&2
-  echo "" >&2
+  echo "  A credential nothing classifies is a credential nothing can route." >&2
   echo "  Bypass (emergency only): git commit --no-verify" >&2
   exit 1
 fi

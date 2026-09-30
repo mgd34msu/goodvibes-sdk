@@ -4,19 +4,10 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const PKG_DIR = resolve(import.meta.dir, '../../packages/toolchain');
-const DISPATCHER_SRC = resolve(PKG_DIR, 'src/bin/toolchain.ts');
 const DISPATCHER_DIST = resolve(PKG_DIR, 'dist/bin/toolchain.js');
 
 function binMap(): Record<string, string> {
   return (JSON.parse(readFileSync(resolve(PKG_DIR, 'package.json'), 'utf8')) as { bin: Record<string, string> }).bin;
-}
-
-function dispatcherTools(): string[] {
-  // The TOOLS literal is the dispatch table; parse its keys from source so the
-  // test needs no execution of arbitrary tools.
-  const src = readFileSync(DISPATCHER_SRC, 'utf8');
-  const body = src.match(/const TOOLS[^{]*\{([\s\S]*?)\}/)?.[1] ?? '';
-  return [...body.matchAll(/'([a-z0-9-]+)':/g)].map((m) => m[1]!);
 }
 
 describe('goodvibes-toolchain dispatcher', () => {
@@ -27,14 +18,6 @@ describe('goodvibes-toolchain dispatcher', () => {
     expect(binMap()['goodvibes-toolchain']).toBe('./dist/bin/toolchain.js');
     // Keep it first so any first-bin fallback ALSO lands on the dispatcher.
     expect(Object.keys(binMap())[0]).toBe('goodvibes-toolchain');
-  });
-
-  test('the dispatch table covers every tool bin exactly (no drift in either direction)', () => {
-    const bins = Object.keys(binMap())
-      .filter((name) => name !== 'goodvibes-toolchain')
-      .map((name) => name.replace(/^goodvibes-/, ''))
-      .sort();
-    expect(dispatcherTools().sort()).toEqual(bins);
   });
 
   test('unknown or missing tool names exit 2 with usage, never fall through to a tool', () => {

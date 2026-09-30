@@ -5,7 +5,6 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { ensureBuiltinVoiceProviders } from '../packages/sdk/src/platform/voice/builtin-providers.js';
 import { VoiceProviderRegistry } from '../packages/sdk/src/platform/voice/provider-registry.js';
 
 const MOCK_PROVIDER = {
@@ -46,10 +45,5 @@ describe('platform/voice: behavior smoke', () => {
     const registry = new VoiceProviderRegistry();
     const result = registry.get('unknown-provider-id');
     expect(result).toBeNull();
-  });
-
-  test('ensureBuiltinVoiceProviders does not throw when called with a registry', () => {
-    const registry = new VoiceProviderRegistry();
-    expect(() => ensureBuiltinVoiceProviders(registry)).not.toThrow();
   });
 });

@@ -5,19 +5,6 @@ import { describe, expect, test } from 'bun:test';
  * call signature as the native fetch and is reachable from the platform utils.
  */
 describe('instrumentedFetch migration', () => {
-  test('instrumentedFetch is a function with arity >= 1', async () => {
-    const { instrumentedFetch } = await import('../packages/sdk/src/platform/utils/fetch-with-timeout.js');
-    expect(instrumentedFetch.length).toBeGreaterThanOrEqual(1);
-  });
-
-  test('instrumentedFetch accepts url string and optional RequestInit', async () => {
-    const { instrumentedFetch } = await import('../packages/sdk/src/platform/utils/fetch-with-timeout.js');
-    // Confirm the function exists and is callable (we mock the network layer)
-    const promise = instrumentedFetch('http://127.0.0.1:0/unreachable').catch((err: unknown) => err);
-    const result = await promise;
-    expect(result).toBeInstanceOf(Error);
-  });
-
   // N-2: URL redaction, sensitive params are replaced with [redacted] in logged URL
   test('sanitizeUrlForLog redacts sensitive query params', async () => {
     const { sanitizeUrlForLog } = await import('../packages/sdk/src/platform/utils/fetch-with-timeout.js');

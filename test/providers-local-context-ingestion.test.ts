@@ -12,7 +12,6 @@ import {
   resolveContextWindow,
   DEFAULT_CONTEXT_WINDOW,
   LocalContextIngestionService,
-  type ContextWindowProvenance,
 } from '@pellux/goodvibes-sdk/platform/providers';
 
 // ---------------------------------------------------------------------------
@@ -74,15 +73,6 @@ describe('resolveContextWindow: provenance ladder', () => {
 // ---------------------------------------------------------------------------
 // Provenance type coverage
 // ---------------------------------------------------------------------------
-
-describe('ContextWindowProvenance values', () => {
-  test('all provenance values are string literals', () => {
-    const values: ContextWindowProvenance[] = ['provider_api', 'configured_cap', 'fallback'];
-    for (const v of values) {
-      expect(typeof v).toBe('string');
-    }
-  });
-});
 
 // ---------------------------------------------------------------------------
 // Cache management

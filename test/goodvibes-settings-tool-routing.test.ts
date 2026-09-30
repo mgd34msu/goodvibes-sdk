@@ -20,7 +20,6 @@ import { join } from 'node:path';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 import {
   createGoodVibesSettingsTool,
-  GOODVIBES_RUNTIME_AWARENESS_PROMPT,
 } from '../packages/sdk/src/platform/tools/goodvibes-runtime/index.js';
 import {
   readRoutedConfigValue,
@@ -283,25 +282,5 @@ describe('a write that did not land is a failure, not a success', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('goodvibes://');
-  });
-});
-
-describe('the instruction that made a stated value read as trivia is gone', () => {
-  test('the awareness prompt tells the model to apply a supplied value and report where it landed', () => {
-    expect(GOODVIBES_RUNTIME_AWARENESS_PROMPT).not.toContain('only when the user explicitly asks you to change a setting');
-    expect(GOODVIBES_RUNTIME_AWARENESS_PROMPT).toContain('is a request to set it');
-    expect(GOODVIBES_RUNTIME_AWARENESS_PROMPT).toContain('persistedTo');
-    expect(GOODVIBES_RUNTIME_AWARENESS_PROMPT).toContain('only repeated back in prose is not set');
-    // The other half: no over-correction into writing config nobody asked for.
-    expect(GOODVIBES_RUNTIME_AWARENESS_PROMPT).toContain('ask one short question');
-    expect(GOODVIBES_RUNTIME_AWARENESS_PROMPT).toContain('never write config the user did not ask for');
-    // And the read side: unreachable is not the same as unset.
-    expect(GOODVIBES_RUNTIME_AWARENESS_PROMPT).toContain('unavailable, not unset');
-  });
-
-  test('the tool description says a value only mentioned in prose has not been set', () => {
-    const tool = createGoodVibesSettingsTool({ configManager: new ConfigManager({ homeDir: home(), surfaceRoot: 'agent' }) });
-    expect(tool.definition.description).toContain('has not been set');
-    expect(tool.definition.description).toContain('persistedTo');
   });
 });

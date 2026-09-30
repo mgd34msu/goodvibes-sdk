@@ -126,9 +126,3 @@ describe('(c) real bootDaemon HTTP proof: the wire shape webui/TUI actually cons
     expect(Array.isArray(body.methods)).toBe(true);
   });
 });
-
-describe('(d) METHOD_NOT_FOUND and NOT_INVOKABLE never collide', () => {
-  test('the two codes are distinct string literals', () => {
-    expect(SDKErrorCodes.METHOD_NOT_FOUND).not.toBe(SDKErrorCodes.NOT_INVOKABLE);
-  });
-});

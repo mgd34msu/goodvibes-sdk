@@ -254,9 +254,4 @@ describe('startDurabilityHousekeeping', () => {
       stop();
     }
   });
-
-  test('the disposer is safe to call more than once', () => {
-    const stop = startDurabilityHousekeeping({ surface }, { intervalMs: 60_000 });
-    expect(() => { stop(); stop(); }).not.toThrow();
-  });
 });

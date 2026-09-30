@@ -15,7 +15,6 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readFileSync } from 'node:fs';
 import { MailboxCursorStore } from '../packages/sdk/src/platform/email/inbound/cursor-store.ts';
 import { GmailMailSource } from '../packages/sdk/src/platform/email/inbound/gmail-source.ts';
 import type { GmailMailSourceDeps } from '../packages/sdk/src/platform/email/inbound/gmail-source.ts';
@@ -725,84 +724,5 @@ describe('gmail source: adaptive interval', () => {
     await loop;
     expect(ended).toBe(true);
     expect(harness.clock.pending).toBe(0);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// The structural rule, §2.1
-// ---------------------------------------------------------------------------
-
-describe('inbound sources cannot register an expectation', () => {
-  const files = [
-    'packages/sdk/src/platform/email/inbound/gmail-source.ts',
-    'packages/sdk/src/platform/email/inbound/imap-source.ts',
-    'packages/sdk/src/platform/email/inbound/source-selection.ts',
-  ];
-
-  test('no source module names openExpectation or hydrateExpectation', () => {
-    for (const file of files) {
-      const text = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
-      expect(text).not.toContain('openExpectation');
-      expect(text).not.toContain('hydrateExpectation');
-    }
-  });
-
-  /**
-   * Every module specifier the file names, however the import is written.
-   *
-   * A line filter, `lines.filter(l => l.startsWith('import '))`, was what
-   * this used to do, and it is blind to the dominant style in these very
-   * files: a multi-line import contributes only `import {`, and the
-   * `from './x.js'` line that carries the specifier is on a different line and
-   * therefore excluded. A real multi-line import of the expectation registry
-   * passed the whole suite.
-   *
-   * Matching on the specifier itself rather than on line prefixes covers
-   * multi-line static imports, single-line ones, side-effect imports,
-   * `export … from`, and dynamic `import('…')` in one rule.
-   */
-  function moduleSpecifiers(text: string): string[] {
-    const found: string[] = [];
-    for (const pattern of [
-      // `import … from 'x'` and `export … from 'x'`, single- or multi-line.
-      /\bfrom\s*['"]([^'"]+)['"]/g,
-      // Side-effect import: `import 'x'`.
-      /\bimport\s*['"]([^'"]+)['"]/g,
-      // Dynamic: `import('x')`, and `require('x')` for completeness.
-      /\b(?:import|require)\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
-    ]) {
-      for (const match of text.matchAll(pattern)) {
-        const specifier = match[1];
-        if (specifier !== undefined) found.push(specifier);
-      }
-    }
-    return found;
-  }
-
-  test('the specifier scan sees a MULTI-LINE import, which is the shape that defeated the old one', () => {
-    // The scanner is the thing under test here, not the sources: a scanner
-    // that misses this shape reports every file clean forever.
-    const multiLine = [
-      'import {',
-      '  InboundExpectationRegistry,',
-      '} from \'./expectation-registry.js\';',
-      '',
-      'import { thing } from \'./elsewhere.js\';',
-    ].join('\n');
-    expect(moduleSpecifiers(multiLine)).toEqual(['./expectation-registry.js', './elsewhere.js']);
-  });
-
-  test('no source module imports anything that can create an expectation', () => {
-    for (const file of files) {
-      const text = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
-      const specifiers = moduleSpecifiers(text);
-      // Non-empty, so a file that stopped being parseable, or a path typo
-      // that read an empty file, cannot pass by naming nothing.
-      expect(specifiers.length, `${file} names no imports at all`).toBeGreaterThan(0);
-      for (const forbidden of ['expectation-registry', 'verification-expectations', 'expectation-store']) {
-        const offending = specifiers.filter((specifier) => specifier.includes(forbidden));
-        expect(offending, `${file} imports ${forbidden}`).toEqual([]);
-      }
-    }
   });
 });

@@ -56,15 +56,6 @@ describe('platform/multimodal: behavior smoke', () => {
     expect(typeof extractor!.configured).toBe('boolean');
   });
 
-  test('getStatus() resolves with enabled, providerCount, and providers fields', async () => {
-    const service = makeService();
-    const status = await service.getStatus();
-    expect(typeof status.enabled).toBe('boolean');
-    expect(typeof status.providerCount).toBe('number');
-    expect(status.providers).toBeInstanceOf(Array);
-    expect(status.providerCount).toBe(status.providers.length);
-  });
-
   test('getStatus() returns consistent providerCount matching providers array length', async () => {
     const service = makeService();
     const status = await service.getStatus();

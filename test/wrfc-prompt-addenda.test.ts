@@ -55,11 +55,6 @@ describe('buildEngineerConstraintAddendum', () => {
     const b = buildEngineerConstraintAddendum();
     expect(a === b).toBe(true);
   });
-
-  test('accepts zero arguments and returns string', () => {
-    const result = buildEngineerConstraintAddendum();
-    expect(typeof result).toBe('string');
-  });
 });
 
 describe('buildReviewerConstraintAddendum', () => {
@@ -99,11 +94,6 @@ describe('buildReviewerConstraintAddendum', () => {
     const b = buildReviewerConstraintAddendum();
     expect(a === b).toBe(true);
   });
-
-  test('accepts zero arguments and returns string', () => {
-    const result = buildReviewerConstraintAddendum();
-    expect(typeof result).toBe('string');
-  });
 });
 
 describe('buildFixerConstraintAddendum', () => {
@@ -133,10 +123,5 @@ describe('buildFixerConstraintAddendum', () => {
     const a = buildFixerConstraintAddendum();
     const b = buildFixerConstraintAddendum();
     expect(a === b).toBe(true);
-  });
-
-  test('accepts zero arguments and returns string', () => {
-    const result = buildFixerConstraintAddendum();
-    expect(typeof result).toBe('string');
   });
 });

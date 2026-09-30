@@ -2,7 +2,7 @@
 //
 // Pure logic for the typed-IO coverage ratchet enforced by
 // check-foundation-io-coverage.ts. Kept separate from the file-reading driver
-// (mirrors line-cap-rule.ts vs check-line-cap.ts) so the counting and
+// so the counting and
 // ratchet-comparison rules can be unit-tested without touching disk.
 //
 // "Typed IO" for an operator method means the method id appears as a key in

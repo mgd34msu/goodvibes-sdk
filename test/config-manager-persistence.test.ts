@@ -81,14 +81,6 @@ describe('ConfigManager persistence', () => {
     expect('testEntry' in (reloaded.getCategory('helper') as unknown as Record<string, string>)).toBe(false);
   });
 
-  test('removeCategoryKey on an absent key is a no-op and does not throw', () => {
-    const configDir = tempDir('remove-absent-key');
-    mkdirSync(configDir, { recursive: true });
-    const manager = new ConfigManager({ configDir });
-
-    expect(() => manager.removeCategoryKey('helper', 'never-set')).not.toThrow();
-  });
-
   test('an unreadable system prompt file degrades to "none configured" instead of throwing', () => {
     // `provider.systemPromptFile` names a file the user may have moved or
     // deleted since setting it. Propagating the read failure takes down whatever

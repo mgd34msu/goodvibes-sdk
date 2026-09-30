@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, setSystemTime, test } from 'bun:test';
 
 /**
  * LLM instrumentation, verifies instrumentedLlmCall wraps async functions
@@ -8,12 +8,21 @@ import { describe, expect, test } from 'bun:test';
 describe('llm instrumentation', () => {
   test('instrumentedLlmCall returns InstrumentedLlmResult with result and durationMs', async () => {
     const { instrumentedLlmCall } = await import('../packages/sdk/src/platform/runtime/llm-observability.js');
-    const wrapped = await instrumentedLlmCall(async () => ({ answer: 42 }));
-    expect(wrapped.result).toEqual({ answer: 42 });
-    expect(typeof wrapped.durationMs).toBe('number');
-    // Upper bound is the real assertion; a non-negative duration is also implied.
-    expect(wrapped.durationMs).toBeLessThan(1000);
-    expect(wrapped.retries).toBe(0);
+    // The clock is pinned and moved by the wrapped call itself, so durationMs
+    // is exactly the time the call took, independent of host speed.
+    const start = new Date('2026-01-01T00:00:00.000Z');
+    setSystemTime(start);
+    try {
+      const wrapped = await instrumentedLlmCall(async () => {
+        setSystemTime(new Date(start.getTime() + 250));
+        return { answer: 42 };
+      });
+      expect(wrapped.result).toEqual({ answer: 42 });
+      expect(wrapped.durationMs).toBe(250);
+      expect(wrapped.retries).toBe(0);
+    } finally {
+      setSystemTime();
+    }
   });
 
   test('instrumentedLlmCall tracks retries when fn throws then succeeds', async () => {

@@ -55,10 +55,6 @@ describe('EventReplayQueue', () => {
       expect(stats.pending).toBe(0);
     });
 
-    test('acknowledge with unknown ID does not throw', async () => {
-      expect(() => queue.acknowledge('nonexistent-id')).not.toThrow();
-    });
-
     test('acknowledging twice is idempotent', async () => {
       const id = queue.enqueue('AGENT_COMPLETED', { id: 'a1' });
       queue.acknowledge(id);

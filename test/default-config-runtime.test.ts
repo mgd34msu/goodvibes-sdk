@@ -106,26 +106,7 @@ describe('ConfigManager resolves all runtime.* schema keys', () => {
     .map((setting) => setting.key)
     .filter((key) => key.startsWith('runtime.'));
 
-  test('at least one runtime.* key exists in CONFIG_SCHEMA', () => {
-    expect(runtimeKeys).toEqual([
-      'runtime.companionChatLimiter.perSessionLimit',
-      'runtime.eventBus.maxListeners',
-      'runtime.unifiedTasks',
-      'runtime.pluginLifecycle',
-      'runtime.mcpLifecycle',
-      'runtime.toolBudget.enforced',
-      'runtime.toolBudget.maxMs',
-      'runtime.toolBudget.maxTokens',
-      'runtime.toolBudget.maxCostUsd',
-    ]);
-  });
-
   for (const key of runtimeKeys) {
-    test(`config.get('${key}') does not throw`, () => {
-      const manager = makeConfigManager();
-      expect(() => manager.get(key as Parameters<typeof manager.get>[0])).not.toThrow();
-    });
-
     test(`config.get('${key}') returns the schema default value`, () => {
       const manager = makeConfigManager();
       const setting = CONFIG_SCHEMA.find((s) => s.key === key)!;

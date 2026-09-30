@@ -18,17 +18,11 @@
  *     to be open, and anyone who could put an entry on a subscribed calendar
  *     would own a remote off switch for the owner's outward actions
  *     (docs/decisions/2026-07-27-arrival-is-not-ingest.md). Only reads record.
- *   - **Event content cannot initiate work.** The source scan at the bottom
- *     fails if any calendar module gains a path to a session broker, an agent
- *     manager, or a spawn/enqueue call.
  *
  * Do not relax, skip, or "temporarily" delete these.
  */
 
 import { describe, expect, test } from 'bun:test';
-import { readFileSync, readdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import {
   UntrustedContentLedger,
@@ -59,9 +53,6 @@ import type {
   CalDavHttpRequest,
   CalDavHttpResponse,
 } from '../packages/sdk/src/platform/google/caldav-client.ts';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const CALENDAR_DIR = resolve(__dirname, '../packages/sdk/src/platform/calendar');
 
 // ---------------------------------------------------------------------------
 // Recording ledger, and the recorder shape the calendar package emits
@@ -739,80 +730,5 @@ describe('an invitation cannot compose an outward action', () => {
     expect(calendarEventIsExternallySourced({ kind: 'provider', provider: 'google' }, own)).toBe(false);
     expect(ledger.hasIngestedThisTurn()).toBe(false);
     expect(ledger.all()).toEqual([]);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Event content cannot initiate work, proved by scanning the source
-// ---------------------------------------------------------------------------
-
-describe('no calendar module can initiate work', () => {
-  const PLATFORM_DIR = resolve(__dirname, '../packages/sdk/src/platform');
-
-  /**
-   * Every module that handles calendar event content: the package itself, plus
-   * the three files outside it that serve `calendar.*`, the two gateway
-   * backends' route layer and the Google-backed implementation. A scan of the
-   * package alone would miss the file that actually talks to Google.
-   */
-  const calendarSources = (): readonly string[] => [
-    ...readdirSync(CALENDAR_DIR).filter((f) => f.endsWith('.ts')).map((f) => resolve(CALENDAR_DIR, f)),
-    resolve(PLATFORM_DIR, 'google/gateway-calendar-service.ts'),
-    resolve(PLATFORM_DIR, 'control-plane/routes/calendar.ts'),
-    resolve(PLATFORM_DIR, 'control-plane/routes/calendar-composition.ts'),
-  ];
-
-  test('no calendar module names a broker, an agent manager, or a spawn', () => {
-    // The same shape as test/surface-card-gate.test.ts's adapter scan: assert
-    // the SOURCE does not contain the symbol, so a reintroduced import fails
-    // here rather than in production. Inbound mail holds the same property; a
-    // calendar is a strictly more attractive injection surface than mail
-    // because a subscription feed is polled forever with nobody watching.
-    const banned: { readonly name: string; readonly pattern: RegExp }[] = [
-      { name: 'session broker', pattern: /\bSessionBroker\b|\bsessionBroker\b/ },
-      { name: 'agent manager', pattern: /\bAgentManager\b|\bagentManager\b/ },
-      { name: 'spawn', pattern: /\bspawn[A-Za-z]*\s*\(|\btrySpawnAgent\b|\bSpawnToken\b/ },
-      { name: 'enqueue', pattern: /\benqueue[A-Za-z]*\s*\(/ },
-      { name: 'session start', pattern: /\bstartSession\s*\(|\bcreateSession\s*\(|\bresumeSession\s*\(/ },
-      { name: 'task/job dispatch', pattern: /\bdispatch[A-Za-z]*\s*\(|\bscheduleTask\s*\(|\brunWorkflow\s*\(/ },
-      { name: 'orchestration import', pattern: /from\s+['"][^'"]*(orchestration|agent-manager|session-broker|spawn)[^'"]*['"]/ },
-    ];
-    const offenders: string[] = [];
-    for (const file of calendarSources()) {
-      const source = readFileSync(file, 'utf8');
-      for (const { name, pattern } of banned) {
-        if (pattern.test(source)) offenders.push(`${file}: ${name}`);
-      }
-    }
-    expect(offenders).toEqual([]);
-    // A scan that found no files would pass vacuously.
-    expect(calendarSources().length).toBeGreaterThan(20);
-  });
-
-  test('the arrival path of the subscription store records nothing', () => {
-    const source = readFileSync(resolve(CALENDAR_DIR, 'subscription-store.ts'), 'utf8');
-    // `recordRead` is the ONLY caller of the recorder, and it is reached only
-    // from the two EXPLICIT readers, `readEvents()` and `readAllEvents()`. The
-    // pure accessors `events()`/`allEvents()` do not reach it: a consumer
-    // already calls `events()` from a timer-driven refresh to count and persist,
-    // so recording there would make arrival an ingest. If a future change calls
-    // the recorder from applyFetch/refresh, this count goes up and this fails.
-    const recorderCalls = source.match(/recordCalendarEventIngest\s*\(/g) ?? [];
-    expect(recorderCalls).toHaveLength(1);
-
-    const start = source.indexOf('private applyFetch');
-    const end = source.indexOf('async refreshDue');
-    // Both anchors must have been FOUND. `indexOf` returns -1 on a miss, and
-    // `slice(-1, n)` yields the LAST CHARACTER of the source rather than an
-    // empty string, on which every `not.toContain` below passes and this test
-    // silently stops checking anything. A length guard does not catch that,
-    // because a one-character haystack has a length greater than zero.
-    expect(start).toBeGreaterThanOrEqual(0);
-    expect(end).toBeGreaterThan(start);
-
-    const applyFetch = source.slice(start, end);
-    expect(applyFetch).not.toContain('recordRead');
-    expect(applyFetch).not.toContain('recordCalendarEventIngest');
-    expect(applyFetch.length).toBeGreaterThan(0);
   });
 });

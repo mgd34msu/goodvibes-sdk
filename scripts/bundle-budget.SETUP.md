@@ -1,12 +1,12 @@
-# CI Integration: bundle size budgets (`bundle:check`)
+# Bundle size budgets (`bundle:check`)
 
-## Current CI Gate
+## Where it runs
 
-The repo runs `bun run bundle:check` as a step inside the consolidated `validate`
-job (via `bun run validate`) in `.github/workflows/ci.yml`, there is no
-standalone `bundle-budget-check` job. Generated artifact drift is covered by the
-`bun run contracts:check` step in that same `validate` job; there is no separate
-`contract-artifact-check` job. The standalone job YAML below is illustrative, add it only if the bundle gate ever needs to be isolated.
+No CI job runs `bundle:check`. `bun run release:prepare` runs
+`bun scripts/bundle-budget.ts --update` at each version bump, which re-anchors
+every entry that grew past its ceiling and removes entries for exports that no
+longer exist. `bun run bundle:check` prints the table locally. The job YAML
+below is illustrative, for a repo that wants the ceiling enforced per push.
 
 ```yaml
   bundle-budget-check:

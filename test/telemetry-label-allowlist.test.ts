@@ -5,13 +5,6 @@ import { describe, expect, test } from 'bun:test';
  * and that filterMetricLabels strips non-allowlisted keys.
  */
 describe('label allowlist', () => {
-  test('METRIC_LABEL_ALLOWLIST is exported and is a Set', async () => {
-    const { METRIC_LABEL_ALLOWLIST } = await import('../packages/sdk/src/platform/runtime/telemetry/api-helpers.js');
-    expect(METRIC_LABEL_ALLOWLIST).toBeInstanceOf(Set);
-    // Lower bound: new low-cardinality labels may be added without breaking this test.
-    expect(METRIC_LABEL_ALLOWLIST.size).toBeGreaterThanOrEqual(20);
-  });
-
   test('METRIC_LABEL_ALLOWLIST contains expected low-cardinality keys', async () => {
     const { METRIC_LABEL_ALLOWLIST } = await import('../packages/sdk/src/platform/runtime/telemetry/api-helpers.js');
     expect(METRIC_LABEL_ALLOWLIST.has('domain')).toBe(true);

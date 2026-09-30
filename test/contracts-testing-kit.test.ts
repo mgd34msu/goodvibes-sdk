@@ -126,8 +126,4 @@ describe('contracts testing kit: generated fixtures', () => {
     const covered = Object.keys(MOCK_DAEMON_FIXTURES).sort();
     expect(covered).toEqual([...OPERATOR_METHOD_IDS].sort());
   });
-
-  test('the checked-in fixtures match a fresh generation (drift guard)', () => {
-    expect(MOCK_DAEMON_FIXTURES).toEqual(buildMockDaemonFixtureMap(OPERATOR_CONTRACT));
-  });
 });

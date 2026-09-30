@@ -1,0 +1,177 @@
+name: Release gates
+
+# The checks a RELEASE needs and a push does not: whether the packed tarballs
+# are coherent and installable, whether their types resolve, whether the
+# dependency tree carries a known advisory, whether the non-Bun runtimes still
+# load the SDK, and the eval floors. They are slow and change only when
+# packaging, dependencies or runtime targets change, so they run:
+#
+#   - from ci.yml, before auto-release, on a push with RELEASE_ARMED=true
+#     (auto-release `needs` this workflow, so no version is tagged without it);
+#   - nightly, so a drift in the dependency tree or a runtime shows up within a day;
+#   - on demand (Actions > Release gates > Run workflow).
+#
+# Per-push CI (ci.yml) keeps build, typecheck, the test run, gitleaks and the
+# packaged-daemon smoke.
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  schedule:
+    # Nightly, 07:00 UTC.
+    - cron: '0 7 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  gates-build:
+    name: Build for the release gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      - name: Build SDK
+        run: bun run build
+      - name: Archive workspace package output
+        run: tar -czf /tmp/release-gates-build-output.tgz packages/*/dist
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          # A distinct name: when ci.yml calls this workflow the run already
+          # holds `workspace-build-output`, which release.yml publishes from.
+          name: release-gates-build-output
+          path: /tmp/release-gates-build-output.tgz
+          retention-days: 1
+          if-no-files-found: error
+
+  # Source checks that are neither generated-file drift nor style: stored
+  # credentials are classified, every public module is reachable from a
+  # published package, the examples compile, companion entry points stay
+  # browser-safe, package metadata is complete; plus the feature-defaults
+  # policy (flags:graduation).
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      - name: Validate
+        run: bun run validate
+      - name: Feature-defaults policy
+        run: bun run flags:graduation
+
+  packaging:
+    name: Packaging (${{ matrix.check }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [gates-build]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - check: pack
+            cmd: bun run pack:check
+          - check: install-smoke
+            cmd: bun run install:smoke
+          - check: attw
+            cmd: bun run types:resolution-check
+          - check: publint
+            cmd: bun run publint:check
+          - check: artifact-lane
+            cmd: bun run release:artifact-lane
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      - name: Download workspace package output
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-gates-build-output
+          path: /tmp/release-gates-build-output
+      - name: Restore workspace package output
+        run: tar -xzf /tmp/release-gates-build-output/release-gates-build-output.tgz -C .
+      - name: Run ${{ matrix.check }}
+        run: ${{ matrix.cmd }}
+
+  runtimes:
+    name: Runtime leg (${{ matrix.platform }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [gates-build]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: rn-bundle
+            cmd: bun run test:rn
+          - platform: workers
+            cmd: bun run test:workers
+          - platform: workers-wrangler
+            cmd: bun run test:workers:wrangler
+          # Re-runs the fake-IMAP suites with one wire call delayed so a wake
+          # edge pushed at the wrong moment is reliably lost instead of
+          # occasionally lost (scripts/sweep-wake-race.ts).
+          - platform: wake-race-sweep
+            cmd: bun run sweep:wake-race
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      - name: Download workspace package output
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-gates-build-output
+          path: /tmp/release-gates-build-output
+      - name: Restore workspace package output
+        run: tar -xzf /tmp/release-gates-build-output/release-gates-build-output.tgz -C .
+      - name: Run ${{ matrix.platform }}
+        run: ${{ matrix.cmd }}
+
+  eval-gate:
+    name: Eval gate (floors + regression)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [gates-build]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      # The eval scripts run SDK source directly, and that source imports bare
+      # workspace specifiers whose package exports resolve to ./dist.
+      - name: Download workspace package output
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-gates-build-output
+          path: /tmp/release-gates-build-output
+      - name: Restore workspace package output
+        run: tar -xzf /tmp/release-gates-build-output/release-gates-build-output.tgz -C .
+      - name: Run eval gate
+        run: bun run eval:gate
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      - name: bun audit
+        run: bun run security:audit

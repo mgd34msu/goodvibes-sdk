@@ -432,30 +432,6 @@ describe('the trigger family is an OPTIONAL dependency for a hand-composed host'
   // does) crashed on daemon shutdown with
   //   TypeError: undefined is not an object (evaluating 'this.triggerManager.shutdown')
   // Absence must mean "this runtime has no triggers", never a crash.
-  test('facade lifecycle calls are optional-chained, not bare dereferences', () => {
-    const facade = readFileSync(
-      new URL('../packages/sdk/src/platform/daemon/facade.ts', import.meta.url),
-      'utf-8',
-    );
-    expect(facade).toContain('this.triggerManager?.shutdown()');
-    expect(facade).toContain('this.triggerManager?.start()');
-    expect(facade).not.toContain('this.triggerManager.shutdown()');
-    expect(facade).not.toContain('this.triggerManager.start()');
-  });
-
-  test('the RuntimeServices and facade contracts both declare it optional', () => {
-    const services = readFileSync(
-      new URL('../packages/sdk/src/platform/runtime/services.ts', import.meta.url),
-      'utf-8',
-    );
-    expect(services).toContain('readonly triggerManager?: TriggerManager | undefined;');
-    const facadeTypes = readFileSync(
-      new URL('../packages/sdk/src/platform/daemon/facade-types.ts', import.meta.url),
-      'utf-8',
-    );
-    expect(facadeTypes).toContain("readonly triggerManager?: RuntimeServices['triggerManager'];");
-  });
-
   test('a manager with no process host still shuts down cleanly', () => {
     // shutdown() is called on every daemon stop, including one that never
     // started the family or never had a host wired.

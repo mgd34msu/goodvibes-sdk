@@ -462,12 +462,6 @@ describe('styleReplyLiveRecord', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildStyleReplyLaneAdditions', () => {
-  it('returns both workflow and liveRecord', () => {
-    const additions = buildStyleReplyLaneAdditions(true);
-    expect(additions.workflow).toBeDefined();
-    expect(additions.liveRecord).toBeDefined();
-  });
-
   it('workflow and liveRecord have consistent status', () => {
     const additions = buildStyleReplyLaneAdditions(true);
     expect(additions.liveRecord.status).toBe(additions.workflow.status);

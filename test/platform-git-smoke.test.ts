@@ -20,12 +20,6 @@ describe('platform/git: behavior smoke', () => {
     const svc = new GitService(CWD);
     expect(svc.getCwd()).toBe(CWD);
   });
-
-  test('GitService.getRepoRoot returns a non-empty string for the SDK repo', async () => {
-    const root = await GitService.getRepoRoot(CWD);
-    expect(typeof root).toBe('string');
-    expect((root as string).length).toBeGreaterThan(0);
-  });
 });
 
 // The conflicted-file list is structured data a resolution session seeds from,

@@ -190,31 +190,49 @@ async function retryOnNetworkError(op: () => void, label: string): Promise<void>
   throw lastErr;
 }
 
-async function main(): Promise<void> {
-  console.log('[artifact-lane] packing workspace packages exactly as publish would...');
+/**
+ * Pack every public workspace package exactly as publish would and npm-install
+ * the tarballs (plus zod@^4, which the dist's `zod/v4` subpath import needs)
+ * into `projectDir`. Returns a cleanup for the pack staging directories; the
+ * caller owns `projectDir`. Shared with scripts/packed-daemon-smoke.ts, so the
+ * conformance lane and the daemon smoke test the same packed bytes the same way.
+ */
+export async function installPackedWorkspace(projectDir: string, label = 'artifact-lane'): Promise<() => void> {
+  console.log(`[${label}] packing workspace packages exactly as publish would...`);
   const { tempRoot, publicStages } = await stagePackages();
-  const packDestination = createSdkTempDir('goodvibes-sdk-artifact-lane-tarballs-');
-  const projectDir = createSdkTempDir('goodvibes-sdk-artifact-lane-consumer-');
+  const packDestination = createSdkTempDir(`goodvibes-sdk-${label}-tarballs-`);
+  const cleanup = (): void => {
+    rmSync(packDestination, { recursive: true, force: true });
+    cleanupStage(tempRoot);
+  };
   try {
     const packResults = publicStages.map((stage) => packStage(stage.stageDir, packDestination));
     const tarballs = collectTarballs(packResults, packDestination);
-    console.log(`[artifact-lane] packed ${tarballs.length} tarballs`);
-
-    writeConsumerFiles(projectDir);
-    // Pin zod@^4 explicitly so the dist's `zod/v4` subpath import resolves.
+    console.log(`[${label}] packed ${tarballs.length} tarballs`);
     await retryOnNetworkError(
       () => run('npm', ['install', ...tarballs, 'zod@^4'], projectDir, { stdio: 'inherit' }),
       'npm install',
     );
+    return cleanup;
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
+}
 
+async function main(): Promise<void> {
+  const projectDir = createSdkTempDir('goodvibes-sdk-artifact-lane-consumer-');
+  let cleanup: (() => void) | null = null;
+  try {
+    writeConsumerFiles(projectDir);
+    cleanup = await installPackedWorkspace(projectDir);
     console.log('[artifact-lane] running shipped conformance kit against the packed artifacts...');
     run('node', ['conformance.mjs'], projectDir, { stdio: 'inherit' });
     console.log('[artifact-lane] artifact lane passed, packed artifacts are internally coherent');
   } finally {
     rmSync(projectDir, { recursive: true, force: true });
-    rmSync(packDestination, { recursive: true, force: true });
-    cleanupStage(tempRoot);
+    cleanup?.();
   }
 }
 
-await main();
+if (import.meta.main) await main();

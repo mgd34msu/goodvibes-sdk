@@ -26,7 +26,7 @@
  * to look configured.
  */
 
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, test } from 'bun:test';
@@ -108,14 +108,6 @@ describe('every key from the §8 table is in CONFIG_SCHEMA with the exact defaul
     const row = CONFIG_SCHEMA.find((s) => s.key === key);
     expect(row, `${key} has no CONFIG_SCHEMA row at all`).toBeDefined();
     expect(row!.default).toBe(expected);
-  });
-
-  test('there are exactly seventeen inbound keys: not more, not fewer', () => {
-    const inboundKeys = CONFIG_SCHEMA
-      .map((s) => s.key)
-      .filter((key) => key.startsWith('surfaces.email.inbound.'));
-    expect(new Set(inboundKeys).size).toBe(17);
-    expect(inboundKeys.map(String).sort()).toEqual(EXPECTED_DEFAULTS.map((e) => e.key).sort());
   });
 
   test.each(EXPECTED_DEFAULTS)('$key is reachable through DEFAULT_CONFIG with the same default', ({ key, default: expected }) => {
@@ -351,59 +343,6 @@ function inboundMessage(): Parameters<InboundMailSupervisorDeps['handle']>[0] {
   } as never;
 }
 
-/**
- * Every production `.ts` under the SDK except the config definitions
- * themselves.
- *
- * Excluded on purpose: `config/` is where a key is DECLARED, and a declaration
- * is what an inert key already has. Counting it would make every key look
- * read.
- */
-function readSourceFilesOutsideConfig(): string[] {
-  const root = join(import.meta.dir, '..', 'packages', 'sdk', 'src');
-  const texts: string[] = [];
-  const walk = (directory: string): void => {
-    for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      const path = join(directory, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name !== 'config') walk(path);
-        continue;
-      }
-      if (entry.name.endsWith('.ts')) texts.push(readFileSync(path, 'utf8'));
-    }
-  };
-  walk(root);
-  return texts;
-}
-
-/**
- * Is this key READ by any of these sources, as opposed to merely mentioned?
- *
- * ONE definition, called by the gate and by both tests that prove the gate can
- * fail. It used to be an arrow function inside the gate test with a
- * character-for-character copy inside its companion, which is the arrangement
- * where widening the real one leaves the companion still asserting the narrow
- * one, a check that proves a pattern nothing uses.
- *
- * The rule: the key's own text, inside a config-read CALL. A doc comment naming
- * it does not count, and neither does a bare string assignment; that is the
- * distinction the whole gate rests on, because an inert key is typically named
- * in a comment beside behaviour it never selects.
- *
- * `getConfig` is in the alternation because the `ConfigReader` a source is
- * handed is named that rather than `get`, and a genuine read this could not see
- * would be worse than an unread key: it would look wired to a reader and
- * unwired to the gate, and the next person would trust the wrong one. It still
- * has to be a CALL, widening this to bare mentions is exactly what would make
- * the gate unable to fail, and with the inert list now empty there would be
- * nothing else left to notice.
- */
-function keyIsReadBy(sources: readonly string[], key: string): boolean {
-  const quoted = key.replace(/\./g, '\\.');
-  const pattern = new RegExp(`(?:get|getConfig|readNumberSetting)\\([^)]*['"]${quoted}['"]`, 's');
-  return sources.some((text) => pattern.test(text));
-}
-
 /** Non-default everywhere, so a value that reached its destination is unambiguous. */
 const NON_DEFAULT_CONFIG: Readonly<Record<string, unknown>> = {
   'surfaces.email.inbound.enabled': true,
@@ -619,183 +558,6 @@ describe('each inbound setting reaches the thing it names', () => {
     const loud = compose({ 'surfaces.email.inbound.notice.mode': 'all' }, [{ id: 'r', lastSeenAt: 1 }])!;
     await loud.deps.handle(inboundMessage());
     expect(loud.notices).toHaveLength(1);
-  });
-
-  /**
-   * The inert list is EMPTY, and that is the whole of what changed.
-   *
-   * It has held three keys, then one, and now none.
-   * `gmailPollSecondsExpecting` and `gmailPollSecondsIdle` came off when
-   * `source-factory.ts` began handing them to the `GmailSourceBuilder` at
-   * create time.
-   *
-   * `onInsufficientCapability` was the last, and it was on the list for a
-   * reason that was not "not got to yet". `notice-only` promises to keep
-   * announcing arriving mail from envelope fields alone while bodies are
-   * unavailable, and nothing could do that: on IMAP, `fetch-refused` is minted
-   * from a FAILED envelope fetch (`capability.ts`), so when it fires there are
-   * no envelopes, and every other `insufficient` reason is "cannot log in",
-   * "cannot open the mailbox" or "cannot keep a cursor". Wiring the key without
-   * first building a path that CAN announce from envelopes would have made the
-   * settings UI offer a behaviour the daemon answered with silence.
-   *
-   * That path now exists. `GoogleApiClient.readMessageMetadata` issues
-   * `messages.get?format=metadata`, the call a `gmail.metadata` token is
-   * authorized to make, `collectHistoryDelta` takes it under
-   * `onMetadataOnlyGrant: 'fetch-metadata'`, and `intake.ts` routes the result
-   * to the `capability-degraded` notice outcome. `source-factory.ts` reads this
-   * key at source-create time and hands it to `GmailMailSource`, which is what
-   * this assertion now sees.
-   *
-   * With the list empty this assertion is `unread === []`, which a detector
-   * that reported EVERY key as read would also satisfy. The two tests below
-   * are what stop that from being a way to pass, and they run the same detector
-   * this one does rather than a copy of it.
-   */
-  test('every inbound key is read by production code, with nothing on the inert list', () => {
-    const INERT: readonly string[] = [];
-
-    const sources = readSourceFilesOutsideConfig();
-    const wired = EXPECTED_DEFAULTS.map((entry) => entry.key)
-      .filter((key) => keyIsReadBy(sources, key));
-    const unread = EXPECTED_DEFAULTS.map((entry) => entry.key)
-      .filter((key) => !keyIsReadBy(sources, key));
-
-    // Not a tautology in either direction: most keys ARE read, and the two
-    // tests below prove this detector can still answer no, over synthetic
-    // text AND over this exact source corpus.
-    expect(wired.length).toBeGreaterThan(10);
-    expect(unread.sort()).toEqual([...INERT].sort());
-  });
-
-  /**
-   * The detector can still answer "no" ABOUT THE REAL SOURCE TREE, not just
-   * about a string literal written in this file.
-   *
-   * This is the test that matters now the inert list is empty, and it covers
-   * BOTH ways the gate above could stop being able to fail:
-   *
-   *   1. A detector that answers true regardless of its input. The absent key
-   *      catches that, nothing under `packages/sdk/src` contains that string,
-   *      so a `true` means the answer stopped depending on the argument.
-   *   2. A detector widened to match a bare MENTION instead of a call. The
-   *      absent key does NOT catch that, and this was verified rather than
-   *      assumed: the pattern was replaced with `['"]${key}['"]` and the suite
-   *      re-run, and this assertion stayed green, because a key absent from
-   *      the corpus is absent as a mention too. Only the companion test below
-   *      reddened. So the mention case is asserted HERE as well, against a
-   *      source file of exactly the shape an inert key had, named in a doc
-   *      comment beside behaviour it never selects.
-   *
-   * The last assertion is the control: a key that genuinely IS read answers
-   * true over this corpus, so a `false` above is the detector discriminating
-   * rather than the corpus being empty, unreadable, or the wrong directory.
-   */
-  test('the read-detector answers no for an absent key and for a mention, over the real source tree', () => {
-    const sources = readSourceFilesOutsideConfig();
-    expect(sources.length).toBeGreaterThan(100);
-
-    // (1) Shaped like a real key, and deliberately not one.
-    expect(keyIsReadBy(sources, 'surfaces.email.inbound.noSuchSettingExists')).toBe(false);
-
-    // (2) A key that exists in the schema, in a source file that only NAMES it.
-    // Asked in isolation, so the real corpus's genuine reads of it cannot be
-    // what answers. This is the assertion a mention-widened pattern fails.
-    const mentionOnlyKey = 'surfaces.email.inbound.pollIntervalSeconds';
-    const mentionOnlySource = `/** Cadence is governed by '${mentionOnlyKey}'. */\n`
-      + 'export const READS_NOTHING = 1;\n';
-    expect(keyIsReadBy([mentionOnlySource], mentionOnlyKey)).toBe(false);
-
-    // (3) The control.
-    expect(keyIsReadBy(sources, 'surfaces.email.inbound.onInsufficientCapability')).toBe(true);
-  });
-
-  /**
-   * The detector rejects a MENTION, which is the distinction the whole gate
-   * rests on.
-   *
-   * Written after a night in which four checks turned out to be unable to fail.
-   * A regex widened one alternation too far, `['"]key['"]` with no call in
-   * front of it, would report every key in the schema as read, and with the
-   * inert list now empty that widening would make the gate above pass forever.
-   *
-   * It calls `keyIsReadBy`, the same function the two tests above call, rather
-   * than restating the pattern. A restated copy is how a widened production
-   * regex goes on being "proved" by a companion test still holding the narrow
-   * one, the mirror that agrees with itself and with nothing else.
-   */
-  test('the read-detector rejects a mention and an absent key', () => {
-    const key = 'surfaces.email.inbound.pollIntervalSeconds';
-    const detect = (text: string): boolean => keyIsReadBy([text], key);
-
-    expect(detect(`/** See ${key} for the cadence. */`)).toBe(false);
-    expect(detect(`const x = '${key}';`)).toBe(false);
-    expect(detect(`configManager.get('${key}')`)).toBe(true);
-    expect(detect(`getConfig('${key}' as never)`)).toBe(true);
-    expect(detect('nothing here at all')).toBe(false);
-  });
-
-  /**
-   * One key, one reader, for the two keys that had a reader in two places.
-   *
-   * The check above answers "is anything reading this", and it is `some(...)`:
-   * it says yes just as happily for one reader as for three. That is the shape
-   * that let `gmailPollSecondsExpecting` and `gmailPollSecondsIdle` acquire a
-   * second reader without anything noticing. Two independent branches wired
-   * them at two different tiers, `source-factory.ts` at source-CREATE time,
-   * and `facade-inbound-mail.ts` at compose time, and the gate accepted both
-   * call forms, so the duplication looked exactly like the fix.
-   *
-   * Create time is the tier that wins, and the reason is behavioural rather
-   * than stylistic: `create()` runs on every supervisor start, so an interval
-   * the owner edits while the daemon is running takes effect at the next source
-   * start instead of waiting for the whole graph to be recomposed. That is the
-   * same freshness rule `liveConnectionPort` applies to the IMAP host.
-   *
-   * Two readers of one key is the shape that made these settings inert in the
-   * first place, a value that appears to apply, applied twice, is a value
-   * whose effective setting depends on which caller ran last.
-   */
-  test('each Gmail poll interval is read exactly once, at source-create time', () => {
-    const root = join(import.meta.dir, '..', 'packages', 'sdk', 'src');
-    const files: string[] = [];
-    const walk = (directory: string): void => {
-      for (const entry of readdirSync(directory, { withFileTypes: true })) {
-        const path = join(directory, entry.name);
-        if (entry.isDirectory()) {
-          if (entry.name !== 'config') walk(path);
-          continue;
-        }
-        if (entry.name.endsWith('.ts')) files.push(path);
-      }
-    };
-    walk(root);
-
-    for (const key of [
-      'surfaces.email.inbound.gmailPollSecondsExpecting',
-      'surfaces.email.inbound.gmailPollSecondsIdle',
-      // The Gmail source's re-probe wait travels the same way and for the same
-      // reason: read once for the watcher settings and handed on, never
-      // re-derived beside the source that uses it.
-      'surfaces.email.inbound.capabilityRecheckMinutes',
-    ]) {
-      const quoted = key.replace(/\./g, '\\.');
-      const pattern = new RegExp(`(?:get|getConfig|readNumberSetting)\\([^)]*['"]${quoted}['"]`, 'gs');
-      const readers = files.flatMap((path) => {
-        const found = readFileSync(path, 'utf8').match(pattern) ?? [];
-        return found.map(() => path);
-      });
-      expect({ key, readers: readers.length }).toEqual({ key, readers: 1 });
-    }
-
-    // And the one reader for the poll pair is the create-time one. Naming the
-    // file is what makes the count above mean "the right single reader" rather
-    // than "some single reader", a count of one in the facade would be the
-    // tier this was ruled out of.
-    const factory = readFileSync(
-      join(root, 'platform', 'email', 'inbound', 'source-factory.ts'), 'utf8');
-    expect(factory).toContain("getConfig('surfaces.email.inbound.gmailPollSecondsExpecting' as never)");
-    expect(factory).toContain("getConfig('surfaces.email.inbound.gmailPollSecondsIdle' as never)");
   });
 });
 

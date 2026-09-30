@@ -53,10 +53,6 @@ describe('crypto-adapter (Web Crypto implementation)', () => {
   });
 
   describe('randomBytesBase64url', () => {
-    test('returns a string', () => {
-      const result = randomBytesBase64url(32);
-      expect(typeof result).toBe('string');
-    });
 
     test('returns base64url string without +, /, or =', () => {
       const result = randomBytesBase64url(32);

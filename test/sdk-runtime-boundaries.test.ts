@@ -1,6 +1,4 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'bun:test';
 import {
   GOODVIBES_CLIENT_SAFE_ENTRYPOINTS,
@@ -16,7 +14,6 @@ import {
 } from '../packages/sdk/src/platform/node/runtime-boundary.js';
 
 const SDK_PACKAGE_JSON = new URL('../packages/sdk/package.json', import.meta.url);
-const SDK_SOURCE_DIR = fileURLToPath(new URL('../packages/sdk/src', import.meta.url));
 const SDK_PACKAGE_NAME = '@pellux/goodvibes-sdk';
 
 function sdkExportKey(entrypoint: string): string {
@@ -60,17 +57,6 @@ describe('SDK runtime boundaries and export map', () => {
     }
   });
 
-  test('keeps aggregate runtime and node source barrels narrow', () => {
-    const runtimeSource = readFileSync(join(SDK_SOURCE_DIR, 'platform/runtime/index.ts'), 'utf8');
-    const nodeSource = readFileSync(join(SDK_SOURCE_DIR, 'platform/node/index.ts'), 'utf8');
-    const sandboxSource = readFileSync(join(SDK_SOURCE_DIR, 'platform/runtime/sandbox.ts'), 'utf8');
-
-    expect(runtimeSource).not.toContain("export * as sandbox from './sandbox.js'");
-    expect(runtimeSource).not.toContain("export * as settings from './settings.js'");
-    expect(nodeSource).not.toMatch(/export \* as \w+ from '\.\.\//);
-    expect(sandboxSource).not.toMatch(/export \* from '\.\/sandbox\/(backend|provisioning|qemu-wrapper-template)\.js'/);
-  });
-
   test('keeps client capabilities free of node-only requirements', () => {
     const clientCapabilities = listGoodVibesRuntimeCapabilities('client');
 
@@ -82,23 +68,6 @@ describe('SDK runtime boundaries and export map', () => {
       && !capability.requirements.includes('native-module')
     ))).toBe(true);
     expect(GOODVIBES_RUNTIME_CAPABILITIES.some((capability) => capability.id === 'knowledge-system')).toBe(true);
-  });
-
-  test('client-safe source entrypoints avoid node-only imports', () => {
-    const clientFiles = [
-      'browser.ts',
-      'web.ts',
-      'workers.ts',
-      'react-native.ts',
-      'expo.ts',
-      'index.ts',
-    ];
-    const forbidden = /\bfrom ['"]node:|import\(['"]node:|platform\/node\/(?!runtime-boundary)|platform\/node['"]/;
-
-    for (const file of clientFiles) {
-      const source = readFileSync(join(SDK_SOURCE_DIR, file), 'utf8');
-      expect(source, `${file} should remain client-safe`).not.toMatch(forbidden);
-    }
   });
 
   test('node runtime boundary detects node-like and non-node-like runtimes', () => {

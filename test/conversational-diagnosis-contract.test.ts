@@ -47,11 +47,6 @@ describe('the diagnosis contract text', () => {
     expect(CONVERSATIONAL_DIAGNOSIS_SECTION).toContain('type into their terminal');
   });
 
-  test('the terminal rule is named, in the same words the exec guard refuses in', () => {
-    expect(CONVERSATIONAL_DIAGNOSIS_SECTION).toContain('untouchable');
-    expect(CONVERSATIONAL_DIAGNOSIS_SECTION).toContain('tmux session you did not create');
-  });
-
   test('a "fixed" claim requires the live evidence it rests on', () => {
     expect(CONVERSATIONAL_DIAGNOSIS_SECTION).toContain('requires the live evidence it rests on');
     expect(CONVERSATIONAL_DIAGNOSIS_SECTION).toContain('one message after the measurement');

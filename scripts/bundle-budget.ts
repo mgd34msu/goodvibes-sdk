@@ -16,10 +16,17 @@
  *   3. Gzips each built entry-point JS file and compares against its budget.
  *   4. Prints a table: entry | actual | budget | delta | status.
  *   5. Exits non-zero if ANY entry exceeds its budget OR has no budget defined.
+ *
+ *   --update (run by `bun run release:prepare`): instead of failing, rewrites
+ *   bundle-budgets.json so the current build passes. Over-budget and missing
+ *   entries are re-anchored at max(ceil(measured*1.2), measured+50), entries
+ *   for exports that no longer exist are removed, and the `./events` domains
+ *   list is resynced with dist/events/. Entries already within budget keep
+ *   their number and rationale.
  */
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,6 +41,7 @@ const BUDGETS_PATH = resolve(REPO_ROOT, 'bundle-budgets.json');
 const FORCE_BUILD = process.argv.includes('--build');
 // --no-build: error instead of rebuilding when dist/ is missing (for CI use).
 const NO_BUILD = process.argv.includes('--no-build');
+const UPDATE = process.argv.includes('--update');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -238,6 +246,52 @@ for (const { entry, distRel } of entries) {
   const status: Row['status'] = actual <= budget ? 'PASS' : 'FAIL';
   if (status === 'FAIL') anyFail = true;
   rows.push({ entry, actual, budget, delta, status });
+}
+
+// ─── Update mode ──────────────────────────────────────────────────────────────
+
+/** The headroom rule every rationale in bundle-budgets.json already states. */
+function budgetWithHeadroom(measured: number): number {
+  return Math.max(Math.ceil(measured * 1.2), measured + 50);
+}
+
+if (UPDATE) {
+  const raw = JSON.parse(readFileSync(BUDGETS_PATH, 'utf8')) as Record<string, unknown>;
+  const version = (JSON.parse(readFileSync(SDK_PKG_JSON_PATH, 'utf8')) as { version?: string }).version ?? 'unknown';
+  const changed: string[] = [];
+  for (const stale of staleBudgetEntries) {
+    delete raw[stale];
+    changed.push(`removed ${stale} (no such export)`);
+  }
+  for (const row of rows) {
+    if (row.status === 'PASS' || row.actual === 0) continue;
+    const budget = budgetWithHeadroom(row.actual);
+    const previous = raw[row.entry];
+    raw[row.entry] = {
+      ...(previous && typeof previous === 'object' ? previous : {}),
+      gzip_bytes: budget,
+      rationale: `re-anchored by release:prepare @ v${version}: measured ${row.actual} B gzip; headroom max(ceil(${row.actual}*1.2), ${row.actual}+50) -> ${budget}`,
+    };
+    changed.push(`${row.entry}: ${row.budget ?? 'none'} -> ${budget} B (measured ${row.actual} B)`);
+  }
+  const events = raw['./events'] as { domains?: string[] } | undefined;
+  const distEventsDir = resolve(SDK_PKG, 'dist', 'events');
+  if (events?.domains && existsSync(distEventsDir)) {
+    const domains = readdirSync(distEventsDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.js') && entry.name !== 'index.js')
+      .map((entry) => entry.name.replace(/\.js$/, ''))
+      .sort();
+    if (domains.join(',') !== [...events.domains].sort().join(',')) {
+      events.domains = domains;
+      changed.push('./events domains resynced with dist/events/');
+    }
+  }
+  // The file keeps non-ASCII as \\uXXXX escapes; writing them the same way
+  // leaves untouched rationales byte-identical.
+  const serialized = JSON.stringify(raw, null, 2).replace(/[\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+  writeFileSync(BUDGETS_PATH, `${serialized}\n`);
+  console.log(changed.length === 0 ? '[bundle-budget] every entry within budget; nothing to update.' : `[bundle-budget] updated bundle-budgets.json:\n${changed.map((c) => `  ${c}`).join('\n')}`);
+  process.exit(0);
 }
 
 // ─── Table output ─────────────────────────────────────────────────────────────

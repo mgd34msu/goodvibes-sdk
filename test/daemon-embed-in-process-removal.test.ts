@@ -45,14 +45,6 @@ describe('the key is gone from the schema', () => {
   test('the default config carries no embedInProcess field', () => {
     expect(DEFAULT_CONFIG.daemon).not.toHaveProperty('embedInProcess');
   });
-
-  test('daemon.enabled survives and its description states what it decides', () => {
-    const row = CONFIG_SCHEMA.find((entry) => entry.key === 'daemon.enabled');
-    expect(row).toBeDefined();
-    expect(row!.default).toBe(true);
-    // It governs whether THIS surface talks to a daemon, not how one is hosted.
-    expect(row!.description).toContain('surface');
-  });
 });
 
 describe('migrateDaemonEmbedInProcessRemoval (pure function)', () => {

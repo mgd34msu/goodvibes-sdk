@@ -23,7 +23,6 @@ import { parseMapKeys, parseMethodIds, untypedMethodIds } from '../scripts/found
 
 const ROOT = join(import.meta.dir, '..');
 const openapiText = readFileSync(join(ROOT, 'packages/contracts/artifacts/operator-openapi.json'), 'utf8');
-const docsText = readFileSync(join(ROOT, 'docs/operator-openapi.json'), 'utf8');
 
 interface MethodIndexEntry {
   id: string;
@@ -113,9 +112,5 @@ describe('published OpenAPI operator contract', () => {
   test('auth schemes mirror the contract auth block', () => {
     expect(doc.components.securitySchemes.bearerAuth?.type).toBe('http');
     expect(doc.components.securitySchemes.sessionCookie?.name).toBe(contract.auth.sessionCookie.name);
-  });
-
-  test('the docs/ copy is byte-identical to the package artifact', () => {
-    expect(docsText).toBe(openapiText);
   });
 });

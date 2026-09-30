@@ -154,17 +154,6 @@ describe('the result cannot carry the digits', () => {
     expect(JSON.stringify(findings)).not.toContain(VISA);
     expect(JSON.stringify(findings)).not.toContain('4111');
   });
-
-  test('the compile-time guard in card-shapes.ts is the type-level assertion', () => {
-    // The real assertion is the @ts-expect-error trio and the keyof guard at
-    // the bottom of card-shapes.ts, which fail `tsc` the moment a value-bearing
-    // field is added, a runtime test cannot observe a field that does not
-    // exist. This case pins the exact key set the type is allowed to have, so
-    // an addition shows up here as well as in the build.
-    const finding: CardShapeFinding = { kind: 'pan', startIndex: 0, length: 16 };
-    const allowed: ReadonlyArray<keyof CardShapeFinding> = ['kind', 'startIndex', 'length'];
-    expect(Object.keys(finding).every((key) => (allowed as readonly string[]).includes(key))).toBe(true);
-  });
 });
 
 describe('refusal text', () => {

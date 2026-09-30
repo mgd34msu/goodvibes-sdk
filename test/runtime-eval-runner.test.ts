@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'bun:test';
 import { EvalRunner } from './_helpers/runtime-seam.ts';
-import { scoreScenario, DIMENSION_FLOOR } from './_helpers/runtime-seam.ts';
+import { scoreScenario } from './_helpers/runtime-seam.ts';
 import { captureBaseline, serialiseBaseline, deserialiseBaseline } from './_helpers/runtime-seam.ts';
 import { BUILTIN_SUITES, ALL_SCENARIOS } from './_helpers/runtime-seam.ts';
 import type { EvalScenario, EvalRawResult } from './_helpers/runtime-seam.ts';
@@ -99,14 +99,6 @@ describe('scoreScenario', () => {
     const sc = scoreScenario('test:weights', 'Weights', raw);
     const manual = sc.dimensions.reduce((acc, d) => acc + d.score * d.weight, 0);
     expect(Math.abs(sc.compositeScore - manual)).toBeLessThan(0.001);
-  });
-
-  it('exposes DIMENSION_FLOOR with all five dimensions', () => {
-    const dims = ['safety', 'quality', 'latency', 'cost', 'recovery'] as const;
-    for (const dim of dims) {
-      expect(typeof DIMENSION_FLOOR[dim]).toBe('number');
-      expect(DIMENSION_FLOOR[dim]).toBeGreaterThan(0);
-    }
   });
 });
 
@@ -258,10 +250,6 @@ describe('baseline serialisation', () => {
 // ── Built-in suites ───────────────────────────────────────────────────────────
 
 describe('BUILTIN_SUITES', () => {
-  it('contains at least three suites', () => {
-    expect(Object.keys(BUILTIN_SUITES).length).toBeGreaterThanOrEqual(3);
-  });
-
   it('all scenario ids are unique', () => {
     const ids = ALL_SCENARIOS.map((s) => s.id);
     const unique = new Set(ids);

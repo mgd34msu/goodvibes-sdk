@@ -106,10 +106,6 @@ describe('formatPairingOffers copy', () => {
     expect(lines[0]).toContain('Notifications,');
     expect(lines[1]).toContain('Passkey,');
   });
-  test('the one honest LAN line is the SDK export, a single line', () => {
-    expect(LAN_PLAIN_HTTP_NOTICE.split('\n')).toHaveLength(1);
-    expect(LAN_PLAIN_HTTP_NOTICE).toContain('unencrypted on your LAN');
-  });
   test('capability labels are plain-language, no jargon', () => {
     const posture = { origin: 'http://box.local', scheme: 'http' as const, privateNetwork: true, secureContext: false, notice: LAN_PLAIN_HTTP_NOTICE, capabilities: [{ capability: 'push' as const, available: false, reason: 'needs https, available via tailscale' }] };
     const lines = formatPostureCapabilities(posture);

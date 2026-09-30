@@ -72,11 +72,4 @@ describe('sandbox policy public subpaths', () => {
     expect(unavailable.available).toBe(false);
     expect(unavailable.reason.length).toBeGreaterThan(0);
   });
-
-  test('probeSandboxHost is exported and returns a concrete host probe', () => {
-    const probe = probeSandboxHost();
-    expect(typeof probe.platform).toBe('string');
-    expect(typeof probe.bwrapWorks).toBe('boolean');
-    expect(typeof probe.netUnshareWorks).toBe('boolean');
-  });
 });

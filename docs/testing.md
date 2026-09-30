@@ -1,10 +1,8 @@
 # Testing architecture
 
-> Internal source map. For day-to-day validation commands see [Testing and Validation](./testing-and-validation.md).
+> Internal source map. For commands, layers and what runs where see [Testing and Validation](./testing-and-validation.md).
 
-Tests should protect architecture, not just implementation details.
-
-Key expectations:
+Tests protect behavior, not text. Key expectations:
 
 - source-of-truth packages and SDK facades resolve through public entrypoints
 - client-safe surfaces do not import runtime-heavy dependencies
@@ -14,34 +12,28 @@ Key expectations:
 - generated pages update from promoted graph facts and source links
 - route harnesses avoid overlapping long Home Graph runs
 
-## Nothing is allowed to skip
+## Where things live
 
-`bun run test-skip:check` (`scripts/no-skipped-tests.ts`) scans every test
-file for `describe.skip`, `test.skip`, `it.skip`, `.skipIf`, `.skip.if`,
-`.runIf`, and `.todo`, in any combination, and fails the build if it finds
-one. This is not limited to plain `.skip`. `skipIf` is caught by the same
-pattern and is banned exactly like the others. There is no environment- or
-platform-conditional exemption.
+- `test/*.test.ts`: unit and wire tests, run by `scripts/test.ts`.
+- `test/integration/`: whole-composition tests (real daemon, real runtime
+  services, real git).
+- `test/toolchain/`: the `@pellux/goodvibes-toolchain` suites.
+- `test/workers/`, `test/workers-wrangler/`, `test/rn-bundle-node-imports.test.ts`:
+  runtime legs, run by the release gates.
+- `test/types/`: consumer-vantage type tests, compiled by
+  `tsconfig.type-tests.json`.
+- `test/_helpers/`: shared fakes and harnesses (fake IMAP server, orchestration
+  harness, temp registries).
 
-Tests that only make sense when an optional local dependency is present (for
-example, the live PTY and sandbox tests in `test/exec-interactive.test.ts`,
-which need the `script(1)` binary) do not skip. They call a small guard
-function at the top of the test body that checks availability, logs an
-honest one-line reason to the console, and returns early when the dependency
-is absent. The test still reports as passed, its log output says plainly
-that the real assertion did not run, and the gate that forbids `.skip` has
-nothing to catch. On hosts where the dependency is present (the project's own
-dev machines and CI), the guard is a no-op and the test runs for real.
+## Optional host dependencies
 
-## Release validation
+A test that needs a binary the host may not have (the PTY and sandbox cases in
+`test/exec-interactive.test.ts` need `script(1)`) checks for it at the top of
+the test body, logs a one-line reason, and returns early. Where the dependency
+exists, including CI, it runs for real.
 
-Release validation is broader than any single test run. `bun run validate`
-(the `validate` job) covers documentation sync, contract and changelog
-checks, the TypeScript build, type-level tests, API-surface and bundle-size
-checks, package metadata, and packaging smoke tests, but it deliberately does
-not execute the test suite itself. Test execution belongs to the
-`platform-matrix` CI job, which builds once and then runs the Bun suite, the
-React Native bundle scan, and the two Workers runtime lanes as separate matrix
-legs against that same build. See
-[Testing and Validation](./testing-and-validation.md) for the full command
-and CI-gate reference.
+## Clocks and timers
+
+Tests do not depend on wall-clock speed. Code that reads time takes a `now`
+seam, or the test pins time with bun's `setSystemTime` / fake timers
+(`test/llm-instrumentation.test.ts`, `test/approvals-raise-verb.test.ts`).

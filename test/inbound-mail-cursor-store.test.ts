@@ -24,7 +24,6 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  DEFAULT_MAILBOX_CURSOR_POLICY,
   MailboxCursorStore,
   validateMailboxCursor,
   type CursorSweepReport,
@@ -610,11 +609,5 @@ describe('sweep() is source-blind', () => {
     const live = await store.list();
     expect(live).toHaveLength(1);
     expect(live[0]?.account).toBe('ok');
-  });
-});
-
-describe('the default policy', () => {
-  test('is exported for callers to inspect', () => {
-    expect(DEFAULT_MAILBOX_CURSOR_POLICY.maxCursors).toBeGreaterThan(0);
   });
 });

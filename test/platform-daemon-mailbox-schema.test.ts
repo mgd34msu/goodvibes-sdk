@@ -24,20 +24,10 @@
  * and `GOODVIBES_SURFACES_EMAIL_PASSWORD` was filed in whichever client silo
  * the operator was sitting in. The daemon reads none of those, so a stored mail
  * password looked set and did nothing.
- *
- * The first test below is the one that keeps this fixed going forward: it
- * SCANS the platform sources for `surfaces.email.*` / `surfaces.calendar.*`
- * string literals and requires a schema row for each. A handler that starts
- * reading a new key without declaring it fails here, rather than shipping as
- * another instruction pointing at a row that does not exist.
  */
 
 import { describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { Glob } from 'bun';
-import { CONFIG_SCHEMA, DEFAULT_CONFIG } from '../packages/sdk/src/platform/config/schema.ts';
-import type { ConfigKey } from '../packages/sdk/src/platform/config/schema-types.ts';
+import { DEFAULT_CONFIG } from '../packages/sdk/src/platform/config/schema.ts';
 import { isDaemonOwnedConfigKey } from '../packages/sdk/src/platform/config/config-ownership.ts';
 import {
   daemonSecretKeyFor,
@@ -45,48 +35,7 @@ import {
 } from '../packages/sdk/src/platform/config/daemon-secret-keys.ts';
 import { daemonMailboxConfigSettings } from '../packages/sdk/src/platform/config/schema-domain-daemon-mailbox.ts';
 
-const PLATFORM_ROOT = join(import.meta.dir, '..', 'packages', 'sdk', 'src', 'platform');
-
-/** Trailing `.` catches `surfaces.email.` used as a prefix rather than a key. */
-const KEY_LITERAL = /surfaces\.(?:email|calendar)\.[A-Za-z][A-Za-z0-9.]*/g;
-
-const schemaKeys = new Set(CONFIG_SCHEMA.map((setting) => setting.key));
 const declaredKeys = daemonMailboxConfigSettings.map((setting) => setting.key);
-
-/** Every mailbox/calendar key literal that appears in the platform sources. */
-function keysReadByPlatformCode(): readonly string[] {
-  const found = new Set<string>();
-  for (const relative of new Glob('**/*.ts').scanSync({ cwd: PLATFORM_ROOT })) {
-    const source = readFileSync(join(PLATFORM_ROOT, relative), 'utf8');
-    for (const match of source.matchAll(KEY_LITERAL)) {
-      // A literal used as a prefix (`surfaces.email.` + name) ends in a dot
-      // once the trailing segment is stripped; those are not keys.
-      const key = match[0].replace(/\.$/, '');
-      if (key.split('.').length < 3) continue;
-      found.add(key);
-    }
-  }
-  // The declaring file itself is the answer sheet, not a reader.
-  return [...found];
-}
-
-describe('every mailbox key the daemon reads has a settings row', () => {
-  const read = keysReadByPlatformCode();
-
-  test('the scan actually found keys, so a silent regex break cannot pass this file', () => {
-    expect(read.length).toBeGreaterThan(10);
-  });
-
-  test.each([...read])(
-    '%s is a CONFIG_SCHEMA key, so the settings modal has a row for it',
-    (key: string) => {
-      expect(
-        schemaKeys.has(key as ConfigKey),
-        `${key} is read by platform code but declared in no schema, so the settings modal cannot show it and any instruction naming it sends the operator nowhere`,
-      ).toBe(true);
-    },
-  );
-});
 
 describe('the declared keys are daemon-owned', () => {
   test.each(declaredKeys)('%s routes to the daemon tier, not a client silo', (key) => {

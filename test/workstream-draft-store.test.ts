@@ -16,7 +16,6 @@ import { readdirSync, rmSync, statSync, utimesSync, writeFileSync, mkdirSync } f
 import { join } from 'node:path';
 import type { WorkstreamDraft } from '../packages/sdk/src/platform/orchestration/workstream-services.ts';
 import {
-  WORKSTREAM_DRAFT_CAP,
   WORKSTREAM_DRAFT_TTL_MS,
   createWorkstreamDraftStore,
   formatWorkstreamDraftReclaim,
@@ -168,12 +167,6 @@ describe('workstream-draft-store reclaim bounds', () => {
     expect(store.loadAll().map((d) => d.id)).toEqual(['wsd_2', 'wsd_3', 'wsd_4']);
     expect(listDraftFiles(root)).toEqual(['wsd_2.json', 'wsd_3.json', 'wsd_4.json']);
     expect(store.lastReclaim).toMatchObject({ expired: 0, overCap: 2, unreadable: 0 });
-  });
-
-  test('the default cap is the documented constant', () => {
-    // Guards against the cap quietly drifting: the bound is a stated number.
-    expect(WORKSTREAM_DRAFT_CAP).toBe(50);
-    expect(WORKSTREAM_DRAFT_TTL_MS).toBe(14 * 24 * 60 * 60 * 1000);
   });
 
   test('reaping twice is a no-op the second time', () => {

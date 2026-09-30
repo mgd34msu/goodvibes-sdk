@@ -9,14 +9,6 @@ import { describe, expect, test } from 'bun:test';
 import { createStateInspector } from '../packages/sdk/src/platform/runtime/inspection/state-inspector.js';
 
 describe('platform/runtime/inspection/state-inspector: behavior smoke', () => {
-  test('getSnapshot returns an object with domains array and capturedAt timestamp', () => {
-    const inspector = createStateInspector({ domains: [] });
-    const snapshot = inspector.getSnapshot();
-    expect(snapshot).not.toBeNull(); // presence-only: inspector snapshot returned
-    expect(snapshot.domains).toBeInstanceOf(Array);
-    expect(typeof snapshot.capturedAt).toBe('number');
-  });
-
   test('registeredDomainNames returns an empty array when no domains registered', () => {
     const inspector = createStateInspector({ domains: [] });
     const names = inspector.registeredDomainNames();

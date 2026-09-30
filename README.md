@@ -131,11 +131,14 @@ bun run build
 | --- | --- |
 | `bun run build` | Build every workspace package's `dist/` output once |
 | `bun run test` | Run the full Bun test suite (`test/`, mirroring the package sources) |
-| `bun run validate` | Exactly what CI's `validate` job runs: doc/contract/version/changelog gates, TypeScript build and typecheck, the API-surface and exports checks, examples typecheck, browser-compat, package metadata, packaging smoke checks (`pack`, `publint`, install), and the bundle-budget check |
+| `bun run test:changed` | The test files affected by your changes since `origin/main` |
+| `bun run smoke:daemon` | Packs the SDK, composes a daemon from the tarballs, and runs one scripted turn through it |
+| `bun run release:prepare` | Bumps the version and regenerates every generated file (contracts, docs, API reports, budgets, eval baseline) |
+| `bun run validate` | The release-time source checks: credential scope, exports reachability, examples typecheck, browser-compat, package metadata |
 | `bun run api:extract` / `bun run api:check` | Regenerate / verify the API Extractor reports under `etc/*.api.md` |
 | `bun run refresh:contracts` | Regenerate contract JSON artifacts and their generated docs after a contract change |
 
-CI (`.github/workflows/ci.yml`) runs `validate`, a standing eval gate scored against a checked-in baseline, a dependency and secret-scan audit, a single `build` that every downstream job restores rather than rebuilding, a `platform-matrix` job (Bun tests plus companion-bundle and Workers runtime legs), a types-resolution check over the packed exports map, `publint`, an SBOM check, and a packaged-artifact conformance lane. On a green `main` push, an auto-release job tags and dispatches the release, but only while the repo's `RELEASE_ARMED` variable is set. Full gate reference: [docs/testing-and-validation.md](./docs/testing-and-validation.md).
+CI (`.github/workflows/ci.yml`) runs on every push: one `build` that the other jobs restore, a typecheck, the test run, a gitleaks scan, and the packaged-daemon smoke. The release gates (`.github/workflows/release-gates.yml`: packaging, install smoke, types resolution, `publint`, the artifact lane, dependency audit, eval gate, React Native and Workers legs) run nightly, on demand, and before an armed release. On a green `main` push, an auto-release job tags and dispatches the release, but only while the repo's `RELEASE_ARMED` variable is set. Full gate reference: [docs/testing-and-validation.md](./docs/testing-and-validation.md).
 
 ---
 

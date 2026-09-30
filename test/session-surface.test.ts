@@ -114,13 +114,4 @@ describe('createSessionSurface', () => {
   test('empty homeDirectory throws', () => {
     expect(() => createSessionSurface(identity({ homeDirectory: '' }))).toThrow();
   });
-
-  test('the returned handle is a plain value usable across the module boundary', () => {
-    const surface: SessionSurface = createSessionSurface(identity());
-    // Every field is a string (or a callable), never undefined, no optional
-    // scope argument was left to silently resolve later.
-    expect(typeof surface.sessionsDir).toBe('string');
-    expect(typeof surface.recoveryDir).toBe('string');
-    expect(typeof surface.recoveryFile).toBe('function');
-  });
 });

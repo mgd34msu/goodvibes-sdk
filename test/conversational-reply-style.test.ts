@@ -53,15 +53,6 @@ describe('a conversational spawn is asked for a reply, not a report', () => {
     }
   });
 
-  test('the prompt says plainly what not to emit', () => {
-    const prompt = buildOrchestratorSystemPrompt(record({ replyStyle: 'conversational' }));
-    expect(prompt).toContain('No completion report, no JSON block');
-    expect(prompt).toContain('no "Summary:"');
-    // The autonomous opening is false here: someone IS waiting for this answer.
-    expect(prompt).not.toContain('No human is monitoring you');
-    expect(prompt).toContain('replying to a person');
-  });
-
   test('an archetype that demands a report is overridden, and the override reads last', () => {
     // The built-in engineer role text ends with "Your final message MUST
     // include a structured EngineerReport JSON block", and it is pushed AFTER

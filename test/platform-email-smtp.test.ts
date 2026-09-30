@@ -209,40 +209,9 @@ describe('SmtpClient sendMail: hostile from/to/subject blocked before envelope w
 });
 
 // ---------------------------------------------------------------------------
-// STARTTLS pipelined data guard
-// (Testing the guard embedded in createSmtpStartTlsSocket via a fake server
-//  that sends extra bytes after the 220 STARTTLS response.)
-// ---------------------------------------------------------------------------
-
-describe('createSmtpStartTlsSocket: pipelined data after 220 rejected', () => {
-  // We test this by verifying that the validation logic fires correctly.
-  // The actual socket factory creates a real TCP connection, so we test the
-  // detection logic via a unit-level extract.
-  test('afterNewline detection: extra bytes after 220\\r\\n are detected', () => {
-    // Simulate the stBuffer content the onStartTls handler would see
-    // if a server sent "220 Go ahead\r\n" followed by pipelined data
-    const stBuffer = '220 Go ahead\r\nPIPELINED DATA HERE';
-    const newlineIdx = stBuffer.indexOf('\n');
-    const afterNewline = newlineIdx !== -1 ? stBuffer.slice(newlineIdx + 1) : '';
-    expect(afterNewline).toBe('PIPELINED DATA HERE');
-    expect(afterNewline.length).toBeGreaterThan(0);
-  });
-
-  test('afterNewline detection: clean 220 with no extra data passes', () => {
-    const stBuffer = '220 Go ahead\r\n';
-    const newlineIdx = stBuffer.indexOf('\n');
-    const afterNewline = newlineIdx !== -1 ? stBuffer.slice(newlineIdx + 1) : '';
-    expect(afterNewline).toBe('');
-    expect(afterNewline.length).toBe(0);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // The same guard, driven through the real factory.
 //
-// The two tests above re-derive the slice in the test body, so they pass
-// whether or not the factory still performs the check. Now that the factory is
-// its own named export, it can be run for real: a plain in-process server on an
+// The factory is its own named export, so it is run for real: a plain in-process server on an
 // ephemeral 127.0.0.1 port speaks the STARTTLS handshake and misbehaves, and
 // the rejection has to come out of the factory itself. No TLS is ever
 // negotiated in either case, because both abort before the upgrade.
