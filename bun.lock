@@ -193,6 +193,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "@arethetypeswrong/core@0.18.2": "patches/@arethetypeswrong%2Fcore@0.18.2.patch",
+  },
   "overrides": {
     "ajv": "8.18.0",
     "bash-language-server": "file:vendor/bash-language-server",
