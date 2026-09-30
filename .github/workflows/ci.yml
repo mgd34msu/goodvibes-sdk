@@ -56,11 +56,24 @@ jobs:
   typecheck:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: [build]
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Setup Bun + deps (cached)
         uses: ./.github/actions/setup
+      - name: Download workspace package output
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: workspace-build-output
+          path: /tmp/workspace-build-output
+      - name: Restore workspace package output
+        run: |
+          tar -xzf /tmp/workspace-build-output/workspace-build-output.tgz -C .
+          # Built from this SHA in this run; tar keeps build-time mtimes while the
+          # checkout stamps sources with checkout time, so touch dist to keep
+          # mtime-based freshness checks from reading the restore as stale.
+          find packages/*/dist -type f -exec touch {} +
       - name: Typecheck the solution
         run: bun run typecheck
 
@@ -79,7 +92,12 @@ jobs:
           name: workspace-build-output
           path: /tmp/workspace-build-output
       - name: Restore workspace package output
-        run: tar -xzf /tmp/workspace-build-output/workspace-build-output.tgz -C .
+        run: |
+          tar -xzf /tmp/workspace-build-output/workspace-build-output.tgz -C .
+          # Built from this SHA in this run; tar keeps build-time mtimes while the
+          # checkout stamps sources with checkout time, so touch dist to keep
+          # mtime-based freshness checks from reading the restore as stale.
+          find packages/*/dist -type f -exec touch {} +
       - name: Configure git identity for worktree/orchestration tests
         # The WRFC and orchestration tests make real git commits in temp
         # repositories and rely on ambient git config, as a user machine has.
