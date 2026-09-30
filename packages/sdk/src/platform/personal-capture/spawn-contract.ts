@@ -199,6 +199,23 @@ export interface ConversationalTurnConfigReader {
 }
 
 /**
+ * Adapt a loosely typed reader (the conversation gate's `get(key): unknown`)
+ * to the one the authority decision reads. A missing or non-string value reads
+ * as unset, which the authority decision treats as "no owner channels named".
+ */
+export function conversationalTurnConfigReaderFrom(
+  reader: { get(key: string): unknown } | undefined,
+): ConversationalTurnConfigReader | undefined {
+  if (!reader) return undefined;
+  return {
+    get: (key) => {
+      const value = reader.get(key);
+      return typeof value === 'string' ? value : '';
+    },
+  };
+}
+
+/**
  * The spawn-input fragment for a conversational turn: the tools, the
  * instruction, and the bound write authority.
  *

@@ -6,6 +6,10 @@ import { WorkProposalStore } from '../agents/work-proposal-store.js';
 import { readConversationGateConfig, type ConversationGateConfigReader } from '../agents/conversation-gate.js';
 import { continuationChainOptions, decideContinuationEscalation } from '../agents/conversation-continuation.js';
 import { gateSurfaceSpawn, type SurfaceIngressOrigin } from './surface-conversation-gate.js';
+import {
+  conversationalTurnConfigReaderFrom,
+  conversationalTurnSpawnOptions,
+} from '../personal-capture/spawn-contract.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import type { ConfigManager } from '../config/manager.js';
@@ -756,8 +760,21 @@ export function configureDaemonSessionContinuation(options: {
     const spawnInput = {
       mode: 'spawn' as const,
       task,
-      ...buildSharedSessionAgentSpawnRoutingInput(input.routing, { modelCandidates: options.modelCandidates?.() }),
-      context: `shared-session:${sessionId}`,
+      // The same tools, instruction and capture authority the runtime's own
+      // continuation runner (runtime/services.ts) gives a conversational turn.
+      // This runner REPLACES that one on a served daemon, so without this a
+      // continued channel turn fell back to the agent's default tool list
+      // (write, edit, exec...) with no `profile` and a bare
+      // `shared-session:<id>` context. Spread FIRST so a routing intent that
+      // named tools still wins; `restrictTools: true` keeps "only these".
+      ...conversationalTurnSpawnOptions(
+        { ...input, sessionId },
+        { configReader: conversationalTurnConfigReaderFrom(options.configReader) },
+      ),
+      ...buildSharedSessionAgentSpawnRoutingInput(input.routing, {
+        restrictTools: true,
+        modelCandidates: options.modelCandidates?.(),
+      }),
     };
     // Classify the OWNER's words (`input.body`), never the enriched
     // continuation task the broker builds from the transcript, that framing

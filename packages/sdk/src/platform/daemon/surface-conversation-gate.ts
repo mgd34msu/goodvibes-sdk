@@ -36,6 +36,11 @@ import {
 } from '../agents/conversation-gate.js';
 import type { WorkProposalRecord, WorkProposalStore } from '../agents/work-proposal-store.js';
 import type { SurfaceNoticeDelivery } from './types.js';
+import {
+  CONVERSATIONAL_TURN_TOOLS,
+  conversationalTurnConfigReaderFrom,
+  conversationalTurnSpawnOptions,
+} from '../personal-capture/spawn-contract.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 
@@ -118,8 +123,19 @@ export function gateSurfaceSpawn(
     // you there?" was answered with a Summary/Changes/Decisions form. What the
     // message IS and what the reply should LOOK like are one decision, made
     // here, once.
+    //
+    // The tool list is the third half of that decision. A conversational turn
+    // gets the conversational tools (profile, read, find, fetch; no write, edit
+    // or exec), exactly as a continued turn in the same conversation does. An
+    // input that already names its tools (the continuation runner spreads the
+    // same fragment itself, and a routing intent may name its own) keeps them.
     return deps.trySpawnAgent(
-      { ...input, dangerously_disable_wrfc: true, replyStyle: 'conversational' },
+      {
+        ...input,
+        ...(input.tools === undefined ? conversationalFirstTurnOptions(deps, origin, sessionId) : {}),
+        dangerously_disable_wrfc: true,
+        replyStyle: 'conversational',
+      },
       logLabel,
       sessionId,
     );
@@ -169,6 +185,33 @@ export function gateSurfaceSpawn(
     summary,
     ...(sessionId ? { sessionId } : {}),
   }, { status: 202 });
+}
+
+/**
+ * The conversational spawn fragment for the FIRST message of a channel
+ * conversation: the same tools, instruction and capture authority the
+ * continuation runners give a follow-up. Capture authority reads the channel
+ * identity from the route binding the message arrived on.
+ *
+ * Without a session there is no conversation to name in the instruction, so
+ * only the tool restriction applies.
+ */
+function conversationalFirstTurnOptions(
+  deps: Pick<ConversationGateDeps, 'configManager' | 'routeBindings' | 'sessionBroker'>,
+  origin: SurfaceIngressOrigin | null,
+  sessionId: string | undefined,
+): Partial<SpawnInput> {
+  if (!sessionId) return { tools: [...CONVERSATIONAL_TURN_TOOLS], restrictTools: true };
+  const binding = resolveOriginBinding(deps, origin, sessionId);
+  return conversationalTurnSpawnOptions(
+    {
+      sessionId,
+      ...(origin?.surface ? { surfaceKind: origin.surface } : {}),
+      ...(binding?.surfaceId ? { surfaceId: binding.surfaceId } : {}),
+      ...(binding?.id ? { routeId: binding.id } : {}),
+    },
+    { configReader: conversationalTurnConfigReaderFrom(deps.configManager) },
+  );
 }
 
 /**
