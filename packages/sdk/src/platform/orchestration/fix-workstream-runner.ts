@@ -43,11 +43,24 @@ export interface FixWorkstreamRunner {
     readonly review: ReviewerReport;
     readonly attempt: number;
     readonly commitScope: WrfcCommitScope;
+    /** The chain worktree fix items branch from and merge back into (absent = the engine's projectRoot). */
+    readonly rootDir?: string | undefined;
   }): Promise<FixWorkstreamOutcome>;
+  /**
+   * Stop a chain's running fix cycle: every fix task still pending or running
+   * is stopped with `reason`, and the cycle settles failed. Returns how many
+   * tasks were stopped (0 when the chain has no cycle running).
+   */
+  stop?(chainId: string, reason: string): number;
 }
 
 /** The slice of the one engine a fix cycle drives. */
-export type FixWorkstreamEngine = Pick<OrchestrationEngine, 'createWorkstream' | 'start' | 'getWorkstream' | 'on'>;
+export type FixWorkstreamEngine = Pick<OrchestrationEngine, 'createWorkstream' | 'start' | 'getWorkstream' | 'on'> & Partial<Pick<OrchestrationEngine, 'kill'>>;
+
+/** Item states that can still move: a failed cycle stops these so no fix task keeps running for a chain that already failed. */
+function isLiveItem(item: Workstream['items'][number]): boolean {
+  return item.state === 'in-phase' || item.state === 'pending' || item.state === 'awaiting-capacity' || item.state === 'blocked-budget';
+}
 
 export interface FixWorkstreamRunnerDeps {
   /**
@@ -86,7 +99,12 @@ function isDone(workstream: Workstream): 'merged' | 'failed' | null {
 export function createFixWorkstreamRunner(deps: FixWorkstreamRunnerDeps): FixWorkstreamRunner {
   const timeoutMs = deps.timeoutMs ?? 2 * 60 * 60 * 1000;
   const resolveEngine = (): FixWorkstreamEngine => (typeof deps.engine === 'function' ? deps.engine() : deps.engine);
+  /** chainId -> stops that chain's running cycle (see FixWorkstreamRunner.stop). */
+  const running = new Map<string, (reason: string) => number>();
   return {
+    stop(chainId, reason) {
+      return running.get(chainId)?.(reason) ?? 0;
+    },
     run(input) {
       const engine = resolveEngine();
       const planned = planFixWorkstream({
@@ -96,6 +114,7 @@ export function createFixWorkstreamRunner(deps: FixWorkstreamRunnerDeps): FixWor
         attempt: input.attempt,
         commitScope: input.commitScope,
         semanticEdges: deps.semanticEdges,
+        rootDir: input.rootDir,
       });
       if (!planned) {
         // A failing review with zero parseable findings/constraints/checklist
@@ -111,13 +130,44 @@ export function createFixWorkstreamRunner(deps: FixWorkstreamRunnerDeps): FixWor
         let settled = false;
         let cycleSeen: readonly string[] | null = null;
         let orphanSeen: string | null = null;
+        /** Stop every fix task still pending or running; returns their titles. */
+        const stopLive = (reason: string): string[] => {
+          const live = engine.getWorkstream(workstream.id);
+          if (!live || !engine.kill) return [];
+          const stopped: string[] = [];
+          for (const item of live.items) {
+            if (isLiveItem(item) && engine.kill(item.id, reason)) stopped.push(item.title);
+          }
+          return stopped;
+        };
         const finish = (outcome: FixWorkstreamOutcome): void => {
           if (settled) return;
           settled = true;
           off();
           clearTimeout(wall);
+          if (running.get(input.chainId) === stopChain) running.delete(input.chainId);
+          if (outcome.status === 'failed') {
+            // A failed cycle releases its remaining fix tasks: siblings of an
+            // orphaned/failed task never keep running (or merging) for a chain
+            // that has already failed, and the reason says which were stopped.
+            const stopped = stopLive(`stopped because the fix cycle failed (${outcome.structured ?? 'failed'})`);
+            if (stopped.length > 0) {
+              outcome = { ...outcome, reason: `${outcome.reason}; stopped ${stopped.length} remaining fix task${stopped.length === 1 ? '' : 's'}: ${stopped.join(', ')}` };
+            }
+          }
           resolve(outcome);
         };
+        const stopChain = (reason: string): number => {
+          if (settled) return 0;
+          settled = true;
+          off();
+          clearTimeout(wall);
+          running.delete(input.chainId);
+          const stopped = stopLive(reason);
+          resolve({ status: 'failed', workstreamId: workstream.id, reason: `${reason}; stopped ${stopped.length} fix task${stopped.length === 1 ? '' : 's'}` });
+          return stopped.length;
+        };
+        running.set(input.chainId, stopChain);
         const evaluate = (): void => {
           const live = engine.getWorkstream(workstream.id);
           if (!live) return;

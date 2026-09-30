@@ -176,6 +176,8 @@ export function planFixWorkstream(input: {
   readonly attempt: number;
   readonly commitScope: WrfcCommitScope;
   readonly semanticEdges?: SemanticEdgePlanner | undefined;
+  /** The chain worktree fix items branch from and merge back into (absent = the engine's projectRoot). */
+  readonly rootDir?: string | undefined;
 }): { workstream: CreateWorkstreamInput; tasks: ReviewTask[] } | null {
   const tasks = parseReviewIntoTasks({ review: input.review, originalTask: input.originalTask });
   if (tasks.length === 0) return null;
@@ -187,6 +189,7 @@ export function planFixWorkstream(input: {
       phases: engineerReviewPhases(input.commitScope, ELASTIC_PHASE_CAPACITY),
       items: specs,
       isolation: 'worktree',
+      ...(input.rootDir ? { rootDir: input.rootDir } : {}),
       releasePolicy: 'reviewed-and-merged',
       provenance: { decomposedBy: 'heuristic', strategy: 'review-findings' },
     },

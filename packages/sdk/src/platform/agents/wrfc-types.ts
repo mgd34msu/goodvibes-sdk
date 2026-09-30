@@ -1,6 +1,7 @@
 import type { CompletionReport, Constraint, ReviewerReport } from './completion-report.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 import type { FanoutCollapseInfo } from '../tools/agent/schema.js';
+import type { WrfcChainWorkspace } from './wrfc-chain-workspace.js';
 
 /** Queued chain waiting to start. */
 export interface QueuedChain {
@@ -223,6 +224,13 @@ export interface WrfcChain {
    * truth, see verifyEngineerClaims for the same accuracy caveat.
    */
   touchedPaths?: string[] | undefined;
+  /**
+   * The isolated git worktree this chain works in (absent outside a git
+   * repository). Every member and gate runs there and the planned-fix
+   * workstream merges into it; the user's directory changes only when the
+   * chain passes (see wrfc-chain-workspace.ts).
+   */
+  workspace?: WrfcChainWorkspace | undefined;
 }
 
 /** Quality gate definition. */

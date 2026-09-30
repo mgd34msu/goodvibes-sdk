@@ -707,3 +707,43 @@ describe('WorktreeIsolationManager: cold-start setup hook', () => {
     rmSync(root, { recursive: true, force: true });
   }, WAIT_TEST_TIMEOUT_MS);
 });
+
+describe('WorktreeIsolationManager: a workstream rooted in another worktree (a WRFC chain worktree)', () => {
+  test('items branch from and merge back into Workstream.rootDir, never the engine projectRoot', async () => {
+    root = freshRoot();
+    writeFileSync(join(root, 'shared.txt'), 'base\n');
+    runGit(root, ['add', 'shared.txt']);
+    runGit(root, ['-c', 'user.email=a@b.c', '-c', 'user.name=test', 'commit', '-m', 'seed shared.txt']);
+    // The chain worktree: its own branch, carrying the chain's work so far.
+    const chainRoot = join(root, '.goodvibes', '.worktrees', 'wrfc', 'chain1');
+    runGit(root, ['worktree', 'add', '-q', '-b', 'wrfc/chain1', chainRoot]);
+    writeFileSync(join(chainRoot, 'shared.txt'), 'base\nchain engineer line\n');
+    runGit(chainRoot, ['-c', 'user.email=a@b.c', '-c', 'user.name=test', 'commit', '-q', '-am', 'chain work']);
+    const rootHeadBefore = runGit(root, ['rev-parse', 'HEAD']).trim();
+
+    const h = makeWtHarness();
+    const events: OrchestrationEvent[] = [];
+    const engine = makeEngine(root, h);
+    engine.on((e) => events.push(e));
+    const ws = engine.createWorkstream({
+      id: 'ws-chainroot', title: 'fix in chain', phases: [enginePhase(1)], items: [{ id: 'item-fix', title: 'fix', task: 'fix it' }],
+      isolation: 'worktree', rootDir: chainRoot,
+    });
+    expect(ws.rootDir).toBe(chainRoot);
+    engine.start(ws.id);
+    await waitUntil(() => h.spawnedIds.length === 1, { label: 'fix agent spawned' });
+    const item = ws.items[0]!;
+    expect(item.worktreePath!.startsWith(join(chainRoot, '.goodvibes', '.worktrees', 'ws'))).toBe(true);
+    // The item branches from the chain branch, so it sees the chain's work.
+    expect(readFileSync(join(item.worktreePath!, 'shared.txt'), 'utf-8')).toBe('base\nchain engineer line\n');
+    writeFileSync(join(item.worktreePath!, 'shared.txt'), 'base\nchain engineer line\nfix line\n');
+    h.completeAgent(h.spawnedIds[0]!, engineerReportOutput({ filesModified: ['shared.txt'] }));
+    await waitUntil(() => events.some((e) => e.type === 'item-worktree-removed' || e.type === 'item-worktree-kept'), { label: 'fix merged' });
+
+    expect(item.mergeState).toBe('merged');
+    expect(readFileSync(join(chainRoot, 'shared.txt'), 'utf-8')).toBe('base\nchain engineer line\nfix line\n');
+    // The user's directory and branch are untouched.
+    expect(readFileSync(join(root, 'shared.txt'), 'utf-8')).toBe('base\n');
+    expect(runGit(root, ['rev-parse', 'HEAD']).trim()).toBe(rootHeadBefore);
+  }, WAIT_TEST_TIMEOUT_MS);
+});

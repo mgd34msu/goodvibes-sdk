@@ -44,7 +44,6 @@
  */
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
-import { GitService } from '../git/service.js';
 import { IsolatedWorktree, type CommitWorkingTreeResult } from '../agents/worktree.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -122,37 +121,44 @@ interface KeptEntry {
 export function createWorktreeIsolationManager(deps: WorktreeIsolationManagerDeps): WorktreeIsolationManager {
   const now = deps.now ?? ((): number => Date.now());
   const keptCap = deps.keptWorktreeCap ?? 20;
-  const rootGit = new GitService(deps.projectRoot);
   const instances = new Map<string, IsolatedWorktree>(); // itemId -> instance
   const kept: KeptEntry[] = [];
-  let baseBranchCache: string | null = null;
+  const baseBranchCache = new Map<string, string>(); // repository root -> its branch
   let integrationLane: Promise<void> = Promise.resolve();
 
-  /** Resolved once (Bun.spawnSync, mirroring dirty-guard.ts) since every IsolatedWorktree for this manager's lifetime merges into the SAME root-tree branch. */
-  function resolveBaseBranch(): string {
-    if (baseBranchCache) return baseBranchCache;
+  /** The repository this workstream's item worktrees branch from and merge into (Workstream.rootDir, else projectRoot). */
+  function rootOf(workstream: Workstream): string {
+    return workstream.rootDir ?? deps.projectRoot;
+  }
+
+  /** Resolved once per root (Bun.spawnSync, mirroring dirty-guard.ts): every IsolatedWorktree of a root merges into that root's branch. */
+  function resolveBaseBranch(root: string): string {
+    const cached = baseBranchCache.get(root);
+    if (cached) return cached;
+    let resolved = 'main';
     try {
-      const result = Bun.spawnSync(['git', '-C', deps.projectRoot, 'rev-parse', '--abbrev-ref', 'HEAD']);
+      const result = Bun.spawnSync(['git', '-C', root, 'rev-parse', '--abbrev-ref', 'HEAD']);
       const branch = result.exitCode === 0 ? new TextDecoder().decode(result.stdout).trim() : '';
-      baseBranchCache = branch.length > 0 && branch !== 'HEAD' ? branch : 'main';
+      resolved = branch.length > 0 && branch !== 'HEAD' ? branch : 'main';
     } catch (error) {
       logger.warn('worktree-isolation: could not resolve base branch, defaulting to "main"', { error: summarizeError(error) });
-      baseBranchCache = 'main';
     }
-    return baseBranchCache;
+    baseBranchCache.set(root, resolved);
+    return resolved;
   }
 
   function getOrCreateInstance(workstream: Workstream, item: WorkItem, path: string, branch: string): IsolatedWorktree {
     let instance = instances.get(item.id);
     if (!instance) {
-      instance = new IsolatedWorktree(deps.projectRoot, path, branch, resolveBaseBranch());
+      const root = rootOf(workstream);
+      instance = new IsolatedWorktree(root, path, branch, resolveBaseBranch(root));
       instances.set(item.id, instance);
     }
     return instance;
   }
 
   async function ensureWorktree(workstream: Workstream, item: WorkItem): Promise<ItemWorktreeHandle> {
-    const path = item.worktreePath ?? itemWorktreeDir(deps.projectRoot, workstream.id, item.id);
+    const path = item.worktreePath ?? itemWorktreeDir(rootOf(workstream), workstream.id, item.id);
     const branch = item.worktreeBranch ?? itemWorktreeBranch(workstream.id, item.id);
     const instance = getOrCreateInstance(workstream, item, path, branch);
     if (!item.worktreePath) {
@@ -233,7 +239,7 @@ export function createWorktreeIsolationManager(deps: WorktreeIsolationManagerDep
   }
 
   async function integrateOne(workstream: Workstream, item: WorkItem): Promise<void> {
-    const path = item.worktreePath ?? itemWorktreeDir(deps.projectRoot, workstream.id, item.id);
+    const path = item.worktreePath ?? itemWorktreeDir(rootOf(workstream), workstream.id, item.id);
     const branch = item.worktreeBranch ?? itemWorktreeBranch(workstream.id, item.id);
     const instance = getOrCreateInstance(workstream, item, path, branch);
     item.mergeState = 'pending';
@@ -312,7 +318,7 @@ export function createWorktreeIsolationManager(deps: WorktreeIsolationManagerDep
   function reconcileOrphans(workstream: Workstream): void {
     let raw: string;
     try {
-      const result = Bun.spawnSync(['git', '-C', deps.projectRoot, 'worktree', 'list', '--porcelain']);
+      const result = Bun.spawnSync(['git', '-C', rootOf(workstream), 'worktree', 'list', '--porcelain']);
       if (result.exitCode !== 0) return;
       raw = new TextDecoder().decode(result.stdout);
     } catch (error) {
@@ -339,7 +345,7 @@ export function createWorktreeIsolationManager(deps: WorktreeIsolationManagerDep
       if (item && unresolved) {
         item.worktreePath = path;
         item.worktreeBranch = branch;
-        instances.set(item.id, new IsolatedWorktree(deps.projectRoot, path, branch, resolveBaseBranch()));
+        instances.set(item.id, new IsolatedWorktree(rootOf(workstream), path, branch, resolveBaseBranch(rootOf(workstream))));
         deps.emit({ type: 'orphan-worktree-reconciled', workstreamId: workstream.id, path, branch, disposition: 'adopted' });
       } else {
         deps.emit({ type: 'orphan-worktree-reconciled', workstreamId: workstream.id, path, branch, disposition: 'reported' });

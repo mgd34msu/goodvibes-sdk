@@ -491,6 +491,13 @@ export interface Workstream {
    */
   readonly isolation?: WorkstreamIsolation | undefined;
   /**
+   * The repository directory `worktree` isolation branches item worktrees from
+   * and merges them back into. Absent = the engine's projectRoot. A WRFC
+   * chain's fix workstream sets its chain worktree here, so fix work never
+   * merges into the user's directory before the chain passes.
+   */
+  readonly rootDir?: string | undefined;
+  /**
    * Where this workstream's items came from (BIG-3 item 1). Set only when the
    * workstream was assembled from an approved PlanProposal via
    * `fromPlanProposal`; absent for compat/`fromChainSpec` or hand-authored

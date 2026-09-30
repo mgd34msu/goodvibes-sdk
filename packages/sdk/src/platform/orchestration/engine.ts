@@ -99,6 +99,8 @@ export interface CreateWorkstreamInput {
    * contrast with `'worktree'` mode.
    */
   readonly isolation?: WorkstreamIsolation | undefined;
+  /** `worktree` isolation's repository root (see Workstream.rootDir); absent = projectRoot. */
+  readonly rootDir?: string | undefined;
   /** Workstream provenance (set by fromPlanProposal; omitted by compat callers). */
   readonly provenance?: WorkstreamProvenance | undefined;
   /** Edge-release policy; 'reviewed-and-merged' also engages the elastic pool. Absent = 'passed' (legacy). */
@@ -112,8 +114,8 @@ export interface OrchestrationEngine {
   insertPhase(workstreamId: string, afterOrdinal: number, spec: PhaseSpec): Phase | null;
   /** Begin (or resume ticking) a workstream's pipeline. Idempotent. */
   start(workstreamId: string): void;
-  /** Abort an item's in-flight agent and mark it terminally failed (siblings untouched). */
-  kill(itemId: string): boolean;
+  /** Abort an item's in-flight agent and mark it terminally failed (siblings untouched); `reason` defaults to an operator cancel. */
+  kill(itemId: string, reason?: string): boolean;
   /** Replace/clear a workstream's budget ceiling and re-tick (the 'blocked-budget' recovery path). */
   updateBudget(workstreamId: string, ceiling: BudgetCeiling | undefined): boolean;
   /** Reset a terminally-FAILED item to re-run from its first phase (the failed-dependency recovery path); re-ticks immediately. */
@@ -192,17 +194,15 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     return () => listeners.delete(listener);
   }
 
-  // Dirty-residue guard: snapshot dirty paths+hashes ONCE at launch (sync,
-  // see dirty-guard.ts) so a later scoped commit can tell prior-run residue
-  // from this run's own changes.
+  // Dirty-residue guard: snapshot dirty paths+hashes ONCE at launch (sync, dirty-guard.ts)
+  // so a later scoped commit can tell prior-run residue from this run's own changes.
   const launchDirtySnapshot: DirtyLaunchSnapshot = snapshotDirtyTree(deps.projectRoot);
   if (launchDirtySnapshot.size > 0) {
     emit({ type: 'dirty-tree-at-launch', paths: [...launchDirtySnapshot.keys()] });
   }
 
-  // Worktree-isolation lane (worktree-mode workstreams only; no I/O until
-  // used). Cold-start setup hook: injected override (tests) else the derived
-  // per-project setup, outcome recorded onto the worktree registry.
+  // Worktree-isolation lane (worktree-mode workstreams only; no I/O until used). Cold-start setup
+  // hook: injected override (tests) else the derived per-project setup, recorded on the registry.
   const runWorktreeSetupHook =
     deps.runWorktreeSetup ??
     (async (worktreePath: string): Promise<void> => {
@@ -290,6 +290,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       items: [],
       budget: input.budget,
       isolation: input.isolation,
+      ...(input.rootDir ? { rootDir: input.rootDir } : {}),
       provenance: input.provenance,
       releasePolicy: input.releasePolicy,
       createdAt: now(),
@@ -600,15 +601,15 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     return null;
   }
 
-  function kill(itemId: string): boolean {
+  function kill(itemId: string, reason = 'cancelled by operator'): boolean {
     const found = findItemAndWorkstream(itemId);
     if (!found) return false;
     const { workstream, item } = found;
     if (item.state === 'passed' || item.state === 'failed') return false;
     cancellation.abort(itemId);
     if (item.agentId) deps.agentManager.cancel(item.agentId, 'kill');
-    failItem(workstream, item, 'cancelled by operator');
-    emit({ type: 'item-cancelled', workstreamId: workstream.id, itemId, reason: 'cancelled by operator' });
+    failItem(workstream, item, reason);
+    emit({ type: 'item-cancelled', workstreamId: workstream.id, itemId, reason });
     return true;
   }
 

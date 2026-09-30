@@ -31,6 +31,7 @@ import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import type { ExecutionPlanManager } from '../core/execution-plan.js';
 import type { FixWorkstreamRunner } from '../orchestration/fix-workstream-runner.js';
+import { checkpointChainWorkspace, describeChainIsolation, landChainWorkspace, openChainWorkspace, prepareChainWorkspace, releaseChainWorkspace } from './wrfc-chain-workspace.js';
 import { augmentReviewWithMissingConstraintFindings, buildMergedFixReport } from './wrfc-planned-fix.js';
 import type { AgentEvent, RuntimeEventBus } from '../runtime/events/index.js';
 import type {
@@ -155,6 +156,8 @@ export class WrfcController {
   private watchdogTimer: ReturnType<typeof setInterval> | null = null;
   /** Pending one-shot chain-reaper timers, so dispose() can cancel them (scheduleChainCleanup). */
   private readonly chainCleanupTimers = new Set<ReturnType<typeof setTimeout>>();
+  /** chainId -> the chain worktree's cold-start setup; members spawn once it settles. */
+  private readonly workspaceSetups = new Map<string, Promise<void>>();
 
   constructor(
     runtimeBus: RuntimeEventBus,
@@ -1154,6 +1157,7 @@ export class WrfcController {
       review: effectiveReview,
       attempt: chain.fixAttempts,
       commitScope,
+      rootDir: this.checkpointForFix(chain, `fix cycle ${chain.fixAttempts}`),
     }).then((outcome) => {
       if (isChainTerminal(chain.state)) return; // cancelled/failed while the cycle ran
       if (outcome.status === 'failed') {
@@ -1188,7 +1192,7 @@ export class WrfcController {
 
     return runWrfcGateChecks({
       configManager: this.configManager,
-      projectRoot: this.projectRoot,
+      projectRoot: this.chainRoot(chain),
       runtimeBus: this.runtimeBus,
       sessionId: this.sessionId,
       chainId: chain.id,
@@ -1317,6 +1321,8 @@ export class WrfcController {
       this.appendOwnerDecision(chain, 'gate_passed', 'All configured WRFC quality gates passed');
       if (autoCommit) {
         await this.autoCommit(chain);
+      } else if (chain.workspace) {
+        this.landIsolatedChain(chain, false, 'auto-commit is off');
       } else {
         this.completeChainAsPassed(chain);
       }
@@ -1464,6 +1470,10 @@ export class WrfcController {
     this.transition(chain, 'committing');
 
     const commitScope = getWrfcCommitScope(this.configManager);
+    if (chain.workspace) {
+      this.landIsolatedChain(chain, commitScope !== 'off', 'the commit scope setting is off');
+      return;
+    }
     if (commitScope === 'off') {
       logger.debug('WrfcController.autoCommit: wrfc.commitScope is off, skipping commit and merge entirely', {
         chainId: chain.id,
@@ -1706,11 +1716,12 @@ export class WrfcController {
       this.activeChainCount = Math.max(0, this.activeChainCount - 1);
     }
 
+    this.cancelRunningChildren(chain);
+    reason = this.releaseIsolatedChain(chain, reason, 'stopped because the chain failed');
     chain.error = reason;
     chain.failureKind = failureKind;
     chain.completedAt = Date.now();
     this.setWrfcWorkPlanTaskStatus(chain, chain.ownerAgentId, 'failed', reason);
-    this.cancelRunningChildren(chain);
     this.appendOwnerDecision(chain, 'chain_failed', reason, { agentId: chain.ownerAgentId });
     this.completeOwnerAgent(chain, 'failed', reason);
     this.workmap.append({ ts: new Date().toISOString(), wrfcId: chain.id, event: 'chain_failed', reason });
@@ -1770,10 +1781,11 @@ export class WrfcController {
     // dual-outcome message pattern used for a passed chain's commit note. So the
     // user sees "cancelled, N file(s) already modified on disk" rather than a bare
     // stop that hides in-flight edits.
-    const landed = this.collectChainTouchedPaths(chain);
+    const landed = chain.workspace ? [] : this.collectChainTouchedPaths(chain);
+    this.cancelRunningChildren(chain);
     const narration = landed.length > 0
       ? `${reason}, ${landed.length} file${landed.length === 1 ? '' : 's'} already modified on disk`
-      : reason;
+      : this.releaseIsolatedChain(chain, reason, 'stopped because the chain was cancelled');
 
     chain.error = narration;
     // 'cancelled' failureKind flags this terminal-'failed' state as an intended
@@ -1947,6 +1959,15 @@ export class WrfcController {
   }
 
   private startEngineeringChain(chain: WrfcChain, emitCreated: boolean): void {
+    if (!this.openChainIsolation(chain)) return;
+    const setup = this.workspaceSetups.get(chain.id);
+    if (setup) {
+      // Members spawn once the chain worktree has its dependencies (a failed setup is noted, not fatal).
+      this.workspaceSetups.delete(chain.id);
+      void setup.then(() => { if (chain.state === 'pending') this.startEngineeringChain(chain, emitCreated); })
+        .catch((error) => { if (!isChainTerminal(chain.state)) this.failChain(chain, `could not start the chain: ${summarizeError(error)}`); });
+      return;
+    }
     if (chain.subtasks && chain.subtasks.length > 1) {
       this.startCompoundEngineeringChain(chain, emitCreated);
       return;
@@ -1976,7 +1997,7 @@ export class WrfcController {
       emitWrfcChainCreated(this.runtimeBus, this.sessionId, chain.id, chain.task);
     }
     this.appendOwnerDecision(chain, 'spawn_engineer', this.withRouteReason(
-      'Start WRFC implementation child for the original ask',
+      `Start WRFC implementation child for the original ask${describeChainIsolation(chain.workspace)}`,
       engineerRecord,
     ), {
       agentId: engineerRecord.id,
@@ -2173,7 +2194,7 @@ export class WrfcController {
     //                               advisory contract for consistency; the reviewer sees the synthetic issue.
     //   'unverified'              → claimsVerified=false,    inject synthetic issue; MIN-4 gate will block pass.
     if (!this.shouldSkipClaimVerification()) {
-      const claimVerification = verifyEngineerClaims(reportForReview, this.projectRoot);
+      const claimVerification = verifyEngineerClaims(reportForReview, this.chainRoot(chain));
       if (claimVerification.kind === 'unverifiable_no_claims') {
         // Leave chain.claimsVerified as undefined, not a confirmed false, but suspicious.
         const agentClass = chain.state === 'fixing' ? 'fixer' : 'engineer';
@@ -2361,7 +2382,7 @@ export class WrfcController {
     //   'verified_empty'          → claimsVerified=true,     no synthetic issue.
     //   'unverifiable_no_claims'  → claimsVerified=undefined, inject advisory synthetic issue only (no MIN-4 mechanical block).
     //   'unverified'              → claimsVerified=false,    inject synthetic issue; MIN-4 gate blocks pass.
-    const subtaskClaimVerification = verifyEngineerClaims(reportForReview, this.projectRoot);
+    const subtaskClaimVerification = verifyEngineerClaims(reportForReview, this.chainRoot(chain));
     if (subtaskClaimVerification.kind === 'unverifiable_no_claims') {
       // Leave subtask.claimsVerified as undefined, suspicious but not a confirmed false.
       logger.warn('WrfcController: compound subtask engineer sent success prose with no claims and no git diff, suspected phantom work', {
@@ -2543,6 +2564,7 @@ export class WrfcController {
       review,
       attempt: subtask.fixAttempts,
       commitScope,
+      rootDir: this.checkpointForFix(chain, `fix cycle ${subtask.fixAttempts} for ${subtask.id}`),
     }).then((outcome) => {
       if (isChainTerminal(chain.state)) return;
       if (outcome.status === 'failed') {
@@ -2623,6 +2645,59 @@ export class WrfcController {
     return canonical;
   }
 
+  /** Where this chain's members, gates and claim checks work: its isolated worktree, else the project root. */
+  private chainRoot(chain: WrfcChain): string {
+    return chain.workspace?.cwd ?? this.projectRoot;
+  }
+
+  /**
+   * Give the chain its isolated worktree (git repositories only) before any member spawns.
+   * False when the chain failed because the worktree could not be made: a chain in a git
+   * repository never falls back to editing the user's directory in place.
+   */
+  private openChainIsolation(chain: WrfcChain): boolean {
+    if (chain.workspace) return true;
+    const opened = openChainWorkspace(this.projectRoot, chain.id);
+    if (opened.kind === 'not-a-repository') return true;
+    if (opened.kind === 'error') {
+      this.failChain(chain, `could not create the chain's isolated worktree: ${opened.reason}`);
+      return false;
+    }
+    chain.workspace = opened.workspace;
+    const get = (key: string): unknown => (this.configManager.get as unknown as (k: string) => unknown)(key);
+    this.workspaceSetups.set(chain.id, prepareChainWorkspace(opened.workspace, this.projectRoot, get).then((problem) => {
+      if (problem) logger.warn('WrfcController: chain worktree setup', { chainId: chain.id, problem });
+    }));
+    return true;
+  }
+
+  /** Commit the chain's work so far onto its branch so fix items branch from it; the fix workstream's root. */
+  private checkpointForFix(chain: WrfcChain, label: string): string | undefined {
+    if (!chain.workspace) return undefined;
+    try {
+      checkpointChainWorkspace(chain.workspace, `goodvibes: chain work before ${label}`);
+    } catch (error) {
+      logger.warn('WrfcController: chain checkpoint before a fix cycle did not complete', { chainId: chain.id, error: summarizeError(error) });
+    }
+    return chain.workspace.cwd;
+  }
+
+  /** A passed isolated chain: bring only its own changes back (see landChainWorkspace) and complete. */
+  private landIsolatedChain(chain: WrfcChain, commit: boolean, noCommitReason: string): void {
+    const workspace = chain.workspace!;
+    const landing = landChainWorkspace(workspace, { commit, message: this.buildAutoCommitMessage(chain, 'all'), noCommitReason });
+    if (landing.commit) emitWrfcAutoCommitted(this.runtimeBus, this.sessionId, chain.id, landing.commit);
+    this.completeChainAsPassed(chain, landing.note);
+  }
+
+  /** A failed/cancelled isolated chain: stop its fix tasks, keep its work on its branch, say so in the reason. */
+  private releaseIsolatedChain(chain: WrfcChain, reason: string, stopReason: string): string {
+    this.fixWorkstreamRunner.stop?.(chain.id, stopReason);
+    for (const subtask of chain.subtasks ?? []) this.fixWorkstreamRunner.stop?.(`${chain.id}:${subtask.id}`, stopReason);
+    if (!chain.workspace) return reason;
+    return `${reason}; ${releaseChainWorkspace(chain.workspace).note}`;
+  }
+
   private spawnWrfcAgent(
     chain: WrfcChain,
     role: 'engineer' | 'reviewer' | 'fixer' | 'integrator',
@@ -2651,6 +2726,7 @@ export class WrfcController {
       ...(template === 'engineer' ? { systemPromptAddendum: '\n\n---\n\n' + buildEngineerConstraintAddendum() } : {}),
       ...(template === 'integrator' ? { systemPromptAddendum: '\n\n---\n\n' + buildEngineerConstraintAddendum() } : {}),
       ...(dangerouslyDisableWrfc ? { dangerously_disable_wrfc: true } : {}),
+      ...(chain.workspace ? { workingDirectory: chain.workspace.cwd } : {}),
     });
     record.wrfcId = chain.id;
     if (subtaskId) {
