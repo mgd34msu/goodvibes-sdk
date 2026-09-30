@@ -30,6 +30,13 @@
   by GoodVibes' own tools, runs the repository's git hooks, and leaves the
   user's other uncommitted edits in place. A failed or cancelled chain stops
   its remaining fix tasks and names them.
+- **Every open dependency advisory is closed.** fast-uri, undici,
+  brace-expansion, sharp, js-yaml, qs, body-parser, ip-address and fflate
+  move to patched versions; bun audit reports no vulnerabilities.
+- **CI drops the SBOM and the Verdaccio rehearsal.** The CycloneDX SBOM job,
+  its release attachment and the local Verdaccio publish rehearsal are gone,
+  along with the cyclonedx-npm and verdaccio dependencies that carried most
+  of the flagged packages.
 - **Tier guidance takes an audience**, so a person's conversation never gets
   the agent completion demand.
 

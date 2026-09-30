@@ -270,42 +270,6 @@ jobs:
       - name: Run publint
         run: bun run publint:check
 
-  sbom-check:
-    name: SBOM generation + validation (CycloneDX)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: [build]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Setup Node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: "22"
-      - name: Setup Bun + deps (cached)
-        uses: ./.github/actions/setup
-      - name: Download workspace package output
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: workspace-build-output
-          path: /tmp/workspace-build-output
-      - name: Restore workspace package output
-        run: |
-          tar -xzf /tmp/workspace-build-output/workspace-build-output.tgz -C .
-          # The artifact was built from this very SHA in this run's build job —
-          # it is fresh by construction. tar preserves build-time mtimes while
-          # the checkout stamps sources with checkout time, so mtime-based
-          # dist-freshness checks would misread the restore as staleness.
-          find packages/*/dist -type f -exec touch {} +
-      - name: Generate and validate SBOM
-        run: bun run sbom:check
-      - name: Upload SBOM as CI artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: sbom-cdx-json
-          path: sbom.cdx.json
-          retention-days: 30
-
   # ---------------------------------------------------------------------------
   # Packaged-artifact coherence gate: pack every workspace package exactly as
   # publish would, install the tarballs into a scratch consumer, and run the
@@ -378,7 +342,6 @@ jobs:
       - platform-matrix
       - types-resolution-check
       - publint-check
-      - sbom-check
       - artifact-lane
     permissions:
       contents: write

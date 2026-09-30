@@ -36,8 +36,8 @@ else, including holding a release back or redoing a failed dispatch.
 Every push to `main` runs the full `ci.yml` gate set once: the consolidated
 `validate` job, the eval gate, the security audit, the platform test matrix
 (`bun`, React Native bundling, Workers, Workers with Wrangler), the
-packaged-artifact conformance lane, and the packaging checks (`publint`, SBOM
-generation, exports-map resolution). A single `build` job produces the
+packaged-artifact conformance lane, and the packaging checks (`publint`,
+exports-map resolution). A single `build` job produces the
 workspace `dist` output once and uploads it as the `workspace-build-output`
 artifact; every other job restores that artifact rather than rebuilding, so
 every gate tests the exact bytes a release would publish.
@@ -89,8 +89,7 @@ run.
    with **every job green**, using the toolchain `per-job-green` tool with a
    check-suites fallback. It reports the resolved run id and head SHA. This
    replaces the former 45-minute `validate-release` re-run.
-3. `generate-sbom` builds the CycloneDX SBOM for the release assets.
-4. `publish-npm` requires all three jobs above to be green. It asserts the
+3. `publish-npm` requires both jobs above to be green. It asserts the
    recorded head SHA equals the tagged SHA (the artifact-integrity handoff),
    then downloads the push-CI run's build artifact by that run id instead of
    rebuilding. It checks the registry state for this version, proceeding on
@@ -101,9 +100,8 @@ run.
    package with `scripts/align-dist-tags.ts`, needed because a plain `npm
    publish` moves `latest` to whatever it just published, which two
    overlapping releases can leave pointing backward.
-5. `github-release` creates the GitHub release from the tagged
-   `CHANGELOG.md` excerpt plus the SBOM, once publish and SBOM generation both
-   succeed.
+4. `github-release` creates the GitHub release from the tagged
+   `CHANGELOG.md` excerpt once publish succeeds.
 
 Because tagging is gated on push-CI green either way, the tag-redo dance is
 structurally retired. The SDK release wall drops from ~45-70m to ~15-20m,
@@ -120,7 +118,6 @@ Release validation covers:
 - generated contract artifacts
 - changelog/version alignment
 - bundle budgets
-- SBOM generation
 
 Contributors should run the focused check that matches their change before
 opening a pull request. Maintainers run the full release gate before cutting a
@@ -138,7 +135,6 @@ Each release step has a dedicated script in the root `package.json`:
 | `bun run release:tag` | Creates the git release tag (`scripts/create-release-tag.ts`) |
 | `bun run release:verify` | Full local release gate: `validate`, `flags:graduation`, `security:audit`, the `test`/`test:rn`/`test:workers`/`test:workers:wrangler` suites, `release:dry-run`, and `install:smoke` |
 | `bun run release:verify:published` | Verifies already-published packages and runs a registry install smoke check (`--registry`) |
-| `bun run release:verify:verdaccio` | End-to-end publish/install dry-run against a local Verdaccio registry (`scripts/verdaccio-dry-run.ts`) |
 
 Before opening a PR, run the focused check that matches the change rather than the full gate:
 
@@ -150,7 +146,7 @@ Before opening a PR, run the focused check that matches the change rather than t
 | Error taxonomy (`SDKErrorKind`) | `bun run error:check` |
 | Changelog / version bump | `bun run changelog:check` and `bun run version:check` |
 | Bundle size | `bun run bundle:check` |
-| Dependencies / licenses | `bun run sbom:check` and `bun run security:audit` |
+| Dependencies | `bun run security:audit` |
 | Packaging / `exports` map | `bun run publint:check` and `bun run types:resolution-check` |
 
 ## Shared toolchain (`@pellux/goodvibes-toolchain`)
@@ -256,11 +252,6 @@ The SDK package embeds generated contract JSON artifacts for public contract
 subpaths. Contract artifacts must be refreshed when method catalogs, schemas,
 events, or generated client types change.
 
-## SBOM
-
-The CycloneDX SBOM is a release artifact used for review and release upload. It
-is not committed and is not included in the SDK npm package payload.
-
 ## Failure handling
 
 If a release gate fails:
@@ -274,5 +265,4 @@ Common release-gate failures and their fixes:
 
 - **Contract drift.** `contracts:check` fails when SDK-embedded contract JSON diverges from `packages/contracts/artifacts`. Run `bun run refresh:contracts`, then re-validate.
 - **Bundle overage.** `bundle:check` fails when a JavaScript export exceeds its gzip ceiling. If the growth is legitimate, update `bundle-budgets.json` using `max(ceil(actual * 1.2), actual + 50)` and record the new measurement.
-- **SBOM and license policy.** `sbom:check` fails when `sbom.cdx.json` is empty or schema-invalid, or when a dependency carries a blocked license family. Resolve the dependency or update the license policy.
 - **Types resolution (attw).** `types:resolution-check` fails when the `exports` map does not resolve cleanly for a published subpath. Fix the `exports`/types wiring in `packages/sdk/package.json`.

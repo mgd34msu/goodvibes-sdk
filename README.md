@@ -82,7 +82,7 @@ React Native, Expo, and Cloudflare Worker bridges follow the same pattern from t
 | Package | What it is |
 | --- | --- |
 | [`@pellux/goodvibes-sdk`](./packages/sdk) | The published facade: the full platform runtime (sessions, agents, providers, knowledge, control plane, daemon route handlers) plus thin client factories for Bun, browser, React Native, Expo, and Cloudflare Workers. |
-| [`@pellux/goodvibes-toolchain`](./packages/toolchain) | The published CI/CD toolchain: release cut, npm publish, per-job-green verification, coverage and SBOM gates. Invoked as `bunx @pellux/goodvibes-toolchain <tool>` from every GoodVibes repo's release workflow. |
+| [`@pellux/goodvibes-toolchain`](./packages/toolchain) | The published CI/CD toolchain: release cut, npm publish, per-job-green verification and coverage gates. Invoked as `bunx @pellux/goodvibes-toolchain <tool>` from every GoodVibes repo's release workflow. |
 | [`@pellux/goodvibes-contracts`](./packages/contracts) | Runtime-neutral operator and peer contract artifacts, generated method IDs, and lookup helpers that the `sdk` facade and every client surface share. |
 
 `sdk` also draws on further source-of-truth sibling packages: `errors`, `transport-core`, `transport-http`, `transport-realtime`, `daemon-sdk`, `operator-sdk`, `peer-sdk`, and `terminal-shell`. These are public dependencies rather than separate install steps for most consumers. The full package and entry-point matrix is [docs/packages.md](./docs/packages.md).

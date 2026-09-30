@@ -12,7 +12,7 @@
  * parent's lifecycle and the env redirect) plus `scripts/stale-tmp-sweep.ts`
  * (reclaiming what a signal-killed run could not remove). Those two modules
  * are what `scripts/test.ts`, `scripts/leak-scan.ts`,
- * `scripts/build-whisper-bundle.ts`, `scripts/verdaccio-dry-run.ts` and
+ * `scripts/build-whisper-bundle.ts` and
  * `scripts/test-tmp-architecture-check.ts` all build on, so asserting them
  * asserts the code that actually runs rather than a re-implementation of it.
  */

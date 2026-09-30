@@ -155,7 +155,7 @@ describe('ci.yml: build once, restore everywhere', () => {
 
   test('has the expected job set', () => {
     const names = jobs(ci).map(([n]) => n);
-    for (const n of ['validate', 'eval-gate', 'security-audit', 'build', 'platform-matrix', 'types-resolution-check', 'publint-check', 'sbom-check', 'artifact-lane']) {
+    for (const n of ['validate', 'eval-gate', 'security-audit', 'build', 'platform-matrix', 'types-resolution-check', 'publint-check', 'artifact-lane']) {
       expect(names).toContain(n);
     }
   });
@@ -198,7 +198,7 @@ describe('ci.yml: build once, restore everywhere', () => {
 
 describe('ci.yml: zero-touch auto-release', () => {
   const ci = load('ci.yml');
-  const gatingJobs = ['validate', 'eval-gate', 'security-audit', 'build', 'platform-matrix', 'types-resolution-check', 'publint-check', 'sbom-check', 'artifact-lane'];
+  const gatingJobs = ['validate', 'eval-gate', 'security-audit', 'build', 'platform-matrix', 'types-resolution-check', 'publint-check', 'artifact-lane'];
 
   test('auto-release needs EVERY other ci.yml job (only runs when all are green)', () => {
     const auto = ci.jobs!['auto-release']!;
