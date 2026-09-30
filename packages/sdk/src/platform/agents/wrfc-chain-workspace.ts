@@ -15,21 +15,33 @@
  *
  * Only after the chain passes does its work come back (landChainWorkspace):
  * the chain's OWN delta, snapshot..chain tip, is three-way merged onto the
- * user's current HEAD and committed as one commit built in a private index,
- * so edits that were uncommitted before the chain started are never part of
- * the chain's commit. The same delta is three-way merged into the user's
- * working copy, so uncommitted edits in a file the chain also changed stay in
- * place, and a file where the two overlap is left exactly as the user had it.
- * Every such case is named in the returned note.
+ * user's current HEAD plus GoodVibes' own uncommitted work: an uncommitted
+ * file whose bytes are exactly what GoodVibes' write/edit tools (or an earlier
+ * chain's landing) left there (state/tool-edit-record.ts) is GoodVibes' work
+ * and is committed with the chain's changes. Every other uncommitted edit is
+ * the user's: it stays out of the commit, untouched, and the note names it. The chain's worktree is then reset to exactly that
+ * result (the user's HEAD plus only the chain's changes) and committed there
+ * with a normal `git commit`, so the repository's pre-commit, commit-msg and
+ * other commit hooks run the way they do for any commit, yet never see or
+ * change the user's uncommitted edits (those do not exist in that worktree).
+ * The finished commit is then moved onto the user's branch. A hook that
+ * refuses the commit is reported with its own words; nothing lands, the
+ * user's files are not touched and the chain's work stays on its branch.
+ * The commit's changes are three-way merged into the user's working copy, so
+ * uncommitted edits in a file the chain also changed stay in place, and a
+ * file where the two overlap is left exactly as the user had it. Every such
+ * case is named in the returned note.
  *
- * All git work is synchronous (Bun.spawnSync, the dirty-guard.ts and
- * worktree-isolation.ts precedent): the controller's chain lifecycle calls are
- * synchronous and these are short, local git plumbing commands.
+ * Git plumbing is synchronous (Bun.spawnSync, the dirty-guard.ts and
+ * worktree-isolation.ts precedent): short, local commands. The one command
+ * that runs user code, the hook-running `git commit`, is asynchronous so a
+ * slow hook never blocks the process.
  */
 import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { resolveEffectiveWorktreeSetup, runWorktreeSetup } from '../runtime/worktree/setup.js';
+import { isToolEditedContent, recordToolEdit } from '../state/tool-edit-record.js';
 
 /** The isolated worktree a chain runs in. Plain data: serialized with the chain. */
 export interface WrfcChainWorkspace {
@@ -45,8 +57,10 @@ export interface WrfcChainWorkspace {
   readonly baseHead: string | null;
   /** The commit the chain started from: HEAD plus the user's uncommitted work at chain start. */
   readonly snapshot: string;
-  /** Paths that carried uncommitted work at chain start (never part of the chain's commit). */
+  /** Paths that carried uncommitted work at chain start. */
   readonly startedWithUncommitted: readonly string[];
+  /** Of those, the ones GoodVibes' own tools left as they are (committed with the chain's work when unchanged). */
+  readonly startedWithToolEdits?: readonly string[] | undefined;
 }
 
 export type OpenChainWorkspaceResult =
@@ -60,20 +74,25 @@ export interface ChainLandingResult {
    * committed: one commit with only the chain's changes, working copy updated.
    * applied: working copy updated, nothing committed (commit not requested, or held, see heldFiles).
    * nothing: the chain changed no files.
+   * refused: `git commit` (normally a pre-commit or commit-msg hook) refused the commit; the user's files were not touched and the work is on the branch.
    * failed: the landing could not complete; the user's files were not touched and the work is on the branch.
    */
-  readonly status: 'committed' | 'applied' | 'nothing' | 'failed';
+  readonly status: 'committed' | 'applied' | 'nothing' | 'refused' | 'failed';
   readonly commit?: string | undefined;
   /** Every file the chain changed (repository-relative). */
   readonly files: readonly string[];
   /** Files that carried the user's uncommitted work: that work was kept in place and is not in the commit. */
   readonly keptUncommitted: readonly string[];
+  /** Files with GoodVibes' own uncommitted edits (tool-edit-record.ts), committed together with the chain's changes. */
+  readonly committedToolEdits?: readonly string[] | undefined;
   /** Files left exactly as the user had them because the user's uncommitted edits overlap the chain's change. */
   readonly leftAsIs: readonly string[];
   /** Files whose chain change builds on the user's uncommitted edits, so no commit was made (it would have included them). */
   readonly heldFiles: readonly string[];
   /** True when the chain branch was kept (its work is not fully in the user's directory/commit). */
   readonly branchKept: boolean;
+  /** When status is 'refused': what `git commit` and its hooks printed. */
+  readonly refusal?: string | undefined;
   /** Plain sentence(s) for the chain's completion message. */
   readonly note: string;
 }
@@ -174,6 +193,10 @@ export function openChainWorkspace(projectRoot: string, chainId: string): OpenCh
         ? listNulPaths(git(toplevel, ['diff', '--name-only', '-z', '--no-renames', baseHead, snapshot]).stdout)
         : listNulPaths(git(toplevel, ['ls-tree', '-r', '--name-only', '-z', snapshot]).stdout);
     }
+    const startedWithToolEdits = startedWithUncommitted.filter((path) => {
+      const working = readWorkingFile(join(toplevel, path));
+      return working.kind === 'file' && isToolEditedContent(join(toplevel, path), working.bytes);
+    });
     const short = shortChainId(chainId);
     const branch = `wrfc/${short}`;
     const path = join(resolve(projectRoot), '.goodvibes', '.worktrees', 'wrfc', short);
@@ -190,6 +213,7 @@ export function openChainWorkspace(projectRoot: string, chainId: string): OpenCh
         baseHead,
         snapshot,
         startedWithUncommitted,
+        ...(startedWithToolEdits.length > 0 ? { startedWithToolEdits } : {}),
       },
     };
   } catch (error) {
@@ -202,9 +226,13 @@ export function openChainWorkspace(projectRoot: string, chainId: string): OpenCh
 /** The plain clause naming where a chain works (empty outside isolation). */
 export function describeChainIsolation(workspace: WrfcChainWorkspace | undefined): string {
   if (!workspace) return '';
-  const carried = workspace.startedWithUncommitted.length > 0
-    ? `; it starts from your current files, including uncommitted edits in ${listFiles(workspace.startedWithUncommitted)}, which this chain will not commit`
-    : '';
+  const own = new Set(workspace.startedWithToolEdits ?? []);
+  const yours = workspace.startedWithUncommitted.filter((path) => !own.has(path));
+  const carried = workspace.startedWithUncommitted.length === 0 ? '' : [
+    `; it starts from your current files, including uncommitted edits`,
+    yours.length > 0 ? ` in ${listFiles(yours)}, which this chain will not commit` : '',
+    own.size > 0 ? `${yours.length > 0 ? ', and' : ''} GoodVibes' own edits in ${listFiles([...own])}, which it commits with its work` : '',
+  ].join('');
   return ` in isolated worktree ${workspace.path} on branch ${workspace.branch}${carried}`;
 }
 
@@ -360,6 +388,8 @@ function removeWorktreeDirectory(workspace: WrfcChainWorkspace): void {
  * The user's directory is never touched. Never throws.
  */
 export function releaseChainWorkspace(workspace: WrfcChainWorkspace): { readonly branchKept: boolean; readonly note: string } {
+  // A passed chain whose commit is being made (its hooks can take a while) is left to that landing.
+  if (landingWorkspaces.has(workspace.path)) return { branchKept: true, note: "the chain's passed work was already being committed" };
   try {
     checkpointChainWorkspace(workspace, 'goodvibes: chain work kept when the chain stopped');
     removeWorktreeDirectory(workspace);
@@ -374,12 +404,124 @@ export function releaseChainWorkspace(workspace: WrfcChainWorkspace): { readonly
   }
 }
 
+/** Environment for a git command that runs the user's hooks: no inherited git location overrides. */
+function hookEnv(): Record<string, string | undefined> {
+  const env: Record<string, string | undefined> = { ...process.env };
+  for (const key of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_OBJECT_DIRECTORY', 'GIT_PREFIX']) delete env[key];
+  return env;
+}
+
+/** How long one hook-running `git commit` may take before it is stopped and reported. */
+const HOOKED_COMMIT_TIMEOUT_MS = 10 * 60 * 1000;
+/** The longest refusal text carried into the chain's note. */
+const REFUSAL_LIMIT = 2000;
+
+/** True when the repository has a hook that runs on `git commit` (core.hooksPath respected). */
+function hasCommitHook(cwd: string): boolean {
+  for (const name of ['pre-commit', 'prepare-commit-msg', 'commit-msg']) {
+    const path = git(cwd, ['rev-parse', '--git-path', `hooks/${name}`]).stdout.toString('utf-8').trim();
+    if (!path) continue;
+    try {
+      const stats = lstatSync(resolve(cwd, path));
+      if ((stats.isFile() || stats.isSymbolicLink()) && (stats.mode & 0o111) !== 0) return true;
+    } catch {
+      // no such hook
+    }
+  }
+  return false;
+}
+
+type HookedCommit =
+  | { readonly ok: true; readonly commit: string }
+  | { readonly ok: false; readonly output: string; readonly byHook: boolean };
+
+/**
+ * Commit `tree` on top of `head` with a normal `git commit` inside the chain's
+ * worktree, so the repository's commit hooks run. The worktree is first reset
+ * to exactly `tree` (the user's HEAD plus only the chain's changes), so a hook
+ * sees and can change only what this commit will contain. The chain branch
+ * itself is not moved (the worktree is detached), so its work stays there
+ * whatever the hooks decide.
+ */
+async function commitWithHooks(
+  workspace: WrfcChainWorkspace,
+  head: string | null,
+  tree: string,
+  message: string,
+  identity: readonly string[],
+  scratch: string,
+): Promise<HookedCommit> {
+  const cwd = workspace.path;
+  if (head) gitText(cwd, ['checkout', '--quiet', '--force', '--detach', head]);
+  else gitText(cwd, ['checkout', '--quiet', '--force', '--orphan', landingBranch(workspace)]);
+  gitText(cwd, ['read-tree', '--reset', '-u', tree]);
+  const messageFile = join(scratch, 'COMMIT_MESSAGE');
+  writeFileSync(messageFile, message.endsWith('\n') ? message : `${message}\n`);
+  const child = Bun.spawn(['git', ...identity, 'commit', '--quiet', '--file', messageFile], {
+    cwd,
+    env: hookEnv(),
+    stdin: 'ignore',
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    child.kill();
+  }, HOOKED_COMMIT_TIMEOUT_MS);
+  const [stdout, stderr, code] = await Promise.all([
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+    child.exited,
+  ]).finally(() => clearTimeout(timer));
+  if (code !== 0 || timedOut) {
+    const printed = [stdout.trim(), stderr.trim()].filter((part) => part.length > 0).join('\n');
+    const reason = timedOut
+      ? `git commit was stopped after ${HOOKED_COMMIT_TIMEOUT_MS / 60_000} minutes${printed ? `; it printed: ${printed}` : ''}`
+      : (printed || `git commit exited with code ${code} without printing a reason`);
+    return {
+      ok: false,
+      output: reason.length > REFUSAL_LIMIT ? `...${reason.slice(-REFUSAL_LIMIT)}` : reason,
+      byHook: !timedOut && hasCommitHook(cwd),
+    };
+  }
+  const commit = gitText(cwd, ['rev-parse', 'HEAD']);
+  const parent = revParse(cwd, `${commit}^`);
+  if (parent !== head) throw new Error(`the hooked commit ${commit.slice(0, 7)} does not sit on ${head ? head.slice(0, 7) : 'an empty history'}`);
+  return { ok: true, commit };
+}
+
+/** Every path with uncommitted work in the user's repository (tracked or untracked), bookkeeping excluded. */
+function uncommittedPaths(top: string): string[] {
+  const out = git(top, ['status', '--porcelain=v1', '-z', '--untracked-files=all', '--no-renames', '--', '.', ...EXCLUDE_BOOKKEEPING]).stdout;
+  return listNulPaths(out).map((entry) => entry.slice(3)).filter((path) => path.length > 0);
+}
+
+/** Chain worktrees whose passed work is being landed right now (releaseChainWorkspace leaves them alone). */
+const landingWorkspaces = new Set<string>();
+
+/** The temporary branch a chain commits on when the user's repository has no commits yet. */
+function landingBranch(workspace: WrfcChainWorkspace): string {
+  return `${workspace.branch}-landing`;
+}
+
 /**
  * Bring a passed chain's work back to the user's directory. See the module doc.
  * Never throws: an unexpected git failure yields status 'failed' with the
- * user's files untouched and the chain's work kept on its branch.
+ * user's files untouched and the chain's work kept on its branch; a commit the
+ * repository's hooks refuse yields status 'refused' the same way, with what
+ * the hooks printed.
  */
-export function landChainWorkspace(workspace: WrfcChainWorkspace, options: LandChainWorkspaceOptions): ChainLandingResult {
+export async function landChainWorkspace(workspace: WrfcChainWorkspace, options: LandChainWorkspaceOptions): Promise<ChainLandingResult> {
+  landingWorkspaces.add(workspace.path);
+  try {
+    return await landWorkspace(workspace, options);
+  } finally {
+    landingWorkspaces.delete(workspace.path);
+  }
+}
+
+async function landWorkspace(workspace: WrfcChainWorkspace, options: LandChainWorkspaceOptions): Promise<ChainLandingResult> {
   const empty = { keptUncommitted: [], leftAsIs: [], heldFiles: [] } as const;
   let tip: string | null;
   try {
@@ -403,6 +545,7 @@ export function landChainWorkspace(workspace: WrfcChainWorkspace, options: LandC
   }
 
   const scratch = mkdtempSync(join(tmpdir(), 'goodvibes-wrfc-land-'));
+  let usedLandingBranch = false;
   try {
     const head = revParse(top, 'HEAD');
     interface PlannedFile {
@@ -415,34 +558,49 @@ export function landChainWorkspace(workspace: WrfcChainWorkspace, options: LandC
       readonly working: WorkingFile;
       readonly dirty: boolean;
     }
-    const planned: PlannedFile[] = [];
-    for (const path of files) {
-      const baseEntry = treeEntry(top, workspace.snapshot, path);
-      const theirsEntry = treeEntry(top, tip, path);
-      const headEntry = treeEntry(top, head, path);
-      const base = blobBytes(top, baseEntry);
+    const planFile = (path: string, base: TreeEntry | null, theirsEntry: TreeEntry | null, own?: Buffer): PlannedFile => {
+      const baseBytes = blobBytes(top, base);
       const theirs = blobBytes(top, theirsEntry);
+      const headEntry = treeEntry(top, head, path);
       const headBytes = blobBytes(top, headEntry);
       const working = readWorkingFile(join(top, path));
       const workingBytes = working.kind === 'file' || working.kind === 'link' ? working.bytes : null;
       const index = indexEntry(top, path);
       const indexDirty = index === 'unmerged' || (index?.oid ?? null) !== (headEntry?.oid ?? null);
       const workingDirty = working.kind === 'other' || !sameBytes(workingBytes, headBytes);
-      planned.push({
+      return {
         path,
         theirsEntry,
         headEntry,
         headBytes,
-        // The chain's own delta (snapshot -> tip) applied onto the user's HEAD: never carries uncommitted edits.
-        commitMerge: merge3(scratch, base, headBytes, theirs),
-        // The chain's delta applied onto the user's working copy as it is now.
-        workMerge: working.kind === 'other' ? { ok: false } : merge3(scratch, base, workingBytes, theirs),
+        // The chain's own delta (base -> theirs) applied onto the user's HEAD, or onto
+        // GoodVibes' own uncommitted edit of the file: never carries the user's edits.
+        commitMerge: merge3(scratch, baseBytes, own ?? headBytes, theirs),
+        // The same delta applied onto the user's working copy as it is now.
+        workMerge: working.kind === 'other' ? { ok: false } : merge3(scratch, baseBytes, workingBytes, theirs),
         working,
         dirty: indexDirty || workingDirty,
-      });
+      };
+    };
+    // GoodVibes' own uncommitted work (tool-edit-record.ts): committed with the chain's changes.
+    const toolEdited = new Map<string, Buffer>();
+    const uncommitted = options.commit ? uncommittedPaths(top) : [];
+    for (const path of uncommitted) {
+      const working = readWorkingFile(join(top, path));
+      if (working.kind === 'file' && isToolEditedContent(join(top, path), working.bytes)) toolEdited.set(path, working.bytes);
     }
+    let planned: PlannedFile[] = files.map((path) => planFile(path, treeEntry(top, workspace.snapshot, path), treeEntry(top, tip, path), toolEdited.get(path)));
 
     const heldFiles = planned.filter((file) => !file.commitMerge.ok).map((file) => file.path);
+    if (options.commit && heldFiles.length === 0) {
+      const chainFiles = new Set(files);
+      for (const [path, bytes] of toolEdited) {
+        if (chainFiles.has(path)) continue;
+        const working = readWorkingFile(join(top, path));
+        const mode = working.kind === 'file' && working.executable ? '100755' : '100644';
+        planned.push(planFile(path, treeEntry(top, head, path), { mode, oid: hashBlob(top, bytes) }));
+      }
+    }
     const keptUncommitted: string[] = [];
     const leftAsIs: string[] = [];
     let commit: string | undefined;
@@ -452,29 +610,60 @@ export function landChainWorkspace(workspace: WrfcChainWorkspace, options: LandC
       mkdirSync(indexDir);
       const env = { GIT_INDEX_FILE: join(indexDir, 'index') };
       gitText(top, head ? ['read-tree', head] : ['read-tree', '--empty'], { env });
-      const committed = new Map<string, { mode: string; oid: string } | null>();
       for (const file of planned) {
         const value = (file.commitMerge as { value: Buffer | null }).value;
         if (value === null) {
           gitText(top, ['update-index', '--force-remove', '--', file.path], { env });
-          committed.set(file.path, null);
           continue;
         }
         const mode = file.theirsEntry?.mode ?? file.headEntry?.mode ?? '100644';
-        const oid = hashBlob(top, value);
-        gitText(top, ['update-index', '--add', '--cacheinfo', `${mode},${oid},${file.path}`], { env });
-        committed.set(file.path, { mode, oid });
+        gitText(top, ['update-index', '--add', '--cacheinfo', `${mode},${hashBlob(top, value)},${file.path}`], { env });
       }
       const tree = gitText(top, ['write-tree'], { env });
       const headTree = head ? gitText(top, ['rev-parse', `${head}^{tree}`]) : null;
       if (tree !== headTree) {
-        commit = gitText(top, [...userCommitIdentity(top), 'commit-tree', tree, ...(head ? ['-p', head] : []), '-m', options.message]);
-        gitText(top, ['update-ref', '-m', 'goodvibes: WRFC chain commit', 'HEAD', commit, head ?? ZERO_OID]);
+        usedLandingBranch = head === null;
+        const hooked = await commitWithHooks(workspace, head, tree, options.message, userCommitIdentity(top), scratch);
+        if (!hooked.ok) {
+          removeWorktreeDirectory(workspace);
+          const who = hooked.byHook ? "your repository's commit hooks refused the chain's commit" : "git commit refused the chain's commit";
+          return {
+            status: 'refused', files, ...empty, heldFiles: [], branchKept: true, refusal: hooked.output,
+            note: `${who}, so nothing was committed and your files were not changed; the chain's work is kept on branch ${workspace.branch}. git commit said: ${hooked.output}`,
+          };
+        }
+        // Move the user's branch to the new commit only if it still points where the chain's changes were merged onto.
+        const moved = git(top, ['update-ref', '-m', 'goodvibes: WRFC chain commit', 'HEAD', hooked.commit, head ?? ZERO_OID]);
+        if (moved.code !== 0) {
+          removeWorktreeDirectory(workspace);
+          return {
+            status: 'failed', files, ...empty, branchKept: true,
+            note: `your branch moved while the chain's commit was being made (${moved.stderr || 'update-ref refused'}), so nothing was committed and your files were not changed; the chain's work is kept on branch ${workspace.branch}`,
+          };
+        }
+        commit = hooked.commit;
+        // A hook may have changed what is committed (a formatter, a generated file): the
+        // commit, not the plan, is what the user's index and working copy follow.
+        const inCommit = listNulPaths(git(top, head
+          ? ['diff', '--name-only', '-z', '--no-renames', head, commit]
+          : ['ls-tree', '-r', '--name-only', '-z', commit]).stdout);
+        const known = new Set(planned.map((file) => file.path));
+        planned = [
+          ...planned.map((file) => {
+            const entry = treeEntry(top, commit!, file.path);
+            const bytes = blobBytes(top, entry);
+            const plannedValue = (file.commitMerge as { value: Buffer | null }).value;
+            const plannedMode = file.theirsEntry?.mode ?? file.headEntry?.mode ?? '100644';
+            const asPlanned = sameBytes(bytes, plannedValue) && (entry === null || entry.mode === plannedMode);
+            return asPlanned ? file : planFile(file.path, file.headEntry, entry);
+          }),
+          ...inCommit.filter((path) => !known.has(path)).map((path) => planFile(path, treeEntry(top, head, path), treeEntry(top, commit!, path))),
+        ];
         // The user's index: a path with nothing staged moves to the new commit's
-        // version; a path with staged edits keeps them, merged with the chain's
+        // version; a path with staged edits keeps them, merged with the commit's
         // change when they do not overlap.
         for (const file of planned) {
-          const entry = committed.get(file.path) ?? null;
+          const entry = treeEntry(top, commit, file.path);
           const index = indexEntry(top, file.path);
           if (index === 'unmerged') continue;
           if ((index?.oid ?? null) === (file.headEntry?.oid ?? null)) {
@@ -483,7 +672,7 @@ export function landChainWorkspace(workspace: WrfcChainWorkspace, options: LandC
             continue;
           }
           const staged = index ? blobBytes(top, index) : null;
-          const merged = merge3(scratch, file.headBytes, staged, entry ? blobBytes(top, entry) : null);
+          const merged = merge3(scratch, file.headBytes, staged, blobBytes(top, entry));
           if (!merged.ok) continue;
           if (merged.value === null) git(top, ['update-index', '--force-remove', '--', file.path]);
           else gitText(top, ['update-index', '--add', '--cacheinfo', `${index?.mode ?? entry?.mode ?? '100644'},${hashBlob(top, merged.value)},${file.path}`]);
@@ -497,11 +686,20 @@ export function landChainWorkspace(workspace: WrfcChainWorkspace, options: LandC
         leftAsIs.push(file.path);
         continue;
       }
-      if (file.dirty) keptUncommitted.push(file.path);
+      if (file.dirty && !(commit !== undefined && toolEdited.has(file.path))) keptUncommitted.push(file.path);
       const value = file.workMerge.value;
       const current = file.working.kind === 'file' || file.working.kind === 'link' ? file.working.bytes : null;
       if (sameBytes(current, value)) continue;
       writeWorkingFile(join(top, file.path), value, file.theirsEntry?.mode ?? file.headEntry?.mode ?? null);
+      // What the landing writes into the working copy is GoodVibes' work from now on.
+      if (value !== null) recordToolEdit(join(top, file.path), value);
+    }
+    const landedFiles = planned.map((file) => file.path);
+    const committedToolEdits = commit !== undefined ? landedFiles.filter((path) => toolEdited.has(path)) : [];
+    // Once committed, every uncommitted edit the commit left out is the user's, and is named.
+    if (commit !== undefined) {
+      const landed = new Set(landedFiles);
+      for (const path of uncommitted) if (!landed.has(path) && !toolEdited.has(path)) keptUncommitted.push(path);
     }
 
     const fullyLanded = commit !== undefined && leftAsIs.length === 0;
@@ -511,7 +709,7 @@ export function landChainWorkspace(workspace: WrfcChainWorkspace, options: LandC
 
     const sentences: string[] = [];
     if (commit !== undefined) {
-      sentences.push(`committed ${commit.slice(0, 7)} with only the chain's changes to ${plural(files.length, 'file')} (${listFiles(files)})`);
+      sentences.push(`committed ${commit.slice(0, 7)} with only the chain's changes to ${plural(landedFiles.length, 'file')} (${listFiles(landedFiles)})`);
     } else if (options.commit && heldFiles.length > 0) {
       sentences.push(`nothing was committed: the chain's changes to ${listFiles(heldFiles)} build on edits you had not committed, so a commit would have included your edits`);
       sentences.push(`the chain's changes were applied to your working copy and are kept on branch ${workspace.branch}`);
@@ -519,6 +717,9 @@ export function landChainWorkspace(workspace: WrfcChainWorkspace, options: LandC
       sentences.push(`the chain's changes to ${listFiles(files)} were already in your last commit, so no new commit was made`);
     } else {
       sentences.push(`${options.noCommitReason ?? 'no commit was requested'}, so the chain's changes to ${plural(files.length, 'file')} (${listFiles(files)}) were applied to your working copy without a commit`);
+    }
+    if (committedToolEdits.length > 0) {
+      sentences.push(`GoodVibes' own uncommitted edits in ${listFiles(committedToolEdits)} (made by its write and edit tools) are part of that commit`);
     }
     if (keptUncommitted.length > 0) {
       sentences.push(`your uncommitted edits in ${listFiles(keptUncommitted)} were kept in place${commit !== undefined ? ' and are not part of that commit' : ''}`);
@@ -529,19 +730,22 @@ export function landChainWorkspace(workspace: WrfcChainWorkspace, options: LandC
     return {
       status: commit !== undefined ? 'committed' : (options.commit && heldFiles.length === 0 ? 'nothing' : 'applied'),
       ...(commit !== undefined ? { commit } : {}),
-      files,
+      files: landedFiles,
       keptUncommitted,
+      ...(committedToolEdits.length > 0 ? { committedToolEdits } : {}),
       leftAsIs,
       heldFiles,
       branchKept,
       note: sentences.join('; '),
     };
   } catch (error) {
+    removeWorktreeDirectory(workspace);
     return {
       status: 'failed', files, ...empty, branchKept: true,
       note: `the chain's work could not be brought back (${error instanceof Error ? error.message : String(error)}); it is kept on branch ${workspace.branch}`,
     };
   } finally {
+    if (usedLandingBranch) git(top, ['branch', '-D', landingBranch(workspace)]);
     rmSync(scratch, { recursive: true, force: true });
   }
 }

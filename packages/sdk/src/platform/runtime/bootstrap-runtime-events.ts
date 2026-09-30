@@ -25,6 +25,82 @@ export interface HostRuntimeEventBridgeOptions {
   readonly wrfcController: WrfcController;
 }
 
+/** What a person-facing runtime event line (below) means, for the notification history. */
+export interface RuntimeEventNotice {
+  /** The runtime event the line restates (e.g. 'WORKFLOW_CHAIN_PASSED'). */
+  readonly type: string;
+  /**
+   * Which event it is: the type plus the agent or chain it is about, the same
+   * value runtimeEventKey gives for that event's payload, so a host that sees
+   * the event on the runtime bus and as this line can keep one entry. Absent
+   * for a line whose event a host never also records from the bus.
+   */
+  readonly key?: string | undefined;
+  /** The plain title a person reads for it. */
+  readonly title: string;
+  readonly level: 'info' | 'warning';
+  /** The line's own detail, without its bracket tag or status mark. */
+  readonly detail: string;
+}
+
+/** How much of an id the lines carry: the last 8 characters of an agent id, the first 12 of a chain id. */
+const agentRef = (agentId: string): string => agentId.slice(-8);
+const chainRef = (chainId: string): string => chainId.slice(0, 12);
+
+/**
+ * Every line registerHostRuntimeEvents writes that restates one person-facing
+ * runtime event, with that event's plain title and where the line names its
+ * agent or chain. Kept next to the lines it matches; the test drives every
+ * producer below through runtimeEventOfNotice so the two cannot drift apart.
+ */
+const RUNTIME_EVENT_NOTICE_LINES: ReadonlyArray<{
+  readonly pattern: RegExp;
+  readonly type: string;
+  readonly title: string;
+  readonly level: 'info' | 'warning';
+  /** How the line names its agent or chain; absent for a line that has no bus twin (no key). */
+  readonly ref?: ((id: string) => string) | undefined;
+}> = [
+  { pattern: /^\[Agents\] \u2713 \S+ (\S+): ".*" \u2014 completed in \d+s/s, type: 'AGENT_COMPLETED', title: 'Agent finished', level: 'info', ref: agentRef },
+  { pattern: /^\[Agents\] \u2717 \S+ (\S+): ".*" \u2014 failed in \d+s: /s, type: 'AGENT_FAILED', title: 'Agent failed', level: 'warning', ref: agentRef },
+  { pattern: /^\[WRFC\] \u2713 Chain (\S+) PASSED \u2014 /, type: 'WORKFLOW_CHAIN_PASSED', title: 'Review chain passed', level: 'info', ref: chainRef },
+  { pattern: /^\[WRFC\] \u2717 Chain (\S+) FAILED: /, type: 'WORKFLOW_CHAIN_FAILED', title: 'Review chain failed', level: 'warning', ref: chainRef },
+  { pattern: /^\[WRFC\] Cascade abort: .*\(chain (\S+)\)$/s, type: 'WORKFLOW_CASCADE_ABORTED', title: 'Review chain stopped', level: 'warning', ref: chainRef },
+  { pattern: /^\[WRFC\] Auto-committed chain (\S+)/, type: 'WORKFLOW_AUTO_COMMITTED', title: 'Reviewed changes committed', level: 'info', ref: chainRef },
+  { pattern: /^\[WRFC\] Score regression warning: .*\(chain (\S+)\)$/s, type: 'WORKFLOW_SCORE_REGRESSION', title: 'Review score dropped', level: 'warning', ref: chainRef },
+  // Chain events only these lines report (no bus twin in a host's history, so no key).
+  { pattern: /^\[WRFC\] Chain \S+ started: /s, type: 'WORKFLOW_CHAIN_CREATED', title: 'Review chain started', level: 'info' },
+  { pattern: /^\[WRFC\] \u2713 Review \S+: \d+\/10/, type: 'WORKFLOW_REVIEW_COMPLETED', title: 'Review passed', level: 'info' },
+  { pattern: /^\[WRFC\] \u2717 Review \S+: \d+\/10/, type: 'WORKFLOW_REVIEW_COMPLETED', title: 'Review asked for fixes', level: 'warning' },
+  { pattern: /^\[WRFC\]\s+\u2713 Gate: .+ passed$/, type: 'WORKFLOW_GATE_RESULT', title: 'Quality check passed', level: 'info' },
+  { pattern: /^\[WRFC\]\s+\u2717 Gate: .+ FAILED$/, type: 'WORKFLOW_GATE_RESULT', title: 'Quality check failed', level: 'warning' },
+];
+
+/** The runtime event a system line from registerHostRuntimeEvents restates, or undefined for any other line. */
+export function runtimeEventOfNotice(text: string): RuntimeEventNotice | undefined {
+  const line = text.trim();
+  for (const entry of RUNTIME_EVENT_NOTICE_LINES) {
+    const match = entry.pattern.exec(line);
+    if (!match) continue;
+    const detail = line.replace(/^\[[^\]\n]+\]\s*/, '').replace(/^[\u2713\u2717]\s*/, '');
+    const key = entry.ref ? `${entry.type}:${entry.ref(match[1] ?? '')}` : undefined;
+    return { type: entry.type, ...(key ? { key } : {}), title: entry.title, level: entry.level, detail };
+  }
+  return undefined;
+}
+
+/**
+ * The key runtimeEventOfNotice gives the line for this runtime event, from the
+ * event's own payload; undefined for an event no such line restates.
+ */
+export function runtimeEventKey(type: string, payload: unknown): string | undefined {
+  const entry = RUNTIME_EVENT_NOTICE_LINES.find((candidate) => candidate.type === type && candidate.ref);
+  if (!entry?.ref || !payload || typeof payload !== 'object') return undefined;
+  const record = payload as Record<string, unknown>;
+  const id = type.startsWith('AGENT_') ? record['agentId'] : record['chainId'];
+  return typeof id === 'string' && id.length > 0 ? `${type}:${entry.ref(id)}` : undefined;
+}
+
 function withRouter(
   getSystemMessageRouter: () => HostRuntimeMessageRouter | null,
   action: (router: HostRuntimeMessageRouter) => void,
@@ -170,7 +246,8 @@ export function registerHostRuntimeEvents(
 
   unsubs.push(runtimeBus.on<Extract<WorkflowEvent, { type: 'WORKFLOW_CHAIN_PASSED' }>>('WORKFLOW_CHAIN_PASSED', ({ payload }) => {
     withRouter(getSystemMessageRouter, (router) => {
-      router.wrfc(`[WRFC] \u2713 Chain ${payload.chainId.slice(0, 12)} PASSED \u2014 all gates clear`);
+      // The chain's landing outcome (committed, or why not) is the line's second line, so a person reads it.
+      router.wrfc(`[WRFC] \u2713 Chain ${payload.chainId.slice(0, 12)} PASSED \u2014 all gates clear${payload.note ? `\n${payload.note}` : ''}`);
     });
     // A conversation follow-up is read by the person, not the operator, so it
     // is named in plain words. The `key` keeps the id: it is a dedupe key

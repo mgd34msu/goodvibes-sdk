@@ -14,6 +14,7 @@ export { SQLiteStore } from './sqlite-store.js';
 export { TelemetryDB } from './telemetry.js';
 export type { ToolCallRecord, TelemetryFilter, TelemetrySummary } from './telemetry.js';
 export { FileUndoManager } from './file-undo.js';
+export { clearToolEditRecords, isToolEditedContent, recordToolEdit } from './tool-edit-record.js';
 export type { FileOperation } from './file-undo.js';
 export { MemoryStore, memoryRecordTemporalStatus, isMemoryTemporallyActive } from './memory-store.js';
 export { MemoryRegistry } from './memory-registry.js';

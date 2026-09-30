@@ -27421,9 +27421,12 @@ export type WorkflowEvent = {
     chainId: string;
     gate: string;
     passed: boolean;
-} | {
+}
+/** `note`: what happened to the passed chain's work (committed, applied, or why not, e.g. a commit hook refused it), in plain words. */
+| {
     type: 'WORKFLOW_CHAIN_PASSED';
     chainId: string;
+    note?: string | undefined;
 } | {
     type: 'WORKFLOW_CHAIN_FAILED';
     chainId: string;

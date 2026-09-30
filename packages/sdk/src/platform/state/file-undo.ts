@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+import { recordToolEdit } from './tool-edit-record.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,6 +40,8 @@ export class FileUndoManager {
    */
   snapshot(op: Omit<FileOperation, 'timestamp'>): void {
     const entry: FileOperation = { ...op, timestamp: new Date().toISOString() };
+    // The file as the tool left it is GoodVibes' work (see tool-edit-record.ts).
+    recordToolEdit(op.path);
 
     this.undoStack.push(entry);
     // Trim to max stack size, remove oldest entries first
@@ -72,6 +75,7 @@ export class FileUndoManager {
         writeFileSync(op.path, op.beforeContent, 'utf-8');
         logger.debug('file-undo: restored previous content', { path: op.path });
       }
+      recordToolEdit(op.path);
     } catch (err) {
       logger.warn('file-undo: undo write failed', { path: op.path, error: summarizeError(err) });
       // Put it back on the stack so state is consistent
@@ -100,6 +104,7 @@ export class FileUndoManager {
 
     try {
       writeFileSync(op.path, op.afterContent, 'utf-8');
+      recordToolEdit(op.path);
       logger.debug('file-undo: re-applied operation', { path: op.path });
     } catch (err) {
       logger.warn('file-undo: redo write failed', { path: op.path, error: summarizeError(err) });

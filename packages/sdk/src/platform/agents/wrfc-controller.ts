@@ -1322,7 +1322,7 @@ export class WrfcController {
       if (autoCommit) {
         await this.autoCommit(chain);
       } else if (chain.workspace) {
-        this.landIsolatedChain(chain, false, 'auto-commit is off');
+        await this.landIsolatedChain(chain, false, 'auto-commit is off');
       } else {
         this.completeChainAsPassed(chain);
       }
@@ -1471,7 +1471,7 @@ export class WrfcController {
 
     const commitScope = getWrfcCommitScope(this.configManager);
     if (chain.workspace) {
-      this.landIsolatedChain(chain, commitScope !== 'off', 'the commit scope setting is off');
+      await this.landIsolatedChain(chain, commitScope !== 'off', 'the commit scope setting is off');
       return;
     }
     if (commitScope === 'off') {
@@ -2683,11 +2683,11 @@ export class WrfcController {
   }
 
   /** A passed isolated chain: bring only its own changes back (see landChainWorkspace) and complete. */
-  private landIsolatedChain(chain: WrfcChain, commit: boolean, noCommitReason: string): void {
-    const workspace = chain.workspace!;
-    const landing = landChainWorkspace(workspace, { commit, message: this.buildAutoCommitMessage(chain, 'all'), noCommitReason });
+  private async landIsolatedChain(chain: WrfcChain, commit: boolean, noCommitReason: string): Promise<void> {
+    const landing = await landChainWorkspace(chain.workspace!, { commit, message: this.buildAutoCommitMessage(chain, 'all'), noCommitReason });
     if (landing.commit) emitWrfcAutoCommitted(this.runtimeBus, this.sessionId, chain.id, landing.commit);
-    this.completeChainAsPassed(chain, landing.note);
+    if (isChainTerminal(chain.state)) chain.error = chain.error ? `${chain.error}; ${landing.note}` : landing.note; // stopped while its commit hooks ran
+    else this.completeChainAsPassed(chain, landing.note);
   }
 
   /** A failed/cancelled isolated chain: stop its fix tasks, keep its work on its branch, say so in the reason. */
@@ -2766,7 +2766,7 @@ export class WrfcController {
     this.setWrfcWorkPlanTaskStatus(chain, chain.ownerAgentId, 'done', 'WRFC full-scope review and quality gates passed');
     this.completeOwnerAgent(chain, 'completed', status, renderWrfcChainAnswer(chain, (id) => this.agentManager.getStatus(id)));
     this.workmap.append({ ts: new Date().toISOString(), wrfcId: chain.id, event: 'chain_passed', reason: status });
-    emitWrfcChainPassed(this.runtimeBus, this.sessionId, chain.id);
+    emitWrfcChainPassed(this.runtimeBus, this.sessionId, chain.id, commitNote);
     this.scheduleChainCleanup(chain);
     this.safeDequeueNext();
   }

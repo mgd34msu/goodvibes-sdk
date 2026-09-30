@@ -48,7 +48,7 @@ import {
 import { dirname, join } from 'path';
 
 import { logger } from '../utils/logger.js';
-import type { SessionReturnContextSummary } from './session-return-context.js';
+import { loadedReturnContext, type SessionReturnContextSummary } from './session-return-context.js';
 import type { ConversationTitleSource } from '../core/conversation.js';
 import { summarizeError } from '../utils/error-display.js';
 import type { SessionSurface } from './session-surface.js';
@@ -251,7 +251,7 @@ function readRecoveryMeta(recoveryFile: string): RecoveryFileInfo | null {
     title: meta.title ?? '',
     timestamp: meta.timestamp ?? 0,
     sessionId: meta.sessionId ?? '',
-    returnContext: meta.returnContext,
+    returnContext: loadedReturnContext(meta.returnContext),
   };
 }
 
@@ -449,8 +449,8 @@ function parseRecoveryFile(recoveryFile: string): SessionSnapshot {
     })(),
     returnContext: (() => {
       try {
-        const metaLine = JSON.parse(lines[0]!) as { returnContext?: SessionReturnContextSummary };
-        return metaLine.returnContext;
+        const metaLine = JSON.parse(lines[0]!) as { returnContext?: unknown };
+        return loadedReturnContext(metaLine.returnContext);
       } catch {
         return undefined;
       }

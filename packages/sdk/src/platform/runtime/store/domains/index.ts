@@ -36,13 +36,6 @@ export type {
 } from './overlays.js';
 export { createInitialOverlaysState } from './overlays.js';
 
-export type {
-  PanelId,
-  PanelPosition,
-  PanelState,
-  PanelDomainState,
-} from './panels.js';
-export { createInitialPanelsState } from './panels.js';
 
 export type {
   PermissionMode,

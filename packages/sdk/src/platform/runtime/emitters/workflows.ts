@@ -57,7 +57,7 @@ export function emitWorkflowGateResult(
 export function emitWorkflowChainPassed(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { chainId: string }
+  data: { chainId: string; note?: string | undefined }
 ): void {
   bus.emit('workflows', createEventEnvelope('WORKFLOW_CHAIN_PASSED', { type: 'WORKFLOW_CHAIN_PASSED', ...data }, ctx));
 }

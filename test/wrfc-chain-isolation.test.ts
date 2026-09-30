@@ -6,7 +6,7 @@
  * files alone, keeps its work on its branch, and stops its fix tasks.
  */
 import { describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { WrfcController } from '../packages/sdk/src/platform/agents/wrfc-controller.js';
@@ -160,8 +160,35 @@ describe('WRFC chain isolation', () => {
     expect(readFileSync(join(root, 'src', 'retry.ts'), 'utf8')).toContain('owner edit, uncommitted');
     expect(readFileSync(join(root, 'src', 'retry.ts'), 'utf8')).toContain('Math.min(base * 2 ** i, 30_000)');
     expect(git(root, ['status', '--porcelain', '--', 'src', 'notes.txt']).split('\n').filter(Boolean).sort()).toEqual([' M src/retry.ts', '?? notes.txt']);
-    expect(JSON.stringify(h.owner)).toContain('your uncommitted edits in src/retry.ts were kept in place and are not part of that commit');
+    expect(JSON.stringify(h.owner)).toContain('your uncommitted edits in src/retry.ts, notes.txt were kept in place and are not part of that commit');
     expect(existsSync(worktree)).toBe(false);
+  });
+
+  test('a passed chain whose commit a repository hook refuses reports the hook\'s words on its passed event and status; nothing lands and the work stays on its branch', async () => {
+    const root = makeRepo();
+    writeFileSync(join(root, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\necho "lint: name the 30_000 cap first" >&2\nexit 1\n');
+    chmodSync(join(root, '.git', 'hooks', 'pre-commit'), 0o755);
+    const headBefore = git(root, ['rev-parse', 'HEAD']).trim();
+    const retryBefore = readFileSync(join(root, 'src', 'retry.ts'), 'utf8');
+    const h = harness(root);
+    const notes: string[] = [];
+    h.bus.on('WORKFLOW_CHAIN_PASSED', ({ payload }) => { notes.push(String((payload as { note?: string }).note ?? '')); });
+    const chain = h.controller.createChain(h.owner);
+    await until(() => h.spawns.length === 1, 'engineer spawn');
+    const worktree = join(root, '.goodvibes', '.worktrees', 'wrfc', chain.id.replace(/^wrfc-/, ''));
+    writeFileSync(join(worktree, 'src', 'retry.ts'), readFileSync(join(worktree, 'src', 'retry.ts'), 'utf8').replace('  return base;', '  return Math.min(base * 2 ** i, 30_000);'));
+    h.complete(h.spawns[0]!.record, engineerOutput(['src/retry.ts'], []));
+    await until(() => h.spawns.length === 2, 'reviewer spawn');
+    h.complete(h.spawns[1]!.record, reviewerOutput(true));
+    await until(() => chain.state === 'passed', 'chain pass');
+    await until(() => notes.length === 1, 'passed event');
+
+    expect(notes[0]).toContain("your repository's commit hooks refused the chain's commit");
+    expect(notes[0]).toContain('git commit said: lint: name the 30_000 cap first');
+    expect(JSON.stringify(h.owner)).toContain('lint: name the 30_000 cap first');
+    expect(git(root, ['rev-parse', 'HEAD']).trim()).toBe(headBefore);
+    expect(readFileSync(join(root, 'src', 'retry.ts'), 'utf8')).toBe(retryBefore);
+    expect(git(root, ['show', `${chain.workspace!.branch}:src/retry.ts`])).toContain('Math.min(base * 2 ** i, 30_000)');
   });
 
   test('the planned-fix workstream is rooted in the chain worktree and branches from the engineer\'s checkpointed work', async () => {

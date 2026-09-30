@@ -24,7 +24,7 @@
  *     its record carries, the concrete claim stage (b) exists to prove.
  */
 import { describe, expect, test } from 'bun:test';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AgentOrchestrator } from '../packages/sdk/src/platform/agents/orchestrator.js';
@@ -188,6 +188,31 @@ describe('AgentOrchestrator: getFullRegistry(cwd) against REAL tool deps', () =>
       expect(defaultResult.success).toBe(true);
       expect(existsSync(join(defaultDir, 'from-default.txt'))).toBe(true);
       expect(existsSync(join(worktreeDir, 'from-default.txt'))).toBe(false);
+    } finally {
+      rmSync(defaultDir, { recursive: true, force: true });
+      rmSync(worktreeDir, { recursive: true, force: true });
+      rmSync(scratchRoot, { recursive: true, force: true });
+    }
+  });
+
+  test('a real "edit" tool call through the OVERRIDE registry edits the override directory\'s file, never the same-named file in the default one (live run 9: a chain engineer edited the user\'s file)', async () => {
+    const defaultDir = mkdtempSync(join(tmpdir(), 'agent-cwd-edit-default-'));
+    const worktreeDir = mkdtempSync(join(tmpdir(), 'agent-cwd-edit-worktree-'));
+    const scratchRoot = mkdtempSync(join(tmpdir(), 'agent-cwd-edit-scratch-'));
+    try {
+      writeFileSync(join(defaultDir, 'retry.ts'), 'return base; // user copy\n');
+      writeFileSync(join(worktreeDir, 'retry.ts'), 'return base; // worktree copy\n');
+      const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() }) as unknown as PrivateOrchestrator;
+      orchestrator.toolDeps = makeRealToolDeps(defaultDir, scratchRoot);
+      const worktreeRegistry = orchestrator.createRunContext(worktreeDir).getFullRegistry();
+      const result = await worktreeRegistry.execute('call-1', 'edit', { edits: [{ path: 'retry.ts', find: 'return base;', replace: 'return Math.min(base, 30000);' }] });
+      expect(result.success).toBe(true);
+      expect(readFileSync(join(worktreeDir, 'retry.ts'), 'utf-8')).toBe('return Math.min(base, 30000); // worktree copy\n');
+      expect(readFileSync(join(defaultDir, 'retry.ts'), 'utf-8')).toBe('return base; // user copy\n');
+      // An absolute path into the default directory is refused, not written.
+      const escape = await worktreeRegistry.execute('call-2', 'edit', { edits: [{ path: join(defaultDir, 'retry.ts'), find: 'return base;', replace: 'x' }] });
+      expect(readFileSync(join(defaultDir, 'retry.ts'), 'utf-8')).toBe('return base; // user copy\n');
+      expect(escape.success === false || !String(escape.output).includes('OK [applied]')).toBe(true);
     } finally {
       rmSync(defaultDir, { recursive: true, force: true });
       rmSync(worktreeDir, { recursive: true, force: true });

@@ -12,7 +12,6 @@ export interface SessionContinuityHints {
   readonly remoteRunners?: readonly string[] | undefined;
   readonly worktreeCount?: number | undefined;
   readonly worktreePaths?: readonly string[] | undefined;
-  readonly openPanels?: readonly string[] | undefined;
 }
 
 export interface SessionReturnContextSummary {
@@ -32,7 +31,6 @@ export interface SessionReturnContextSummary {
   readonly remoteRunners?: readonly string[] | undefined;
   readonly worktreeCount?: number | undefined;
   readonly worktreePaths?: readonly string[] | undefined;
-  readonly openPanels?: readonly string[] | undefined;
   readonly lines: readonly string[];
   readonly assistedNarrative?: string | undefined;
 }
@@ -127,9 +125,6 @@ export function buildLocalReturnContextSummary(
   if ((hints?.worktreePaths?.length ?? 0) > 0) {
     lines.push(`Worktree paths: ${hints?.worktreePaths?.slice(0, 2).join(', ') ?? ''}`);
   }
-  if ((hints?.openPanels?.length ?? 0) > 0) {
-    lines.push(`Open panels: ${hints?.openPanels?.slice(0, 4).join(', ') ?? ''}`);
-  }
 
   return {
     activityLabel,
@@ -148,9 +143,25 @@ export function buildLocalReturnContextSummary(
     ...(hints?.remoteRunners ? { remoteRunners: [...hints.remoteRunners] } : {}),
     ...(typeof hints?.worktreeCount === 'number' ? { worktreeCount: hints.worktreeCount } : {}),
     ...(hints?.worktreePaths ? { worktreePaths: [...hints.worktreePaths] } : {}),
-    ...(hints?.openPanels ? { openPanels: [...hints.openPanels] } : {}),
     lines,
   };
+}
+
+/**
+ * A saved session's return context as it is read back. Sessions saved while
+ * the terminal still had side panes carry the list of panes that were open
+ * (the legacy `openPanels` field, and an "Open panels: …" summary line).
+ * Nothing opens panes any more, so that state is tolerated on load and
+ * dropped here: it is never shown and never written back when the session is
+ * saved, exported or copied again.
+ */
+export function loadedReturnContext(raw: unknown): SessionReturnContextSummary | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const { openPanels: _legacyPaneList, ...rest } = raw as Record<string, unknown>;
+  const lines = Array.isArray(rest['lines'])
+    ? (rest['lines'] as unknown[]).filter((line) => !(typeof line === 'string' && line.startsWith('Open panels:')))
+    : rest['lines'];
+  return { ...rest, lines } as unknown as SessionReturnContextSummary;
 }
 
 export async function maybeAssistReturnContextSummary(

@@ -71,7 +71,6 @@ export interface RuntimeState {
   model: ModelDomainState;
   conversation: ConversationDomainState;
   overlays: OverlayDomainState;
-  panels: Record<string, unknown>;
   permissions: PermissionDomainState;
   tasks: TaskDomainState;
   agents: AgentDomainState;
@@ -108,7 +107,6 @@ export function createInitialRuntimeState(): RuntimeState {
     model: createInitialModelState(),
     conversation: createInitialConversationState(),
     overlays: createInitialOverlaysState(),
-    panels: {},
     permissions: createInitialPermissionsState(),
     tasks: createInitialTasksState(),
     agents: createInitialAgentsState(),

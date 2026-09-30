@@ -50,8 +50,8 @@ export function emitWrfcGateResult(runtimeBus: RuntimeEventBus, sessionId: strin
   emitWorkflowGateResult(runtimeBus, createWrfcWorkflowContext(sessionId, chainId), { chainId, gate, passed });
 }
 
-export function emitWrfcChainPassed(runtimeBus: RuntimeEventBus, sessionId: string, chainId: string): void {
-  emitWorkflowChainPassed(runtimeBus, createWrfcWorkflowContext(sessionId, chainId), { chainId });
+export function emitWrfcChainPassed(runtimeBus: RuntimeEventBus, sessionId: string, chainId: string, note?: string | undefined): void {
+  emitWorkflowChainPassed(runtimeBus, createWrfcWorkflowContext(sessionId, chainId), { chainId, ...(note ? { note } : {}) });
 }
 
 export function emitWrfcAutoCommitted(

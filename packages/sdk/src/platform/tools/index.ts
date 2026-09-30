@@ -500,6 +500,9 @@ export function registerAllTools(
     diagnosticsProvider,
   }));
   registerTool(createEditTool(fileCache, {
+    // Bound to this registry's directory like write/find/exec: an agent in its own
+    // worktree (a WRFC chain member) must never resolve paths against the user's.
+    cwd: workingDirectory,
     fileUndoManager,
     configManager: deps.configManager,
     toolLLM: deps.toolLLM,
