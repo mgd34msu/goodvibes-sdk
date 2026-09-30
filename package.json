@@ -137,7 +137,7 @@
     "fast-xml-parser": "Pinned to the audited 5.x parser release used by transitive Google/Cloud tooling.",
     "fast-uri": "Held at ^3.1.6 to close GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp and GHSA-qw65-cvwx-89v3 in AJV consumers used by release tooling.",
     "google-auth-library": "Pinned to an audited release for Cloudflare/Wrangler transitive auth tooling.",
-    "lodash": "Pinned to 4.18.1 (latest stable; outside the >=4.0.0 <=4.17.23 vulnerable range from GHSA-r5fr-rjxr-66jc \u2014 Code Injection via _.template). Bumped from 4.17.21 to escape the audit advisory.",
+    "lodash": "Pinned to 4.18.1 (latest stable; outside the >=4.0.0 <=4.17.23 vulnerable range from GHSA-r5fr-rjxr-66jc — Code Injection via _.template). Bumped from 4.17.21 to escape the audit advisory.",
     "minimatch": "Pinned to a patched glob matcher across build and release transitive dependencies.",
     "uuid": "Vendored CommonJS uuid v4 package for Verdaccio @cypress/request, which still requires a CommonJS uuid entry.",
     "esbuild": "Pinned to 0.28.1 to close GHSA-gv7w-rqvm-qjhr (missing binary integrity verification in Deno module, enabling RCE via NPM_CONFIG_REGISTRY). Wrangler 4.x pins esbuild <0.28.1; this override forces the patched release across all transitive consumers.",
@@ -162,7 +162,10 @@
     "brace-expansion": "^5.0.11",
     "sharp": "^0.35.4",
     "js-yaml": "^4.3.2",
-    "ip-address": "^10.4.0"
+    "ip-address": "^10.7.2",
+    "qs": "^6.16.0",
+    "body-parser": "^1.20.8",
+    "fflate": "^0.8.3"
   },
   "dependencies": {
     "brace-expansion": "^5.0.11",
