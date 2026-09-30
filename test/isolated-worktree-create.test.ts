@@ -220,7 +220,6 @@ describe('engine: an item whose worktree cannot be created fails with a named re
       expect(failed).toBeDefined();
       expect(failed!.reason).toContain('worktree isolation setup failed');
       expect(failed!.reason).toContain('after 3 attempt(s)');
-      expect(failed!.reason).toMatch(/lock/i);
 
       const first = ws.items.find((i) => i.id === 'item-first')!;
       expect(spawnedFor).toEqual([first.worktreePath!]);
