@@ -19,7 +19,7 @@ import { createOrchestrationEngine, type OrchestrationEngineDeps } from '../pack
 import { snapshotDirtyTree } from '../packages/sdk/src/platform/orchestration/dirty-guard.js';
 import type { PhaseRunnerAgentManagerLike } from '../packages/sdk/src/platform/orchestration/phase-runner.js';
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
-import type { OrchestrationEvent, PhaseSpec, WorkItemSpec } from '../packages/sdk/src/platform/orchestration/types.js';
+import type { OrchestrationEvent, PhaseSpec, WorkItemSpec, Workstream } from '../packages/sdk/src/platform/orchestration/types.js';
 import { engineerReportOutput, makeFakeConfigManager, makeRecord } from './_helpers/orchestration-harness.js';
 
 const ctx = { sessionId: 'test', traceId: 'test', source: 'test' } as const;
@@ -68,18 +68,34 @@ const WAIT_TEST_TIMEOUT_MS = 90_000;
  */
 async function waitUntil(
   predicate: () => boolean,
-  opts: { label?: string; ceilingMs?: number; intervalMs?: number } = {},
+  opts: {
+    label?: string;
+    ceilingMs?: number;
+    intervalMs?: number;
+    /** Engine state appended to the failure message, so a CI failure carries its own evidence. */
+    diagnose?: () => string;
+    /** Returns a reason when the condition can no longer come true; the wait then fails at once with it. */
+    abandonWhen?: () => string | null;
+  } = {},
 ): Promise<void> {
   const ceilingMs = Math.max(opts.ceilingMs ?? WAIT_CEILING_MS, WAIT_CEILING_MS);
   const intervalMs = opts.intervalMs ?? WAIT_INTERVAL_MS;
   const startedAt = Date.now();
   let worstLagMs = 0;
+  const state = (): string => (opts.diagnose ? `; state: ${opts.diagnose()}` : '');
   while (!predicate()) {
     const elapsedMs = Date.now() - startedAt;
+    const abandoned = opts.abandonWhen?.() ?? null;
+    if (abandoned !== null) {
+      throw new Error(
+        `waitUntil: condition can no longer become true, ${opts.label ?? 'unlabelled predicate'}; ` +
+          `${abandoned} (after ${elapsedMs}ms)${state()}`,
+      );
+    }
     if (elapsedMs > ceilingMs) {
       throw new Error(
         `waitUntil: condition never became true, ${opts.label ?? 'unlabelled predicate'}; ` +
-          `waited ${elapsedMs}ms (ceiling ${ceilingMs}ms), worst poll lag ${worstLagMs}ms`,
+          `waited ${elapsedMs}ms (ceiling ${ceilingMs}ms), worst poll lag ${worstLagMs}ms${state()}`,
       );
     }
     const sleptAt = Date.now();
@@ -175,6 +191,30 @@ function makeEngine(root: string, h: WtHarness, overrides: Partial<Orchestration
   });
 }
 
+/**
+ * What the engine is doing right now, for a failed wait's message: every item's
+ * state, failure/blocked reason and worktree, how many agents were spawned, and
+ * the most recent event types. An item stuck 'in-phase' with no worktreePath is
+ * a worktree creation that never settled; a 'failed' item names its reason.
+ */
+function describeEngine(ws: Workstream, h: WtHarness, events: readonly OrchestrationEvent[]): string {
+  const items = ws.items.map((i) => ({
+    id: i.id,
+    state: i.state,
+    ...(i.failureReason ? { failureReason: i.failureReason } : {}),
+    ...(i.blockedReason ? { blockedReason: i.blockedReason } : {}),
+    worktreePath: i.worktreePath ?? null,
+    agentId: i.agentId ?? null,
+  }));
+  return JSON.stringify({ spawned: h.spawnedIds.length, items, lastEvents: events.slice(-12).map((e) => e.type) });
+}
+
+/** A wait for spawns is over the moment any item fails: that item will never spawn. */
+function anyItemFailed(ws: Workstream): string | null {
+  const failed = ws.items.find((i) => i.state === 'failed');
+  return failed ? `item ${failed.id} failed: ${failed.failureReason ?? 'no reason recorded'}` : null;
+}
+
 let root: string;
 
 function freshRoot(): string {
@@ -204,7 +244,9 @@ describe('WorktreeIsolationManager: claim-time creation + concurrent non-conflic
     });
     engine.start(ws.id);
 
-    await waitUntil(() => h.spawnedIds.length === 2, { label: 'two agents spawned' });
+    await waitUntil(() => h.spawnedIds.length === 2, {
+      label: 'two agents spawned', diagnose: () => describeEngine(ws, h, events), abandonWhen: () => anyItemFailed(ws),
+    });
     const top = ws.items.find((i) => i.id === 'item-top')!;
     const bottom = ws.items.find((i) => i.id === 'item-bottom')!;
     expect(top.worktreePath).toBeDefined();
@@ -281,7 +323,9 @@ describe('WorktreeIsolationManager: claim-time creation + concurrent non-conflic
     });
     engine.start(ws.id);
 
-    await waitUntil(() => h.spawnedIds.length === 2, { label: 'two agents spawned' });
+    await waitUntil(() => h.spawnedIds.length === 2, {
+      label: 'two agents spawned', diagnose: () => describeEngine(ws, h, events), abandonWhen: () => anyItemFailed(ws),
+    });
     const first = ws.items.find((i) => i.id === 'item-first')!;
     const second = ws.items.find((i) => i.id === 'item-second')!;
 
@@ -368,7 +412,9 @@ describe('WorktreeIsolationManager: shared isolation (default) stays fully untou
     expect(ws.isolation).toBeUndefined();
     engine.start(ws.id);
 
-    await waitUntil(() => h.spawnedIds.length === 2, { label: 'two agents spawned' });
+    await waitUntil(() => h.spawnedIds.length === 2, {
+      label: 'two agents spawned', diagnose: () => describeEngine(ws, h, events), abandonWhen: () => anyItemFailed(ws),
+    });
     expect(h.workingDirByAgent.get(h.spawnedIds[0]!)).toBeUndefined();
     expect(h.workingDirByAgent.get(h.spawnedIds[1]!)).toBeUndefined();
     expect(ws.items[0]!.worktreePath).toBeUndefined();
@@ -397,7 +443,9 @@ describe('WorktreeIsolationManager: fail/kill cleanup rules', () => {
     const ws = engine.createWorkstream({ id: 'ws-kill', title: 'kill', phases: [enginePhase(2)], items, isolation: 'worktree' });
     engine.start(ws.id);
 
-    await waitUntil(() => h.spawnedIds.length === 2, { label: 'two agents spawned' });
+    await waitUntil(() => h.spawnedIds.length === 2, {
+      label: 'two agents spawned', diagnose: () => describeEngine(ws, h, events), abandonWhen: () => anyItemFailed(ws),
+    });
     const dirty = ws.items.find((i) => i.id === 'item-dirty')!;
     const clean = ws.items.find((i) => i.id === 'item-clean')!;
     expect(existsSync(dirty.worktreePath!)).toBe(true);
@@ -578,7 +626,9 @@ describe('WorktreeIsolationManager: bounded kept-worktree cap, oldest-first evic
     const ws = engine.createWorkstream({ id: 'ws-cap', title: 'cap', phases: [enginePhase(2)], items, isolation: 'worktree' });
     engine.start(ws.id);
 
-    await waitUntil(() => h.spawnedIds.length === 2, { label: 'two agents spawned' });
+    await waitUntil(() => h.spawnedIds.length === 2, {
+      label: 'two agents spawned', diagnose: () => describeEngine(ws, h, events), abandonWhen: () => anyItemFailed(ws),
+    });
     const one = ws.items.find((i) => i.id === 'item-one')!;
     const two = ws.items.find((i) => i.id === 'item-two')!;
 

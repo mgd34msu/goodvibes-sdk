@@ -1,4 +1,4 @@
-import { existsSync } from 'fs';
+import { existsSync, rmSync } from 'fs';
 import { join } from 'path';
 // `simple-git` is an optionalDependency and is built through
 // git/optional-simple-git.ts at the call that needs it, never imported at
@@ -22,6 +22,28 @@ import { summarizeError } from '../utils/error-display.js';
 export interface CommitWorkingTreeResult {
   readonly hash: string | null;
   readonly skippedIgnored: readonly string[];
+}
+
+/** Attempts {@link IsolatedWorktree.create} makes before reporting failure. */
+export const DEFAULT_CREATE_ATTEMPTS = 3;
+/**
+ * Per-attempt ceiling for `git worktree add`. A checkout of a very large tree
+ * is slow, so this is generous; it exists so a git child that never finishes
+ * fails its item with a named reason instead of holding it forever.
+ */
+export const DEFAULT_CREATE_ATTEMPT_TIMEOUT_MS = 120_000;
+/** Backoff unit between create attempts (multiplied by the attempt number). */
+export const DEFAULT_CREATE_RETRY_DELAY_MS = 250;
+
+export interface IsolatedWorktreeCreateOptions {
+  /** Total `git worktree add` attempts (default {@link DEFAULT_CREATE_ATTEMPTS}). */
+  readonly attempts?: number | undefined;
+  /** Per-attempt deadline in ms (default {@link DEFAULT_CREATE_ATTEMPT_TIMEOUT_MS}). */
+  readonly attemptTimeoutMs?: number | undefined;
+  /** Backoff unit in ms (default {@link DEFAULT_CREATE_RETRY_DELAY_MS}). */
+  readonly retryDelayMs?: number | undefined;
+  /** Called after a failed attempt has been cleaned up and before the next one starts (not after the last). */
+  readonly onAttemptFailed?: ((failure: { readonly attempt: number; readonly attempts: number; readonly error: string }) => void | Promise<void>) | undefined;
 }
 
 /**
@@ -389,10 +411,130 @@ export class IsolatedWorktree {
     this.rootGit = new GitService(rootDir);
   }
 
-  /** Add the worktree on a fresh `branch` branched from base (the root tree's current HEAD). */
-  async create(): Promise<void> {
-    logger.debug('IsolatedWorktree.create', { path: this.path, branch: this.branch });
-    await this.rootGit.worktreeAdd(this.path, this.branch);
+  /**
+   * Add the worktree on a fresh `branch` branched from base (the root tree's
+   * current HEAD).
+   *
+   * Bounded and self-cleaning, because the engine spawns an item's agent only
+   * after this settles:
+   *   - each `git worktree add` attempt has a deadline; a git child that never
+   *     finishes is killed (abort signal) and the attempt rejects, so a stalled
+   *     creation can never leave its item claimed-but-unspawned forever;
+   *   - a failed attempt (a ref lock held by another git process, a killed
+   *     child) is retried with backoff, after removing whatever that attempt
+   *     created. `git worktree add -b` makes the branch BEFORE the checkout, so
+   *     a failure past that point leaves the branch behind, and without the
+   *     cleanup every later attempt fails with "a branch named ... already
+   *     exists";
+   *   - the cleanup only ever removes what this call created: the preflight
+   *     refuses to start (no retry) when the path or the branch already exists.
+   *
+   * The final error names every attempt's git message.
+   */
+  async create(options: IsolatedWorktreeCreateOptions = {}): Promise<void> {
+    const attempts = Math.max(1, Math.floor(options.attempts ?? DEFAULT_CREATE_ATTEMPTS));
+    const attemptTimeoutMs = Math.max(1, options.attemptTimeoutMs ?? DEFAULT_CREATE_ATTEMPT_TIMEOUT_MS);
+    const retryDelayMs = Math.max(0, options.retryDelayMs ?? DEFAULT_CREATE_RETRY_DELAY_MS);
+    logger.debug('IsolatedWorktree.create', { path: this.path, branch: this.branch, attempts, attemptTimeoutMs });
+
+    if (existsSync(this.path)) {
+      throw new Error(`worktree path ${this.path} already exists; refusing to create a worktree over it`);
+    }
+    if (await this.localBranchExists()) {
+      throw new Error(`branch ${this.branch} already exists; refusing to create worktree ${this.path} over it`);
+    }
+
+    const failures: string[] = [];
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        await this.addWithDeadline(attemptTimeoutMs);
+        return;
+      } catch (error) {
+        const message = summarizeError(error);
+        failures.push(`attempt ${attempt}: ${message}`);
+        await this.discardPartialCreate();
+        if (attempt >= attempts) break;
+        logger.warn('IsolatedWorktree.create: attempt did not complete, retrying', {
+          path: this.path, branch: this.branch, attempt, attempts, error: message,
+        });
+        await options.onAttemptFailed?.({ attempt, attempts, error: message });
+        if (retryDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, retryDelayMs * attempt));
+      }
+    }
+    throw new Error(
+      `git worktree add ${this.path} (branch ${this.branch}) did not complete after ${attempts} attempt(s): ${failures.join('; ')}`,
+    );
+  }
+
+  /** One `git worktree add` run that settles within `timeoutMs`: past it, the git child is killed and the call rejects. */
+  private async addWithDeadline(timeoutMs: number): Promise<void> {
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(new Error(`git worktree add did not finish within ${timeoutMs}ms; the git process was stopped`));
+      }, timeoutMs);
+    });
+    const add = this.rootGit.worktreeAdd(this.path, this.branch, { signal: controller.signal });
+    // The losing side of the race must not surface as an unhandled rejection.
+    add.catch(() => undefined);
+    try {
+      await Promise.race([add, deadline]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
+   * True when `refs/heads/<branch>` exists in the root repository. Reads the
+   * listing rather than an exit code: simple-git resolves a non-zero exit that
+   * printed nothing to stderr (`rev-parse --verify --quiet` on a missing ref).
+   */
+  private async localBranchExists(): Promise<boolean> {
+    const ref = `refs/heads/${this.branch}`;
+    try {
+      const wgit = await createSimpleGit({ baseDir: this.rootGit.getCwd() });
+      const listed = await wgit.raw(['for-each-ref', '--format=%(refname)', ref]);
+      return listed.split('\n').some((line: string) => line.trim() === ref);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Remove what a failed create attempt left behind: the worktree registration
+   * and directory, then the branch. Only called after the preflight proved
+   * neither existed before this create() began, so everything here is ours.
+   * Never throws; a leftover that cannot be removed surfaces on the next
+   * attempt's own git error.
+   */
+  private async discardPartialCreate(): Promise<void> {
+    let wgit: SimpleGit;
+    try {
+      wgit = await createSimpleGit({ baseDir: this.rootGit.getCwd() });
+    } catch (error) {
+      logger.warn('IsolatedWorktree.create: could not open the root repository to clean a failed attempt', { error: summarizeError(error) });
+      return;
+    }
+    if (existsSync(this.path)) {
+      await wgit.raw(['worktree', 'remove', '--force', '--force', this.path]).catch((error: unknown) => {
+        logger.warn('IsolatedWorktree.create: removing a partial worktree did not complete', { path: this.path, error: summarizeError(error) });
+      });
+    }
+    if (existsSync(this.path)) {
+      try {
+        rmSync(this.path, { recursive: true, force: true });
+      } catch (error) {
+        logger.warn('IsolatedWorktree.create: removing a partial worktree directory did not complete', { path: this.path, error: summarizeError(error) });
+      }
+    }
+    await wgit.raw(['worktree', 'prune']).catch(() => undefined);
+    if (await this.localBranchExists()) {
+      await wgit.raw(['branch', '-D', this.branch]).catch((error: unknown) => {
+        logger.warn('IsolatedWorktree.create: deleting a partial branch did not complete', { branch: this.branch, error: summarizeError(error) });
+      });
+    }
   }
 
   /**

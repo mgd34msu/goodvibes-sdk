@@ -142,6 +142,8 @@ declare module 'simple-git' {
     binary?: string;
     maxConcurrentProcesses?: number;
     trimmed?: boolean;
+    /** Aborting kills the running git child and rejects its task (simple-git's abort plugin). */
+    abort?: AbortSignal;
   }
   export interface FileStatusResult {
     path: string;

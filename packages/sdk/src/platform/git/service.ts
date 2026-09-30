@@ -457,10 +457,18 @@ export class GitService {
   // Worktree (for agent isolation)
   // ---------------------------------------------------------------------------
 
-  async worktreeAdd(path: string, branch: string): Promise<void> {
+  /**
+   * `git worktree add <path> -b <branch>`. With `options.signal`, the command
+   * runs on a one-off client bound to that signal, so aborting it kills the git
+   * child and rejects the call (the shared client carries no signal).
+   */
+  async worktreeAdd(path: string, branch: string, options?: { readonly signal?: AbortSignal }): Promise<void> {
     await this.firePre('worktreeAdd', { path, branch });
     try {
-      await (await this.git()).raw(['worktree', 'add', path, '-b', branch]);
+      const client = options?.signal
+        ? await createSimpleGit({ baseDir: this.cwd, abort: options.signal })
+        : await this.git();
+      await client.raw(['worktree', 'add', path, '-b', branch]);
       await this.firePost('worktreeAdd', { path, branch });
     } catch (err) {
       await this.fireFail('worktreeAdd', { path, branch, error: summarizeError(err) });
