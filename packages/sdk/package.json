@@ -698,7 +698,7 @@
     "pdfjs-dist": "6.2.108",
     "playwright-core": "1.62.0",
     "pyright": "^1.1.408",
-    "simple-git": "^3.33.0",
+    "simple-git": "^4.0.2",
     "sql.js": "^1.14.1",
     "sqlite-vec": "^0.1.9",
     "tree-sitter-css": "^0.25.0",

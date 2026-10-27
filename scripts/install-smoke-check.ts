@@ -145,6 +145,53 @@ if (existsSync(nestedInternalRoot)) {
 console.log('install smoke ok');
 `;
 
+// These are optional SDK features, so npm may omit them after an install
+// failure. An audit alone must not pass merely because an affected branch was
+// skipped. Resolve from each actual consumer, not the scratch project's root.
+const securitySmokeScript = `
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const sdkRequire = createRequire(require.resolve('${PUBLIC_PACKAGE_NAME}/package.json'));
+function installed(requester, name, minimum) {
+  let dir = dirname(requester.resolve(name));
+  while (true) {
+    const file = join(dir, 'package.json');
+    if (existsSync(file)) {
+      const manifest = JSON.parse(readFileSync(file, 'utf8'));
+      if (manifest.name === name) {
+        const actual = manifest.version.split('.').map(Number);
+        const floor = minimum.split('.').map(Number);
+        const sufficient = actual.every(Number.isInteger) && actual[0] === floor[0]
+          && (actual[1] > floor[1] || (actual[1] === floor[1] && actual[2] >= floor[2]));
+        if (!sufficient) throw new Error(name + ' resolved ' + manifest.version + ', expected patched ' + minimum + ' or newer within that major');
+        console.log('security dependency: ' + name + '@' + manifest.version);
+        return createRequire(file);
+      }
+    }
+    const parent = dirname(dir);
+    if (parent === dir) throw new Error('Could not inspect installed ' + name);
+    dir = parent;
+  }
+}
+const gitRequire = installed(sdkRequire, 'simple-git', '4.0.2');
+installed(gitRequire, '@simple-git/argv-parser', '2.0.1');
+const jsdomRequire = createRequire(sdkRequire.resolve('jsdom'));
+installed(jsdomRequire, 'undici', '7.30.1');
+const cssRequire = createRequire(jsdomRequire.resolve('css-tree'));
+installed(cssRequire, 'source-map-js', '1.2.2');
+const vendorRequire = createRequire(sdkRequire.resolve('bash-language-server/package.json'));
+installed(vendorRequire, 'zod', '4.6.6');
+const { getDefaultConfiguration } = vendorRequire('./out/config.js');
+const shfmt = getDefaultConfiguration().shfmt;
+if (shfmt.path !== 'shfmt' || shfmt.languageDialect !== 'auto' || shfmt.ignoreEditorconfig !== false) {
+  throw new Error('Packed Bash LSP lost nested configuration defaults');
+}
+console.log('packed security dependency smoke ok');
+`;
+
 function writeConsumerFiles(projectDir: string): void {
   writeFileSync(
     resolve(projectDir, 'package.json'),
@@ -155,6 +202,9 @@ function writeConsumerFiles(projectDir: string): void {
     }, null, 2)}\n`,
   );
   writeFileSync(resolve(projectDir, 'check.mjs'), `${smokeScript.trim()}\n`);
+  if (!REGISTRY_MODE) {
+    writeFileSync(resolve(projectDir, 'check-security.mjs'), `${securitySmokeScript.trim()}\n`);
+  }
   if (REGISTRY_MODE) {
     writeRegistryConfig(projectDir);
   }
@@ -216,6 +266,13 @@ async function installWithNpm(specs: readonly string[]): Promise<void> {
       });
     }, 'npm install');
     run('node', ['check.mjs'], projectDir);
+    // Audit the graph consumers actually install, without workspace overrides.
+    // The root bun.lock audit does not cover this independently resolved graph
+    // (including the vendored Bash LSP and installed optional dependencies).
+    if (!REGISTRY_MODE) {
+      run('node', ['check-security.mjs'], projectDir);
+      run('npm', ['audit', '--audit-level=high', '--registry=https://registry.npmjs.org'], projectDir);
+    }
   } finally {
     rmSync(projectDir, { recursive: true, force: true });
   }

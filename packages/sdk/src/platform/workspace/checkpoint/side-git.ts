@@ -51,11 +51,11 @@ const FALLBACK_IDENTITY = { name: 'GoodVibes Checkpoints', email: 'checkpoints@g
  * any of these, every commit here is created via `commit-tree -m <message>`,
  * never a bare `commit`/`rebase -i`/`merge`, so stripping them from the
  * inherited environment we pass through is both safe and avoids depending on
- * simple-git's `unsafe.allowUnsafe*` escape hatches (not part of this
- * package version's public option types).
+ * simple-git's `unsafe.allowUnsafe*` escape hatches.
  */
 const UNSAFE_GIT_ENV_KEYS = new Set([
   'editor',
+  'visual',
   'git_editor',
   'git_sequence_editor',
   'git_askpass',
@@ -75,11 +75,19 @@ const UNSAFE_GIT_ENV_KEYS = new Set([
   'prefix',
 ]);
 
-/** Copy `env`, dropping keys (case-insensitively) that simple-git's vulnerability scanner blocks by default. */
+/**
+ * Preserve ordinary process settings and the git discovery ceiling, not an
+ * inherited repository/index/object-store override or command-bearing config.
+ * v4 rejects unapproved GIT_* keys supplied through .env(), including keys not
+ * covered by the unsafe-operation denylist. The runner adds its OWN repo pair
+ * only after this filtering, and keeps the upstream unsafe-operation guard on.
+ */
 function sanitizeGitEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const sanitized: NodeJS.ProcessEnv = {};
   for (const [key, value] of Object.entries(env)) {
-    if (UNSAFE_GIT_ENV_KEYS.has(key.toLowerCase())) continue;
+    const normalized = key.toLowerCase().trim();
+    if (UNSAFE_GIT_ENV_KEYS.has(normalized)) continue;
+    if (normalized.startsWith('git_') && normalized !== 'git_ceiling_directories') continue;
     sanitized[key] = value;
   }
   return sanitized;
@@ -162,7 +170,10 @@ export class SideGitRunner {
    * checkpoint git failure.
    */
   private git(): Promise<SimpleGit> {
-    this.gitClient ??= createSimpleGit({ baseDir: this.workspaceRoot })
+    this.gitClient ??= createSimpleGit({
+      baseDir: this.workspaceRoot,
+      allowEnvironment: ['GIT_DIR', 'GIT_WORK_TREE'],
+    })
       .then((git) => git.env(this.gitEnv));
     return this.gitClient;
   }

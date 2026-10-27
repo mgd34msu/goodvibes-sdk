@@ -53,6 +53,9 @@ function assertBundledBashLspPatchManifest(tarball: string): void {
   if (manifest.dependencies?.editorconfig !== '3.0.2') {
     throw new Error(`${tarball} vendored bash-language-server must pin editorconfig@3.0.2`);
   }
+  if (manifest.dependencies?.zod !== '4.6.6') {
+    throw new Error(`${tarball} vendored bash-language-server must pin patched zod@4.6.6`);
+  }
   if ('prepublishOnly' in (manifest.scripts ?? {})) {
     throw new Error(`${tarball} vendored bash-language-server must not ship prepublishOnly`);
   }

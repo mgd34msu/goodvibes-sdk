@@ -25,18 +25,44 @@ available. Current non-vendored overrides are declared in the root
 - `esbuild@0.28.1` to close `GHSA-gv7w-rqvm-qjhr` (RCE via missing binary integrity verification in the Deno module path)
 - `form-data@4.0.6` to close `GHSA-hmw2-7cc7-3qxx` (CRLF injection via unescaped multipart field/file names)
 - `ws@8.21.0` to close `GHSA-96hv-2xvq-fx4p` (memory-exhaustion DoS from tiny fragments)
-- `undici@^7.29.0` to close `GHSA-vmh5-mc38-953g`, `GHSA-vxpw-j846-p89q`, and `GHSA-hm92-r4w5-c3mj` (TLS bypass, WebSocket DoS, SOCKS5 routing); also a direct dependency at the same version, not only a transitive override
+- `source-map-js@^1.2.2` to close `GHSA-68fv-2mgg-jv7q` (indexed source-map event-loop denial of service)
+- `undici@^7.30.1` to close `GHSA-xjj6-f33q-929c` (excessive content-encoding unhandled-error denial of service), as well as `GHSA-vmh5-mc38-953g`, `GHSA-vxpw-j846-p89q`, and `GHSA-hm92-r4w5-c3mj` (TLS bypass, WebSocket DoS, SOCKS5 routing); also a direct dependency at the same version, not only a transitive override
 - `tar@^7.5.16`, `brace-expansion@^5.0.9`, `sharp@^0.35.0`, `js-yaml@^4.3.1`, and `ip-address@^10.4.0`, later additions to the same override table for transitive advisory remediation; `brace-expansion` and `ip-address` are also direct dependencies at the same pinned version. See the `overridesRationale` field in the root `package.json` for the per-package justification on file; a package listed here without a corresponding `overridesRationale` entry is pinned as a precaution and does not yet have a recorded rationale.
 
 The published SDK keeps Bash LSP bundled as a first-class feature. The
 `bash-language-server@5.6.0 -> editorconfig@2.0.1 -> minimatch@10.0.1` chain is
 handled as a graph-level vendor patch: `vendor/bash-language-server` copies the
-upstream `bash-language-server@5.6.0` package and changes only
+upstream `bash-language-server@5.6.0` package and changes
 `dependencies.editorconfig` to `3.0.2`, whose dependency range resolves to the
 fixed `minimatch@~10.2.4` line (the root `overrides.minimatch` separately pins
 `^10.2.5` for source-workspace installs). Release staging rewrites the published SDK
 dependency to `file:vendor/bash-language-server`, so consumer lockfiles and
-`npm audit` see the patched graph directly.
+`npm audit` see the patched graph directly. The vendor also pins `zod@4.6.6`
+to close `GHSA-mrhx-c7xc-m3w5`; its configuration defaults and declarations
+are adapted to Zod 4 and tested. See `vendor/bash-language-server/GOODVIBES_PATCH.md`.
+
+The SDK optional dependency now requires `simple-git@^4.0.2`, which carries
+`@simple-git/argv-parser@2.0.1`. This closes `GHSA-v5rq-49vh-5v5c`,
+`GHSA-858h-whjf-mvg5`, `GHSA-x6jw-m9v5-85vh`, and
+`GHSA-g4wm-2vf7-vfgr`. The SDK keeps simple-git's unsafe-operation guards
+active. Checkpoints explicitly allow only their owned repository/work-tree
+variables; ordinary git operations retain only the repository-discovery ceiling.
+All direct workspace Zod dependencies require `^4.6.6` for
+`GHSA-mrhx-c7xc-m3w5`; there is no blanket Zod major-version override.
+
+`bun run security:audit` checks the workspace lockfile. In addition,
+`bun run install:smoke` audits a fresh npm installation of the actual release
+tarballs, including installed optional dependencies and the vendored Bash LSP,
+without workspace overrides. A clean workspace audit alone is not a consumer
+guarantee: npm ignores overrides declared by dependencies, and an existing
+application lockfile can retain older transitive packages permitted by upstream
+ranges (notably jsdom's undici and css-tree's source-map-js). Refresh those
+application lockfile entries or apply the root overrides below, then audit the
+application's installed graph. Fresh-consumer audit results apply to the graph
+resolved at test time, not every historical or future consumer lockfile.
+
+These dependency advisories do not by themselves establish deployed exposure
+or exploitation of an SDK application.
 
 No install-time minimatch mutation is used. The Bash LSP mitigation is carried
 by the published dependency graph itself.
@@ -66,7 +92,8 @@ not inherit dependency-package overrides:
     "google-auth-library": "10.6.2",
     "lodash": "4.18.1",
     "minimatch": "^10.2.5",
-    "undici": "^7.29.0",
+    "source-map-js": "^1.2.2",
+    "undici": "^7.30.1",
     "ws": "8.21.0",
     "tar": "^7.5.16",
     "brace-expansion": "^5.0.9",

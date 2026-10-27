@@ -142,6 +142,8 @@ declare module 'simple-git' {
     binary?: string;
     maxConcurrentProcesses?: number;
     trimmed?: boolean;
+    /** Explicitly permitted guarded environment keys (simple-git v4). */
+    allowEnvironment?: readonly string[];
     /** Aborting kills the running git child and rejects its task (simple-git's abort plugin). */
     abort?: AbortSignal;
   }
@@ -200,6 +202,5 @@ declare module 'simple-git' {
     [key: string]: any;
   }
   function simpleGit(options?: string | Partial<SimpleGitOptions>): SimpleGit;
-  export default simpleGit;
   export { simpleGit };
 }

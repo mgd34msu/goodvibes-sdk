@@ -118,7 +118,7 @@
     "@pellux/goodvibes-transport-core": "workspace:*",
     "@pellux/goodvibes-transport-http": "workspace:*",
     "@pellux/goodvibes-transport-realtime": "workspace:*",
-    "zod": "^4.3.6"
+    "zod": "^4.6.6"
   },
   "overridesRationale": {
     "ajv": "Pinned to keep JSON Schema validation on the audited 8.x line used by release tooling dependencies.",
@@ -132,7 +132,8 @@
     "esbuild": "Pinned to 0.28.1 to close GHSA-gv7w-rqvm-qjhr (missing binary integrity verification in Deno module, enabling RCE via NPM_CONFIG_REGISTRY). Wrangler 4.x pins esbuild <0.28.1; this override forces the patched release across all transitive consumers.",
     "form-data": "Pinned to 4.0.6 to close GHSA-hmw2-7cc7-3qxx (CRLF injection via unescaped multipart field/file names). Forces the patched release across @cypress/request (Verdaccio) and Cloudflare transitive consumers.",
     "ws": "Pinned to 8.21.0 to close GHSA-96hv-2xvq-fx4p (memory-exhaustion DoS from tiny fragments). Minor bump within the 8.x line forced across miniflare, node-edge-tts, and the openai ws peer.",
-    "undici": "Held at ^7.29.1 to close GHSA-rfgv-xxqx-mfg5 and GHSA-w293-vg96-wgc3. Kept on the 7.x line that jsdom (^7.25.0) and miniflare require; 8.x would be a breaking major."
+    "undici": "Held at ^7.30.1 to close GHSA-xjj6-f33q-929c in addition to prior undici advisories. Kept on the compatible 7.x line used by jsdom and miniflare; 8.x would be a breaking major.",
+    "source-map-js": "Held at ^1.2.2 to close GHSA-68fv-2mgg-jv7q (event-loop denial of service through indexed source-map section offsets)."
   },
   "overrides": {
     "ajv": "8.18.0",
@@ -146,7 +147,7 @@
     "esbuild": "0.28.1",
     "form-data": "4.0.6",
     "ws": "8.21.0",
-    "undici": "^7.29.1",
+    "undici": "^7.30.1",
     "tar": "^7.5.16",
     "brace-expansion": "^5.0.11",
     "sharp": "^0.35.4",
@@ -154,13 +155,14 @@
     "ip-address": "^10.7.2",
     "qs": "^6.16.0",
     "body-parser": "^1.20.8",
-    "fflate": "^0.8.3"
+    "fflate": "^0.8.3",
+    "source-map-js": "^1.2.2"
   },
   "dependencies": {
     "brace-expansion": "^5.0.11",
     "fast-uri": "^3.1.6",
     "ip-address": "^10.4.0",
-    "undici": "^7.29.1"
+    "undici": "^7.30.1"
   },
   "patchedDependencies": {
     "@arethetypeswrong/core@0.18.2": "patches/@arethetypeswrong%2Fcore@0.18.2.patch"

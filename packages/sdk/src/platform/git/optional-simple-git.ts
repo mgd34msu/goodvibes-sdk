@@ -29,7 +29,14 @@ export async function createSimpleGit(
 ): Promise<SimpleGit> {
   const loaded = await loadOptionalDependency('simple-git', () => import('simple-git'));
   if (!loaded.available) throw new Error(loaded.reason);
-  return loaded.module.simpleGit(options);
+  const config = typeof options === 'string' ? { baseDir: options } : options;
+  return loaded.module.simpleGit({
+    ...config,
+    // v4 filters inherited GIT_* variables. Keep the discovery boundary used
+    // by embedded hosts and the test runner, but never inherit repo overrides,
+    // command-bearing configuration, editors, or other unsafe allowances.
+    allowEnvironment: ['GIT_CEILING_DIRECTORIES', ...(config?.allowEnvironment ?? [])],
+  });
 }
 
 /** Whether git integration can run in this installation, and why not. */

@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Security
+
+- Require patched simple-git 4.0.2 and Zod 4.6.6, refresh undici and source-map-js,
+  and migrate the vendored Bash language server's Zod dependency without losing
+  its configuration defaults. Checkpoint/worktree isolation and unsafe git
+  guards remain enabled. The tarball installation smoke test now audits the
+  consumer graph independently of workspace overrides.
+
 ## [2.1.0] - 2026-09-30
 
 ### Added

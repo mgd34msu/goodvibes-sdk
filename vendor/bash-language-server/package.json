@@ -38,13 +38,14 @@
     "vscode-languageserver": "8.0.2",
     "vscode-languageserver-textdocument": "1.0.12",
     "web-tree-sitter": "0.24.5",
-    "zod": "3.24.2"
+    "zod": "4.6.6"
   },
   "goodvibesPatch": {
     "source": "bash-language-server@5.6.0",
     "sourceIntegrity": "sha512-DCuV+/BZAAozsp5blvi6jDnU/ZDaTpJpWM0zqwGjnirfqv7iBsMK32xOze/jipxU0PUZ6CBUKgRUMKI7Kk70Lg==",
-    "reason": "Keep bundled Bash LSP while replacing editorconfig@2.0.1 -> minimatch@10.0.1 with editorconfig@3.0.2 -> minimatch@~10.2.4.",
-    "refreshPolicy": "Re-pull from upstream when a CVE advisory affects bash-language-server or its dependencies; otherwise refresh quarterly by re-running the vendor patch script against the latest upstream tag."
+    "reason": "Keep bundled Bash LSP while upgrading editorconfig to 3.0.2 and migrating its configuration/ShellCheck schemas to Zod 4.6.6 (GHSA-mrhx-c7xc-m3w5), preserving nested configuration defaults.",
+    "refreshPolicy": "Re-pull from upstream when a CVE advisory affects bash-language-server or its dependencies; otherwise refresh quarterly by re-running the vendor patch script against the latest upstream tag.",
+    "sourceCommit": "2fb9b33b6f40b508bf3b54233ff4efef0cb08206"
   },
   "devDependencies": {
     "@types/fuzzy-search": "2.1.5",

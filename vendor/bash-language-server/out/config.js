@@ -57,7 +57,7 @@ exports.ConfigSchema = zod_1.z.object({
         // Follow redirection operators with a space.
         spaceRedirects: zod_1.z.boolean().default(false),
     })
-        .default({}),
+        .prefault({}),
 });
 function getConfigFromEnvironmentVariables() {
     const rawConfig = {

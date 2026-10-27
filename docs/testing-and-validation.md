@@ -93,7 +93,7 @@ package scripts over bare `bun test` when `dist` imports are involved.
 |-----|---------|
 | `validate` | `bun run validate` (build, credential scope, exports reachability, examples typecheck, browser compatibility of companion entry points, package metadata) and `bun run flags:graduation` |
 | `packaging (pack)` | `bun run pack:check` |
-| `packaging (install-smoke)` | `bun run install:smoke` |
+| `packaging (install-smoke)` | `bun run install:smoke` (tarball imports and fresh-consumer npm audit, without workspace overrides) |
 | `packaging (attw)` | `bun run types:resolution-check` |
 | `packaging (publint)` | `bun run publint:check` |
 | `packaging (artifact-lane)` | `bun run release:artifact-lane` |
