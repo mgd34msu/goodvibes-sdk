@@ -183,7 +183,9 @@ export class ConversationManager {
       return this._cachedLLMMessages;
     }
     const result: ProviderMessage[] = [];
-    for (const message of this.messages) {
+    for (const [index, message] of this.messages.entries()) {
+      // The active block belongs to the renderer, not the model's history.
+      if (index === this.streamingMessageIndex) continue;
       if (message.role === 'system') continue;
       if (message.role === 'user') {
         result.push({ role: 'user', content: message.content });
