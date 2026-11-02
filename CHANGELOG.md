@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.1.1] - 2026-11-02
+
+### Fixed
+
+- Keep the active assistant rendering block out of model requests. This restores replies from local llama.cpp models, including DeepSeek, after tool calls and prevents partial display text from being sent as completed conversation history.
+
 ## [Unreleased]
 
 ### Security
