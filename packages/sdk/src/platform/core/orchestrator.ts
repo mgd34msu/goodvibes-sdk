@@ -75,6 +75,7 @@ import {
   prepareConversationForTurn,
 } from './orchestrator-turn-helpers.js';
 import { executeOrchestratorTurnLoop } from './orchestrator-turn-loop.js';
+import { TurnCompactionGate } from './turn-compaction-gate.js';
 import {
   recordTurnInjection,
   type TurnInjectionRecord,
@@ -173,6 +174,7 @@ export class Orchestrator {
 
   private animInterval: ReturnType<typeof setInterval> | null = null;
   private abortController: AbortController | null = null;
+  private readonly turnCompaction = new TurnCompactionGate();
   /** Per-tool-call abort registry (per-call cancel; see orchestrator-live-turn.ts). */
   private readonly toolCallAborts = new ToolCallAbortRegistry();
   /** Monotonic id source for queued-message ids. */
@@ -304,7 +306,7 @@ export class Orchestrator {
       scrollToEnd: (height) => this.scrollToEnd(height),
       getSystemPrompt: () => this.getSystemPrompt(),
       requestRender: () => this.requestRender(),
-      getThinkingState: () => ({ isThinking: this.isThinking, isCompacting: this.isCompacting }),
+      getThinkingState: () => ({ isThinking: this.abortController !== null, isCompacting: this.isCompacting || this.turnCompaction.busy }),
       getQueuedUserMessageCount: () => this.messageQueue.length,
       getProviderRegistry: () => requireProviderRegistry(this.coreServices),
       getCurrentModel: () => requireProviderRegistry(this.coreServices).getCurrentModel(),
@@ -533,7 +535,7 @@ export class Orchestrator {
   ): Promise<void> {
     if (!text.trim() && !content?.length) return;
 
-    if (this.isThinking || this.isCompacting) {
+    if (this.abortController !== null || this.isThinking || this.isCompacting || this.turnCompaction.busy) {
       this.queuedMessageSeq += 1;
       const id = `qm-${this.queuedMessageSeq}`;
       this.messageQueue.push({ id, queuedAt: Date.now(), text, content, options });
@@ -547,27 +549,40 @@ export class Orchestrator {
 
     await this.runTurn(text, content, options);
 
-    // Process any messages queued while the LLM was thinking. Draining is gated on
-    // isCompacting so a queued turn cannot start while a background auto-compaction is
-    // mid-flight (which would let compact() replace the message array and drop the
-    // in-flight turn's freshly appended messages). Messages left queued during
-    // compaction are drained by setCompacting() once compaction settles.
+    // Queued input waits for both the active turn and history replacement.
     await this.drainMessageQueue();
   }
 
   /**
-   * Drain queued user messages sequentially. Skips draining while a turn is in
-   * flight or a background auto-compaction is running; in the latter case
-   * setCompacting() re-triggers the drain once compaction settles, so no queued
-   * message is lost.
+   * Drain queued user messages after the active turn and compaction settle.
    */
   private async drainMessageQueue(): Promise<void> {
-    while (this.messageQueue.length > 0 && !this.isThinking && !this.isCompacting) {
+    while (this.messageQueue.length > 0 && this.abortController === null && !this.isThinking && !this.isCompacting && !this.turnCompaction.busy) {
       const next = this.messageQueue.shift()!;
       this.emitQueueChange('delivered', next.id);
       await this.runTurn(next.text, next.content, next.options);
     }
     this.followUpRuntime.scheduleFlush();
+  }
+
+  /** Pause at a safe turn checkpoint, replace history, then resume the same turn. */
+  public async withCompaction<T>(compact: () => Promise<T>): Promise<T> {
+    const result = this.turnCompaction.enqueue(async () => {
+      await this.followUpRuntime.waitForIdle();
+      const value = await compact();
+      // Cancellation after compaction must not truncate the new history using
+      // an index from before it was replaced.
+      if (this.abortController) this.turnStartMessageCount = this.conversation.getMessageCount();
+      return value;
+    });
+    if (this.abortController === null) {
+      void this.turnCompaction.checkpoint().then(() => this.drainMessageQueue()).catch((error) => {
+        logger.error('Orchestrator: queued message drain after manual compaction failed', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    }
+    try { return await result; } finally { this.requestRender(); }
   }
 
   /**
@@ -644,12 +659,16 @@ export class Orchestrator {
     try {
       await this.runTurnStream(text, content, turnId, preTurnPlan, configManager, providerRegistry);
 
+      await this.turnCompaction.checkpoint();
+      this.abortController?.signal.throwIfAborted();
+
       // --- Phase 3: Post-turn reconciliation ---
       await this.runTurnReconcile(turnId, configManager, providerRegistry);
     } catch (err: unknown) {
       this.handleTurnError(err, turnId, configManager, providerRegistry);
     } finally {
       this.finalizeTurn(turnStartTime, submissionKey, turnId, configManager, text);
+      await this.turnCompaction.checkpoint();
     }
   }
 
@@ -757,6 +776,7 @@ export class Orchestrator {
       toolRegistry: this.toolRegistry,
       getSystemPrompt: this.getSystemPrompt,
       getAbortSignal: () => this.abortController?.signal,
+      compactionGate: this.turnCompaction,
       hookDispatcher: this.hookDispatcher,
       requestRender: this.requestRender,
       runtimeBus: this.runtimeBus,

@@ -1,4 +1,5 @@
 import type { ConversationManager } from './conversation.js';
+import type { TurnCompactionGate } from './turn-compaction-gate.js';
 import type { ExecutionPlan } from './execution-plan.js';
 import { ConsecutiveErrorBreaker } from './circuit-breaker.js';
 import type { CacheHitTracker } from '../providers/cache-strategy.js';
@@ -125,6 +126,7 @@ export interface OrchestratorTurnLoopContext {
   readonly toolRegistry: ToolRegistry;
   readonly getSystemPrompt: () => string;
   readonly getAbortSignal: () => AbortSignal | undefined;
+  readonly compactionGate?: TurnCompactionGate;
   readonly hookDispatcher: HookDispatcherLike | null;
   readonly requestRender: () => void;
   readonly runtimeBus: RuntimeEventBus | null;
@@ -247,12 +249,17 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
   // cannot compound. Reset implicitly to null on every NEW executeOrchestratorTurnLoop()
   // call (a fresh runTurn() always recomputes from scratch on its own iteration 1).
   let turnKnowledgeBlock: string | null = null;
+  let modelInstructions: string[] = [];
 
   while (continueLoop) {
+    await context.compactionGate?.checkpoint();
+    context.getAbortSignal()?.throwIfAborted();
     let streamAccumulated = '';
     let reasoningAccumulated = '';
     let streamSessionStarted = false;
+    let requestSignal: AbortSignal | undefined;
     const onDelta = (delta: StreamDelta) => {
+      if (requestSignal?.aborted) return;
       if (delta.content) {
         streamAccumulated += delta.content;
         if (streamEnabled) {
@@ -281,6 +288,8 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
     };
 
     const preflightResult = await context.checkContextWindowPreflight(context.turnId, model);
+    await context.compactionGate?.checkpoint();
+    context.getAbortSignal()?.throwIfAborted();
     if (preflightResult === 'error') {
       if (streamEnabled) {
         context.setStreamingActive(false);
@@ -442,7 +451,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
     // Model-only instructions queued since the last model call (the
     // conversation's addModelInstruction): taken once per iteration, carried by
     // this iteration's system prompt, never shown in the transcript.
-    const modelInstructions = context.conversation.takeModelInstructions();
+    modelInstructions.push(...context.conversation.takeModelInstructions());
     const composeTurnSystemPrompt = (raw: string): string => {
       // owner-profile §11.2: the OPEN tier only, composed fresh onto the current
       // base each iteration and never written back, exactly like the knowledge
@@ -471,33 +480,53 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
     const chatStartedAt = Date.now();
     let chatRetries = 0;
     try {
-      response = await provider.chat({
-        model: model.id,
-        messages: context.conversation.getMessagesForLLM(),
-        tools: toolDefinitions.length > 0 ? toolDefinitions : undefined,
-        systemPrompt: composeTurnSystemPrompt(composedBaseSystemPrompt),
-        maxTokens: tokenLimits.maxOutputTokens,
-        ...resolveTurnReasoning(
-          model,
-          context.configManager.get('provider.reasoningEffort'),
-          context.sessionId,
-        ),
-        signal: context.getAbortSignal(),
-        onDelta,
-        onRetry: (attempt, maxAttempts, delayMs, error) => {
-          chatRetries = attempt;
-          if (context.runtimeBus) {
-            emitStreamRetry(context.runtimeBus, context.emitterContext(context.turnId), {
-              turnId: context.turnId,
-              provider: model.provider,
-              attempt,
-              maxAttempts,
-              delayMs,
-              reason: error.message,
-            });
+      const chat = (signal: AbortSignal | undefined) => {
+        requestSignal = signal;
+        return provider.chat({
+          model: model.id,
+          messages: context.conversation.getMessagesForLLM(),
+          tools: toolDefinitions.length > 0 ? toolDefinitions : undefined,
+          systemPrompt: composeTurnSystemPrompt(composedBaseSystemPrompt),
+          maxTokens: tokenLimits.maxOutputTokens,
+          ...resolveTurnReasoning(
+            model,
+            context.configManager.get('provider.reasoningEffort'),
+            context.sessionId,
+          ),
+          signal,
+          onDelta,
+          onRetry: (attempt, maxAttempts, delayMs, error) => {
+            chatRetries = attempt;
+            if (context.runtimeBus) {
+              emitStreamRetry(context.runtimeBus, context.emitterContext(context.turnId), {
+                turnId: context.turnId,
+                provider: model.provider,
+                attempt,
+                maxAttempts,
+                delayMs,
+                reason: error.message,
+              });
+            }
+          },
+        });
+      };
+      if (context.compactionGate) {
+        const result = await context.compactionGate.runRequest(context.getAbortSignal(), chat);
+        if (result.status === 'interrupted') {
+          if (streamEnabled) {
+            context.setStreamingActive(false);
+            context.conversation.finalizeStreamingBlock();
           }
-        },
-      });
+          if (streamSessionStarted && context.runtimeBus) {
+            emitStreamEnd(context.runtimeBus, context.emitterContext(context.turnId), { turnId: context.turnId });
+          }
+          continue;
+        }
+        response = result.value;
+      } else {
+        response = await chat(context.getAbortSignal());
+      }
+      modelInstructions = [];
     } catch (chatErr) {
       if (streamEnabled) {
         context.setStreamingActive(false);

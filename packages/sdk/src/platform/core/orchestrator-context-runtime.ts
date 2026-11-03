@@ -550,7 +550,7 @@ export async function handlePostTurnContextMaintenance(
           extractionModelId: currentModel.registryKey,
           extractionProvider: currentModel.provider,
         });
-        void deps.conversation.compact(
+        await deps.conversation.compact(
           deps.providerRegistry,
           currentModel.registryKey,
           'auto',

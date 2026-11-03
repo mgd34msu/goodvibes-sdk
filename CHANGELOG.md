@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.1.2] - 2026-11-03
+
+### Fixed
+
+- Pause active turns at a safe checkpoint during manual compaction, then resume the same turn with the compacted history. Interrupt unfinished generation, preserve model instructions, and finish started tool batches without repeating their actions. Serialize compactions and wait for automatic compaction and follow-up acknowledgements before replacing history.
+
 ## [2.1.1] - 2026-11-02
 
 ### Fixed

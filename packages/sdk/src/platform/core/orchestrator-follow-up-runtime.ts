@@ -35,10 +35,14 @@ export interface OrchestratorFollowUpRuntimeOptions {
 export class OrchestratorFollowUpRuntime {
   private queue: ConversationFollowUpItem[] = [];
   private flushScheduled = false;
-  private isRunning = false;
+  private inFlight: Promise<void> | null = null;
   private readonly recentKeys = new Map<string, number>();
 
   public constructor(private readonly options: OrchestratorFollowUpRuntimeOptions) {}
+
+  public async waitForIdle(): Promise<void> {
+    await this.inFlight;
+  }
 
   public enqueue(item: ConversationFollowUpItem): void {
     const summary = item.summary.trim();
@@ -87,7 +91,7 @@ export class OrchestratorFollowUpRuntime {
   private async flush(): Promise<void> {
     if (this.queue.length === 0) return;
     const state = this.options.getThinkingState();
-    if (state.isThinking || state.isCompacting || this.isRunning || this.options.getQueuedUserMessageCount() > 0) {
+    if (state.isThinking || state.isCompacting || this.inFlight || this.options.getQueuedUserMessageCount() > 0) {
       const timer = setTimeout(() => this.scheduleFlush(), FOLLOW_UP_RETRY_DELAY_MS);
       timer.unref?.();
       return;
@@ -103,7 +107,8 @@ export class OrchestratorFollowUpRuntime {
     const batch = this.takeBatch();
     if (batch.length === 0) return;
 
-    this.isRunning = true;
+    const completion = Promise.withResolvers<void>();
+    this.inFlight = completion.promise;
     try {
       const response = await provider.chat({
         model: model.id,
@@ -136,7 +141,8 @@ export class OrchestratorFollowUpRuntime {
       });
       this.options.routeLowPriorityMessage(`[Follow-up] Acknowledgement update failed: ${summarizeError(error)}`);
     } finally {
-      this.isRunning = false;
+      this.inFlight = null;
+      completion.resolve();
       if (this.queue.length > 0) {
         this.scheduleFlush();
       }
